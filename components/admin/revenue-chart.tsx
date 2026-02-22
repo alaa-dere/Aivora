@@ -12,35 +12,38 @@ import {
 } from "recharts";
 
 const data = [
-  { name: "W1", revenue: 1200 },
-  { name: "W2", revenue: 1800 },
-  { name: "W3", revenue: 1400 },
-  { name: "W4", revenue: 2200 },
-  { name: "W5", revenue: 2000 },
-  { name: "W6", revenue: 2600 },
-  { name: "W7", revenue: 2400 },
-  { name: "W8", revenue: 3100 },
-  { name: "W9", revenue: 2800 },
-  { name: "W10", revenue: 3600 },
-  { name: "W11", revenue: 3300 },
-  { name: "W12", revenue: 4100 },
+  { name: "Jan", revenue: 4200 },
+  { name: "Feb", revenue: 5800 },
+  { name: "Mar", revenue: 6200 },
+  { name: "Apr", revenue: 7800 },
+  { name: "May", revenue: 9100 },
+  { name: "Jun", revenue: 8700 },
 ];
 
 export function RevenueChart() {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle>Revenue Trend</CardTitle>
-        <p className="text-sm text-muted-foreground">Last 12 weeks</p>
+        <CardTitle>Sales Activity – Monthly</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Showing total sales for the last 6 months
+        </p>
       </CardHeader>
-      <CardContent className="h-72">
+      <CardContent className="h-72 min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" />
-            <YAxis />
+            <YAxis domain={[0, 10000]} ticks={[0, 2000, 4000, 6000, 8000, 10000]} />
             <Tooltip />
-            <Area type="monotone" dataKey="revenue" strokeWidth={2} fillOpacity={0.2} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              fill="#3b82f6"
+              fillOpacity={0.2}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </CardContent>

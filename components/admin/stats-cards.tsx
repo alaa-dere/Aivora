@@ -2,10 +2,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const stats = [
-  { title: "Total Students", value: "1,240", change: "+6.2%" },
-  { title: "Total Teachers", value: "38", change: "+1.4%" },
-  { title: "Active Courses", value: "112", change: "+3.1%" },
-  { title: "Monthly Revenue", value: "$12,450", change: "+9.8%" },
+  {
+    title: "Avg Order Revenue",
+    value: "$4,682",
+    change: "Sales Last Week",
+    changeValue: "",
+  },
+  {
+    title: "New Orders",
+    value: "1,226",
+    change: "Sales Last Week",
+    changeValue: "",
+  },
+  {
+    title: "Total Revenue",
+    value: "$15,231.89",
+    change: "+20.5% from last month",
+    changeValue: "positive",
+  },
+  {
+    title: "Details",
+    value: "10.8%",
+    change: "",
+    changeValue: "",
+  },
 ];
 
 export function StatsCards() {
@@ -20,9 +40,16 @@ export function StatsCards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{s.value}</div>
-            <Badge className="mt-2" variant="secondary">
-              {s.change}
-            </Badge>
+            {s.change && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                {s.change}
+              </div>
+            )}
+            {s.changeValue === "positive" && (
+              <Badge className="mt-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                {s.change}
+              </Badge>
+            )}
           </CardContent>
         </Card>
       ))}

@@ -3,7 +3,7 @@ import { RecentTransactions } from "@/components/admin/recent-transactions";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { AIInsights } from "@/components/admin/ai-insights";
 import { ActivityFeed } from "@/components/admin/activity-feed";
-
+import { loadUsers, saveUsers, type UserRow, type Role, type Status } from "@/lib/users-store";
 export default function AdminPage() {
   return (
     <div className="space-y-6">

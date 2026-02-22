@@ -1,29 +1,39 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const activity = [
-  { type: "ENROLL", text: "Batool enrolled in React Basics", time: "2 min ago" },
-  { type: "PAYMENT", text: "Payment received ($25) - TRX-10021", time: "15 min ago" },
-  { type: "CERT", text: "Sara completed HTML & CSS and got certificate", time: "1 hour ago" },
-  { type: "QUIZ", text: "New quiz submitted in JavaScript course", time: "3 hours ago" },
+const members = [
+  { name: "Dale Komen", email: "dale@example.com" },
+  { name: "Sofia Davis", email: "mj@example.com" },
+  { name: "Jackson Lee", email: "jl@example.com" },
+  { name: "Isabelle Nguyen", email: "isabelle@example.com" },
+  { name: "Megan Rivera", email: "" },
 ];
 
 export function ActivityFeed() {
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
-        <p className="text-sm text-muted-foreground">Live platform events</p>
+        <CardTitle>Team Members</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Invite your team members to collaborate.
+        </p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {activity.map((a, idx) => (
-          <div key={idx} className="flex items-start justify-between gap-3">
+      <CardContent className="space-y-4">
+        {members.map((m, idx) => (
+          <div key={idx} className="flex items-center gap-3">
+            <Avatar>
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {m.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
             <div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{a.type}</Badge>
-                <span className="text-sm">{a.text}</span>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">{a.time}</div>
+              <div className="font-medium">{m.name}</div>
+              {m.email && (
+                <div className="text-xs text-muted-foreground">{m.email}</div>
+              )}
             </div>
           </div>
         ))}
