@@ -1,7 +1,7 @@
 // app/admin/layout.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -29,16 +29,20 @@ const navigation = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  // بعد التحميل على العميل، نسمح بإظهار المحتوى المعتمد على الثيم
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const handleLogout = () => {
-    // هنا ضع منطق تسجيل الخروج الفعلي (مسح التوكن، إعادة التوجيه، إلخ)
     console.log('Logout clicked');
-    // مثال: router.push('/login');
   };
 
   return (
@@ -53,27 +57,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Bars3Icon className="w-6 h-6 text-white" />
           </button>
-          <div className="flex items-center ml-2">
+          <Link href="/admin/dashboard" className="flex items-center ml-2">
             <AcademicCapIcon className="w-8 h-8 text-white mr-2" />
             <h1 className="text-xl font-bold text-white">Aivora</h1>
-          </div>
+          </Link>
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* زر تبديل الثيم */}
+          {/* زر تبديل الثيم - يظهر فقط بعد التحميل */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? (
-              <SunIcon className="w-5 h-5 text-white" />
+            {mounted ? (
+              theme === 'dark' ? (
+                <SunIcon className="w-5 h-5 text-white" />
+              ) : (
+                <MoonIcon className="w-5 h-5 text-white" />
+              )
             ) : (
-              <MoonIcon className="w-5 h-5 text-white" />
+              <div className="w-5 h-5" /> // placeholder
             )}
           </button>
 
-          {/* زر تسجيل الخروج بنص "Logout" */}
+          {/* زر تسجيل الخروج */}
           <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"
@@ -96,12 +104,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           `}
         >
           <div className="h-full flex flex-col">
-            {/* رأس السايد بار - شعار أزرق */}
+            {/* رأس السايد بار */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
+              <Link href="/admin/dashboard" className="flex items-center">
                 <AcademicCapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-2" />
                 <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Aivora</span>
-              </div>
+              </Link>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -158,7 +166,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* طبقة خلفية معتمة عند فتح السايد بار */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30"
+          className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
