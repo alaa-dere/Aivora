@@ -1,4 +1,4 @@
-// app/admin/layout.tsx
+// app/student/layout.tsx
 'use client';
 
 import { useState } from 'react';
@@ -7,43 +7,43 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   HomeIcon,
-  UsersIcon,
   BookOpenIcon,
-  CurrencyDollarIcon,
+  PlayCircleIcon,
+  AcademicCapIcon,
+  CreditCardIcon,
+  SparklesIcon,
   Bars3Icon,
   XMarkIcon,
   UserCircleIcon,
-  AcademicCapIcon,
   ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Users', href: '/dashboard/user', icon: UsersIcon },
-  { name: 'Courses', href: '/dashboard/courses', icon: BookOpenIcon },
-  { name: 'Finance', href: '/dashboard/finance', icon: CurrencyDollarIcon },
+  { name: 'Dashboard', href: '/student/dashboard', icon: HomeIcon },
+  { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
+  { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
+  { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
+  { name: 'Wallet & Payments', href: '/student/wallet', icon: CreditCardIcon },
+  { name: 'AI Insights', href: '/student/ai', icon: SparklesIcon },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   const handleLogout = () => {
-    // هنا ضع منطق تسجيل الخروج الفعلي (مسح التوكن، إعادة التوجيه، إلخ)
-    console.log('Logout clicked');
-    // مثال: router.push('/login');
+    // ضع منطق تسجيل الخروج الحقيقي هنا
+    console.log('Student logout clicked');
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* شريط علوي بلون كحلي غامق جداً */}
+      {/* Header - نفس ستايل الأدمن */}
       <header className="sticky top-0 z-30 bg-blue-950 dark:bg-gray-950 border-b border-blue-900 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center">
           <button
@@ -53,16 +53,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Bars3Icon className="w-6 h-6 text-white" />
           </button>
+
           <div className="flex items-center ml-2">
             <AcademicCapIcon className="w-8 h-8 text-white mr-2" />
             <div className="leading-tight">
-            <h1 className="text-xl font-bold text-white">Aivora</h1>
-              <p className="text-[11px] text-blue-100/80">Admin Portal</p>
+              <h1 className="text-xl font-bold text-white">Aivora</h1>
+              <p className="text-[11px] text-blue-100/80">Student Portal</p>
+            </div>
           </div>
         </div>
-</div>
+
         <div className="flex items-center space-x-3">
-          {/* زر تبديل الثيم */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
@@ -75,7 +76,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
           </button>
 
-          {/* زر تسجيل الخروج بنص "Logout" */}
           <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"
@@ -86,9 +86,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      {/* حاوية رئيسية */}
       <div className="flex">
-        {/* السايد بار - يظهر عند الضغط على زر الهامبرغر */}
+        {/* Sidebar */}
         <aside
           className={`
             fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl
@@ -98,7 +97,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           `}
         >
           <div className="h-full flex flex-col">
-            {/* رأس السايد بار - شعار أزرق */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
                 <AcademicCapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-2" />
@@ -112,7 +110,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
             </div>
 
-            {/* روابط التنقل */}
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
@@ -138,26 +135,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               })}
             </nav>
 
-            {/* معلومات المستخدم في الأسفل */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
                 <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Admin User</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">admin@aivora.com</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Student User</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">student@aivora.com</p>
                 </div>
               </div>
             </div>
           </div>
         </aside>
 
-        {/* المحتوى الرئيسي */}
+        {/* Main */}
         <main className="flex-1">
           <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </main>
       </div>
 
-      {/* طبقة خلفية معتمة عند فتح السايد بار */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30"
