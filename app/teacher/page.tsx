@@ -2,25 +2,55 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from 'next/image';
 import { useTheme } from 'next-themes'
 import {
-  Users, BookOpen, BrainCircuit, Award, ChevronRight, Sun, Moon,
-  TrendingUp, Clock, AlertTriangle, CheckCircle, XCircle, Video,
-  Calendar, Bell, FileText, Link as LinkIcon, Download, Upload,
-  BarChart3, GraduationCap, Zap, Sparkles, Target, Trophy, Activity,
-  PieChart, PlusCircle, PlayCircle, UserPlus, MessageSquare, Eye,
-  MoreVertical, TrendingDown
-} from "lucide-react";
+  UsersIcon,
+  UserGroupIcon,
+  BookOpenIcon,
+  AcademicCapIcon,
+  ChartBarIcon,
+  ChevronRightIcon,
+  ArrowTrendingUpIcon,
+  SunIcon,
+  MoonIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  VideoCameraIcon,
+  CalendarIcon,
+  BellIcon,
+  DocumentTextIcon,
+  LinkIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  TrophyIcon,
+  SparklesIcon,          
+  PlusCircleIcon,
+  PlayCircleIcon,
+  UserPlusIcon,
+  ChatBubbleLeftRightIcon,
+  EyeIcon,
+  EllipsisVerticalIcon,
+  ArrowTrendingDownIcon
+} from "@heroicons/react/24/outline";
 
 /* ================= Stat Card ================= */
-const StatCard = ({ title, value, icon, change, changeType = "increase", delay = 0 }: any) => {
+const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", delay = 0 }: any) => {
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-        <div className="flex items-center justify-between mb-3">
-          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            {icon}
+      <div className="
+        bg-white dark:bg-gray-800 
+        rounded-xl 
+        shadow-sm 
+        border border-blue-200 dark:border-blue-800 
+        p-5 
+        hover:-translate-y-1 hover:shadow-lg 
+        transition-all duration-200
+      ">
+        <div className="flex items-center justify-between mb-2">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+            <Icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
           </div>
           <span
             className={`text-xs font-medium px-2 py-1 rounded-full ${
@@ -32,8 +62,8 @@ const StatCard = ({ title, value, icon, change, changeType = "increase", delay =
             {change}
           </span>
         </div>
-        <p className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{value}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+        <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{title}</p>
       </div>
     </div>
   );
@@ -41,16 +71,23 @@ const StatCard = ({ title, value, icon, change, changeType = "increase", delay =
 
 /* ================= Course Card ================= */
 const CourseCard = ({ course, index }: any) => {
-  const [imgError, setImgError] = useState(false);
   const colors = ["from-blue-600 to-indigo-600", "from-emerald-600 to-teal-600", "from-amber-600 to-orange-600", "from-purple-600 to-pink-600"];
   const gradient = colors[index % colors.length];
 
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+      <div className="
+        bg-white dark:bg-gray-800 
+        rounded-xl 
+        shadow-sm 
+        border border-blue-200 dark:border-blue-800 
+        p-5 
+        hover:-translate-y-1 hover:shadow-lg 
+        transition-all duration-200
+      ">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-blue-700 dark:text-blue-400" />
+            <BookOpenIcon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
           </div>
           <div>
             <h4 className="font-semibold text-gray-800 dark:text-white text-lg">{course.name}</h4>
@@ -127,22 +164,20 @@ const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 
 
 /* ================= Main Dashboard ================= */
 export default function TeacherDashboard() {
-const { theme } = useTheme();
-const [mounted, setMounted] = useState(false);
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-useEffect(() => {
-  setMounted(true);
-}, []);
-
-if (!mounted) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) return null;
 
   const stats = [
-    { title: 'Total Students', value: '1,284', change: '+12%', changeType: 'increase', icon: Users, delay: 0 },
-    { title: 'Active Courses', value: '6', change: '+2%', changeType: 'increase', icon: BookOpen, delay: 100 },
-    { title: 'Avg Score', value: '78%', change: '+5%', changeType: 'increase', icon: Target, delay: 200 },
-    { title: 'Completion', value: '82%', change: '+8%', changeType: 'increase', icon: Activity, delay: 300 },
+    { title: 'Total Students', value: '1,284', change: '+12%', changeType: 'increase', icon:UserGroupIcon, delay: 0 },
+    { title: 'Active Courses', value: '112', change: '+3.1%', changeType: 'increase', icon: BookOpenIcon, delay: 100 },
+    { title: 'Avg Score', value: '78%', change: '+5%', changeType: 'increase', icon: AcademicCapIcon, delay: 200 },
+    { title: 'Completion', value: '82%', change: '+8%', changeType: 'increase', icon: ChartBarIcon, delay: 300 },
   ];
 
   const courses = [
@@ -163,17 +198,17 @@ if (!mounted) return null;
     {
       title: 'Forecast',
       description: 'Next month Python Basics +18%',
-      icon: TrendingUp,
+     icon: ArrowTrendingUpIcon
     },
     {
       title: 'Risk',
       description: 'At-risk Web Dev student based on quiz performance',
-      icon: TrendingDown,
+      icon: ArrowTrendingDownIcon,
     },
     {
       title: 'Recommendation',
       description: 'JavaScript Async (68% wrong) needs review',
-      icon: GraduationCap,
+      icon: AcademicCapIcon,
     },
   ];
 
@@ -184,16 +219,16 @@ if (!mounted) return null;
   ];
 
   return (
-<div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 transition-colors duration-300">        {/* رأس الصفحة */}
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 dark:text-white">
-          Welcome, Dr. Sarah
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 transition-colors duration-300">
+      {/* رأس الصفحة */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+          Dashboard
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Your dashboard is up to date.</p>
       </div>
 
-      {/* بطاقات الإحصائيات */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* بطاقات الإحصائيات - نفس الستايل والأيقونات اللي في Admin */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map((stat) => (
           <StatCard
             key={stat.title}
@@ -201,22 +236,22 @@ if (!mounted) return null;
             value={stat.value}
             change={stat.change}
             changeType={stat.changeType}
-            icon={<stat.icon className="w-6 h-6 text-blue-700 dark:text-blue-400" />}
+            icon={stat.icon}
             delay={stat.delay}
           />
         ))}
       </div>
 
-      {/* الرسم البياني ورؤى الذكاء الاصطناعي */}
+      {/* باقي الأقسام (My Courses, AI Insights, Student Performance, Recent Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* قسم My Courses */}
+        {/* My Courses */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
               My Courses
             </h2>
             <Link href="/teacher/courses" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
-              View All <ChevronRight className="w-4 h-4" />
+              View All <ChevronRightIcon className="w-4 h-4" />
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -226,28 +261,24 @@ if (!mounted) return null;
           </div>
         </div>
 
-        {/* رؤى الذكاء الاصطناعي */}
+        {/* AI Insights */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             AI Insights
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Smart analytics & suggestions
           </p>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {aiInsights.map((insight, index) => (
               <AIInsightItem key={index} icon={insight.icon} title={insight.title} description={insight.description} />
             ))}
           </div>
-          <button className="w-full mt-6 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 py-3 rounded-lg text-sm font-medium transition-colors">
-            Generate Quiz
-          </button>
         </div>
       </div>
 
-      {/* Student Performance و Recent Activity */}
+      {/* Student Performance + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Performance */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Student Performance
@@ -259,16 +290,21 @@ if (!mounted) return null;
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Recent Activity
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Live platform events</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Live platform events</p>
           <div className="space-y-4">
             {recentActivities.map((activity, idx) => (
-              <div key={idx} className="flex gap-4 p-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 h-fit">
+              <div key={idx} className="flex gap-3">
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    activity.type === 'ENROLL'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                  }`}
+                >
                   {activity.type}
                 </span>
                 <div className="flex-1">

@@ -12,6 +12,7 @@ import {
   CurrencyDollarIcon,
   UsersIcon,
   Squares2X2Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 type CourseStatus = 'active' | 'paused';
@@ -20,11 +21,11 @@ type Course = {
   id: string;
   title: string;
   teacherName: string;
-  price: number; // USD (or your currency)
-  teacherSharePct: number; // %
+  price: number;
+  teacherSharePct: number;
   students: number;
   status: CourseStatus;
-  createdAt: string; // YYYY-MM-DD
+  createdAt: string;
 };
 
 const initialCourses: Course[] = [
@@ -79,12 +80,10 @@ export default function AdminCoursesPage() {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
 
-  // modal
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // form
   const [form, setForm] = useState<{
     title: string;
     teacherName: string;
@@ -107,12 +106,7 @@ export default function AdminCoursesPage() {
       .filter((c) => c.status === 'active')
       .reduce((acc, c) => acc + c.students * c.price, 0);
 
-    return {
-      total,
-      active,
-      totalStudents,
-      revenueMonthlyMock,
-    };
+    return { total, active, totalStudents, revenueMonthlyMock };
   }, [courses]);
 
   const filtered = useMemo(() => {
@@ -184,14 +178,7 @@ export default function AdminCoursesPage() {
       setCourses((prev) =>
         prev.map((c) =>
           c.id === editingId
-            ? {
-                ...c,
-                title,
-                teacherName,
-                price,
-                teacherSharePct,
-                status: form.status,
-              }
+            ? { ...c, title, teacherName, price, teacherSharePct, status: form.status }
             : c
         )
       );
@@ -209,7 +196,6 @@ export default function AdminCoursesPage() {
     );
   }
 
-  // computed preview: teacher share amount per sale
   const teacherShareAmountPreview = useMemo(() => {
     const price = Number(form.price || 0);
     const pct = Number(form.teacherSharePct || 0);
@@ -224,13 +210,10 @@ export default function AdminCoursesPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <BookOpenIcon className="w-7 h-7 text-blue-700 dark:text-blue-400" />
             Courses
           </h1>
-          
         </div>
 
-        {/* Add Course button (theme matched) */}
         <button
           onClick={openCreate}
           className="
@@ -250,7 +233,7 @@ export default function AdminCoursesPage() {
         </button>
       </div>
 
-      {/* Stats (same admin style, smaller) */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Courses', value: stats.total.toLocaleString(), trend: '+3.1%', icon: Squares2X2Icon },
@@ -270,24 +253,28 @@ export default function AdminCoursesPage() {
               rounded-xl
               border border-blue-200 dark:border-blue-800
               shadow-sm
-              p-4
+              p-5
+              hover:-translate-y-1 hover:shadow-lg
               transition-all duration-200
-              hover:-translate-y-1 hover:shadow-md
             "
           >
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+
+              <span
+                className="
+                  text-xs font-medium px-2 py-1 rounded-full
+                  bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300
+                "
+              >
                 {card.trend}
               </span>
             </div>
 
-            <div className="mt-3">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
-            </div>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
@@ -295,7 +282,6 @@ export default function AdminCoursesPage() {
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          {/* Search */}
           <div className="relative">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -306,7 +292,6 @@ export default function AdminCoursesPage() {
             />
           </div>
 
-          {/* Status filter */}
           <div className="flex items-center gap-2">
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <select
@@ -420,49 +405,58 @@ export default function AdminCoursesPage() {
 
       {/* Create/Edit Modal */}
       {openModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30 dark:bg-black/50" onClick={() => setOpenModal(false)} />
-          <div className="relative w-[94%] max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4">
+          <div className="relative w-full max-w-xl lg:max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-900/40 dark:border-gray-700 overflow-hidden">
+            
+            {/* Header - نفس لون topbar */}
+            <div className="px-6 py-1 md:py-2 bg-blue-950 border-b border-blue-900 flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold text-white">
                 {modalMode === 'create' ? 'Add Course' : 'Edit Course'}
               </h2>
               <button
                 onClick={() => setOpenModal(false)}
-                className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                className="p-2.5 rounded-full hover:bg-blue-900/70 text-white/90 hover:text-white transition-colors"
+                aria-label="Close"
               >
-                Close
+                <XMarkIcon className="w-7 h-7" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Body */}
+            <div className="p-6 md:p-8 max-h-[80vh] overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Course Title</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Course Title
+                  </label>
                   <input
                     value={form.title}
                     onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                     placeholder="e.g. English Basics A1"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Teacher Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Teacher Name
+                  </label>
                   <input
                     value={form.teacherName}
                     onChange={(e) => setForm((p) => ({ ...p, teacherName: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                     placeholder="Teacher"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Status</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Status
+                  </label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as CourseStatus }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                   >
                     <option value="active">Active</option>
                     <option value="paused">Paused</option>
@@ -470,71 +464,94 @@ export default function AdminCoursesPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Price</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Price
+                  </label>
                   <input
                     value={form.price}
                     onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
                     type="number"
                     min={0}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                     placeholder="0"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Teacher share (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Teacher Share (%)
+                  </label>
                   <input
                     value={form.teacherSharePct}
                     onChange={(e) => setForm((p) => ({ ...p, teacherSharePct: e.target.value }))}
                     type="number"
                     min={0}
                     max={100}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                     placeholder="60"
                   />
                 </div>
               </div>
 
               {/* Profit preview */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-4">
-                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 mt-6">
+                <p className="text-base font-semibold text-blue-800 dark:text-blue-200 mb-3">
                   Profit split preview (per sale)
                 </p>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-3 border border-blue-100 dark:border-blue-900/30">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
                     <span className="text-gray-600 dark:text-gray-300">Teacher</span>
                     <span className="font-bold text-gray-900 dark:text-white">
                       {money(teacherShareAmountPreview.teacherAmount)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-3 border border-blue-100 dark:border-blue-900/30">
+                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
                     <span className="text-gray-600 dark:text-gray-300">Platform</span>
                     <span className="font-bold text-gray-900 dark:text-white">
                       {money(teacherShareAmountPreview.platformAmount)}
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
                   (This is a preview only — connect it to your payments/reporting later.)
                 </p>
               </div>
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-2">
+            {/* Footer - أصغر حجم + لون Save نفس الهيدر */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-3 bg-gray-50/80 dark:bg-gray-950/50">
               <button
                 onClick={() => {
                   setOpenModal(false);
                   resetForm();
                 }}
-                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="
+                  min-w-[90px] px-5 py-2 
+                  text-sm font-medium 
+                  rounded-lg 
+                  border border-gray-300 dark:border-gray-600 
+                  bg-white dark:bg-gray-800 
+                  text-gray-700 dark:text-gray-300 
+                  hover:bg-gray-100 dark:hover:bg-gray-700 
+                  hover:border-gray-400 dark:hover:border-gray-500 
+                  transition-colors
+                "
               >
                 Cancel
               </button>
+
               <button
                 onClick={saveCourse}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 transition-colors"
+                className="
+                  min-w-[110px] px-6 py-2 
+                  text-sm font-medium 
+                  rounded-lg 
+                  bg-blue-950 hover:bg-blue-900 
+                  text-white 
+                  transition-all active:scale-95
+                "
               >
-                {modalMode === 'create' ? 'Create' : 'Save changes'}
+                {modalMode === 'create' ? 'Add Course' : 'Save Changes'}
               </button>
             </div>
           </div>
