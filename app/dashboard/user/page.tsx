@@ -14,6 +14,7 @@ import {
   UserGroupIcon,
   CheckBadgeIcon,
   Squares2X2Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 type Role = 'student' | 'teacher';
@@ -25,9 +26,9 @@ type UserRow = {
   email: string;
   role: Role;
   status: Status;
-  createdAt: string; // simple display
+  createdAt: string;
   coursesCount: number;
-  balance?: number; // for student use-case
+  balance?: number;
 };
 
 const initialUsers: UserRow[] = [
@@ -98,21 +99,18 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Status>('all');
 
-  // modal state
   const [openModal, setOpenModal] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // delete confirm
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // form
   const [form, setForm] = useState<{
     name: string;
     email: string;
     role: Role;
     status: Status;
-    balance: string; // as text
+    balance: string;
   }>({
     name: '',
     email: '',
@@ -236,103 +234,92 @@ export default function AdminUsersPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <UsersIcon className="w-7 h-7 text-blue-700 dark:text-blue-400" />
             Users
           </h1>
-         
         </div>
-<button
-  onClick={openCreate}
-  className="
-    group inline-flex items-center gap-2
-    px-4 py-2.5
-    rounded-xl
-    bg-gradient-to-r from-blue-600 to-blue-700
-    hover:from-blue-700 hover:to-blue-800
-    text-white
-    font-semibold text-sm
-    shadow-sm
-    hover:shadow-md
-    border border-blue-500/50
-    transition-all duration-200
-    active:scale-95
-  "
->
-  <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-  Add User
-</button>
-      </div>
-{/* Stats - small admin style */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  {[
-    {
-      label: 'Total Students',
-      value: stats.students.toLocaleString(),
-      trend: '+6.2%',
-      icon: AcademicCapIcon,
-    },
-    {
-      label: 'Total Teachers',
-      value: stats.teachers.toLocaleString(),
-      trend: '+1.4%',
-      icon: UserGroupIcon,
-    },
-    {
-      label: 'Total Users',
-      value: stats.total.toLocaleString(),
-      trend: '+3.1%',
-      icon: Squares2X2Icon,
-    },
-    {
-      label: 'Active Users',
-      value: stats.active.toLocaleString(),
-      trend: '+9.8%',
-      icon: CheckBadgeIcon,
-    },
-  ].map((card) => (
-    <div
-      key={card.label}
-      className="
-        bg-white dark:bg-gray-800
-        rounded-xl
-        border border-blue-200 dark:border-blue-800
-        shadow-sm
-        p-4
-        transition-all duration-200
-        hover:-translate-y-1 hover:shadow-md
-      "
-    >
-      {/* top */}
-      <div className="flex items-center justify-between">
-        {/* icon */}
-        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-          <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
-        </div>
-
-        {/* percent */}
-        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-          {card.trend}
-        </span>
+        <button
+          onClick={openCreate}
+          className="
+            group inline-flex items-center gap-2
+            px-6 py-2.5 rounded-xl
+            bg-gradient-to-r from-blue-600 to-blue-700
+            hover:from-blue-700 hover:to-blue-800
+            text-white font-semibold text-sm
+            shadow-sm hover:shadow-md
+            border border-blue-500/50
+            transition-all duration-200
+            active:scale-95
+          "
+        >
+          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+          Add User
+        </button>
       </div>
 
-      {/* numbers */}
-      <div className="mt-3">
-        <div className="text-2xl font-bold text-gray-900 dark:text-white">
-          {card.value}
-        </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          {card.label}
-        </div>
-      </div>
-    </div>
-  ))}
-</div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          {
+            label: 'Total Students',
+            value: stats.students.toLocaleString(),
+            trend: '+6.2%',
+            icon: AcademicCapIcon,
+          },
+          {
+            label: 'Total Teachers',
+            value: stats.teachers.toLocaleString(),
+            trend: '+1.4%',
+            icon: UserGroupIcon,
+          },
+          {
+            label: 'Total Users',
+            value: stats.total.toLocaleString(),
+            trend: '+3.1%',
+            icon: Squares2X2Icon,
+          },
+          {
+            label: 'Active Users',
+            value: stats.active.toLocaleString(),
+            trend: '+9.8%',
+            icon: CheckBadgeIcon,
+          },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="
+              bg-white dark:bg-gray-800
+              rounded-xl
+              border border-blue-200 dark:border-blue-800
+              shadow-sm
+              p-5
+              hover:-translate-y-1 hover:shadow-lg
+              transition-all duration-200
+            "
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
+              </div>
 
+              <span
+                className={`
+                  text-xs font-medium px-2 py-1 rounded-full
+                  bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300
+                `}
+              >
+                {card.trend}
+              </span>
+            </div>
+
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          {/* Tabs */}
           <div className="flex items-center gap-2">
             {[
               { key: 'all', label: 'All' },
@@ -356,7 +343,6 @@ export default function AdminUsersPage() {
             })}
           </div>
 
-          {/* Search + Filters */}
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div className="relative">
               <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -476,51 +462,64 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Create / Edit Modal */}
       {openModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30 dark:bg-black/50" onClick={() => setOpenModal(false)} />
-          <div className="relative w-[94%] max-w-xl bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-                {modalMode === 'create' ? 'Add User' : 'Edit User'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4">
+          <div className="relative w-full max-w-xl lg:max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-900/40 dark:border-gray-700 overflow-hidden">
+            
+            {/* Header */}
+            <div className="px-6 py-1 md:py-2 bg-blue-950 border-b border-blue-900 flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold text-white">
+                {modalMode === 'create' ? 'Add New User' : 'Edit User'}
               </h2>
               <button
-                onClick={() => setOpenModal(false)}
-                className="px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+                onClick={() => {
+                  setOpenModal(false);
+                  resetForm();
+                }}
+                className="p-2.5 rounded-full hover:bg-blue-900/70 text-white/90 hover:text-white transition-colors"
+                aria-label="Close"
               >
-                Close
+                <XMarkIcon className="w-7 h-7" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Body */}
+            <div className="p-6 md:p-8 max-h-[80vh] overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Full Name
+                  </label>
                   <input
                     value={form.name}
                     onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-                    placeholder="Full name"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                    placeholder="Enter full name"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
                   <input
                     value={form.email}
                     onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-                    placeholder="name@email.com"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                    placeholder="example@domain.com"
+                    type="email"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Role</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Role
+                  </label>
                   <select
                     value={form.role}
                     onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as Role }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                   >
                     <option value="student">Student</option>
                     <option value="teacher">Teacher</option>
@@ -528,11 +527,13 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Status</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Status
+                  </label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as Status }))}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -540,40 +541,61 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              {/* Student-only field */}
               {form.role === 'student' && (
                 <div>
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Balance</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Balance ($)
+                  </label>
                   <input
                     value={form.balance}
                     onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))}
                     type="number"
-                    min={0}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-                    placeholder="0"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                    placeholder="0.00"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    (For enrollment & wallet features)
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Remaining balance for the student (used for course enrollment)
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-2">
+            {/* Footer - أصغر حجم + لون Save نفس الهيدر */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-3 bg-gray-50/80 dark:bg-gray-950/50">
               <button
                 onClick={() => {
                   setOpenModal(false);
                   resetForm();
                 }}
-                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="
+                  min-w-[90px] px-5 py-2 
+                  text-sm font-medium 
+                  rounded-lg 
+                  border border-gray-300 dark:border-gray-600 
+                  bg-white dark:bg-gray-800 
+                  text-gray-700 dark:text-gray-300 
+                  hover:bg-gray-100 dark:hover:bg-gray-700 
+                  hover:border-gray-400 dark:hover:border-gray-500 
+                  transition-colors
+                "
               >
                 Cancel
               </button>
+
               <button
                 onClick={saveUser}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 transition-colors"
+                className="
+                  min-w-[110px] px-6 py-2 
+                  text-sm font-medium 
+                  rounded-lg 
+                  bg-blue-950 hover:bg-blue-900 
+                  text-white 
+                  transition-all active:scale-95
+                "
               >
-                {modalMode === 'create' ? 'Create' : 'Save changes'}
+                {modalMode === 'create' ? 'Add User' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -581,33 +603,45 @@ export default function AdminUsersPage() {
       )}
 
       {/* Delete Confirm */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30 dark:bg-black/50" onClick={() => setDeleteId(null)} />
-          <div className="relative w-[94%] max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-red-200 dark:border-red-900/60 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Delete user?</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                This action can’t be undone.
-              </p>
-            </div>
-            <div className="px-5 py-4 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setDeleteId(null)}
-                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={doDelete}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white border border-red-500 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+{deleteId && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4">
+    <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/60 overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Delete User?</h3>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          This action cannot be undone.
+        </p>
+      </div>
+      <div className="px-6 py-5 flex items-center justify-end gap-4 bg-gray-50/80 dark:bg-gray-950/50">
+        <button
+          onClick={() => setDeleteId(null)}
+          className="
+            px-6 py-2.5 
+            rounded-lg 
+            border border-gray-300 dark:border-gray-600 
+            text-gray-700 dark:text-gray-300 
+            hover:bg-gray-100 dark:hover:bg-gray-700 
+            font-medium transition-colors text-sm
+          "
+        >
+          Cancel
+        </button>
+        <button
+          onClick={doDelete}
+          className="
+            px-8 py-2.5 
+            rounded-lg 
+            bg-blue-950 hover:bg-blue-900 
+            text-white 
+            font-medium transition-all active:scale-95 text-sm
+          "
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

@@ -5,6 +5,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { 
+  LayoutDashboard, BookOpen, BrainCircuit, Users, Video, 
+  Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
+  Sun, Moon, X
+} from "lucide-react";
 import {
   HomeIcon,
   BookOpenIcon,
@@ -22,7 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Dashboard', href: '/student/dashboard', icon: HomeIcon },
+  { name: 'Dashboard', href: '/student', icon: HomeIcon },
   { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
   { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
@@ -75,7 +80,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               <MoonIcon className="w-5 h-5 text-white" />
             )}
           </button>
-
+          
+           {/* Notifications */}
+          <button className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
+            <Bell className="w-5 h-5 text-white" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button> 
+          
           <button
             onClick={handleLogout}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"

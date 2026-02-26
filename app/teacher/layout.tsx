@@ -1,62 +1,60 @@
-"use client";
+// app/teacher/layout.tsx
+'use client';
 
-import type { ReactNode } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, BookOpen, BrainCircuit, Users, Video, 
-  Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
-  Sun, Moon, X
-} from "lucide-react";
-import { useState, useEffect } from "react";
-import { useTheme } from 'next-themes'
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import {
   HomeIcon,
-  UsersIcon,
   BookOpenIcon,
-  CurrencyDollarIcon,
+  UsersIcon,
+  VideoCameraIcon,
+  BellIcon,
   Bars3Icon,
   XMarkIcon,
-  UserCircleIcon,
   AcademicCapIcon,
   ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
 } from '@heroicons/react/24/outline';
+import { BrainCircuit } from 'lucide-react'; // احتفظنا بـ lucide لهذا الأيقونة فقط
 
-export default function TeacherLayout({ children }: { children: ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+const menuItems = [
+  { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
+  { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
+  { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
+  { href: '/teacher/students', name: 'Students', icon: UsersIcon },
+  { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
+];
+
+export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
+  // لتجنب مشكلة hydration مع الثيم
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const menuItems = [
-    { href: "/teacher", name: "Dashboard", icon: LayoutDashboard },
-    { href: "/teacher/courses", name: "My Courses", icon: BookOpen },
-    { href: "/teacher/quizzes", name: "Quizzes", icon: BrainCircuit },
-    { href: "/teacher/students", name: "Students", icon: Users },
-    { href: "/teacher/live-sessions", name: "Live Sessions", icon: Video },
-  ];
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const handleLogout = () => {
-    console.log('Logout clicked');
+    console.log('Teacher logout clicked');
+    // هنا ضع منطق تسجيل الخروج الحقيقي
   };
 
   if (!mounted) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-        <div>Loading...</div>
-      </div>
-    );
+    return null; // أو skeleton loader إذا حابب
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Header - كحلي غامق */}
+      {/* ──────────────── Topbar ──────────────── */}
       <header className="sticky top-0 z-30 bg-blue-950 dark:bg-gray-950 border-b border-blue-900 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center">
           <button
@@ -64,37 +62,35 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
             className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Toggle sidebar"
           >
-            <Menu className="w-6 h-6 text-white" />
+            <Bars3Icon className="w-6 h-6 text-white" />
           </button>
-          <Link href="/teacher" className="flex items-center ml-2">
-          <AcademicCapIcon className="w-8 h-8 text-white mr-2" />
-            <span className="text-xl font-bold text-white">Aivora</span>
-          </Link>
+          <div className="flex items-center ml-2">
+            <AcademicCapIcon className="w-8 h-8 text-white mr-2" />
+            <div className="leading-tight">
+              <h1 className="text-xl font-bold text-white">Aivora</h1>
+              <p className="text-[11px] text-blue-100/80">Teacher Portal</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Theme Toggle */}
           <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-white" />
+              <SunIcon className="w-5 h-5 text-white" />
             ) : (
-              <Moon className="w-5 h-5 text-white" />
+              <MoonIcon className="w-5 h-5 text-white" />
             )}
           </button>
 
           {/* Notifications */}
           <button className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
-            <Bell className="w-5 h-5 text-white" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-
-          {/* Settings */}
-          <button className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
-            <Settings className="w-5 h-5 text-white" />
+            <BellIcon className="w-5 h-5 text-white" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
           </button>
 
           {/* Logout */}
@@ -102,15 +98,15 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
             onClick={handleLogout}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"
           >
-            <LogOut className="w-5 h-5" />
+            <ArrowRightOnRectangleIcon className="w-5 h-5" />
             <span>Logout</span>
           </button>
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* ──────────────── Sidebar + Content ──────────────── */}
       <div className="flex">
-        {/* Sidebar - تظهر عند الضغط على الهامبرغر */}
+        {/* Sidebar */}
         <aside
           className={`
             fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl
@@ -122,18 +118,19 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
           <div className="h-full flex flex-col">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <Link href="/teacher" className="flex items-center">
+              <div className="flex items-center">
+                <AcademicCapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-2" />
                 <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Aivora</span>
-              </Link>
+              </div>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <XMarkIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
 
-            {/* Navigation Links */}
+            {/* Navigation */}
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -150,20 +147,20 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
                     }`}
                   >
                     <Icon
-                      className={`w-5 h-5 mr-3 ${
+                      className={`w-5 h-5 mr-3 flex-shrink-0 ${
                         isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                       }`}
                     />
-                    {item.name}
+                    <span>{item.name}</span>
                   </Link>
                 );
               })}
             </nav>
 
-            {/* User Info at Bottom */}
+            {/* Teacher Info */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
                   S
                 </div>
                 <div className="ml-3">
@@ -176,17 +173,15 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* Main Content */}
-      <main className="flex-1 w-full">
-  <div className="p-4 sm:p-6 lg:p-8 w-full">
-    {children}
-  </div>
-</main>
+        <main className="flex-1 min-w-0">
+          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        </main>
       </div>
 
-      {/* Overlay when sidebar is open */}
+      {/* Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30"
           onClick={() => setSidebarOpen(false)}
         />
       )}

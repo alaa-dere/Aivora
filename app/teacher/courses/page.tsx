@@ -1,33 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
-  Plus,
-  Search,
-  Filter,
-  MoreVertical,
-  Users,
-  FileText,
-  Clock,
-  Eye,
-  Edit,
-  Copy,
-  Grid3x3,
-  List,
-  BookOpen,
-  Video,
-  FileVideo,
-  Link as LinkIcon,
-  ChevronRight,
-  GraduationCap
-} from "lucide-react";
+  PlusIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  BookOpenIcon,
+  UsersIcon,
+  AcademicCapIcon,
+  Squares2X2Icon,
+  VideoCameraIcon,
+  DocumentTextIcon,
+  LinkIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 
 export default function CoursesPage() {
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "draft">("all");
 
-
+  // بيانات وهمية (استبدليها ببيانات حقيقية لاحقًا)
   const courses = [
     {
       id: "CS401",
@@ -39,8 +32,7 @@ export default function CoursesPage() {
       progress: 78,
       lastUpdated: "2024-01-15",
       status: "active",
-      thumbnail: "from-[#1E3A8A] to-[#1E40AF]",
-      description: "Object-oriented programming, decorators, generators, and advanced Python concepts"
+      description: "Object-oriented programming, decorators, generators, and advanced Python concepts",
     },
     {
       id: "CS301",
@@ -52,8 +44,7 @@ export default function CoursesPage() {
       progress: 92,
       lastUpdated: "2024-01-10",
       status: "active",
-      thumbnail: "from-[#1E3A8A] to-[#2563EB]",
-      description: "Modern web development with React, hooks, state management, and Next.js"
+      description: "Modern web development with React, hooks, state management, and Next.js",
     },
     {
       id: "CS201",
@@ -65,8 +56,7 @@ export default function CoursesPage() {
       progress: 65,
       lastUpdated: "2024-01-05",
       status: "draft",
-      thumbnail: "from-[#1E3A8A] to-[#3B82F6]",
-      description: "Arrays, linked lists, trees, graphs, sorting, and searching algorithms"
+      description: "Arrays, linked lists, trees, graphs, sorting, and searching algorithms",
     },
     {
       id: "CS501",
@@ -78,348 +68,263 @@ export default function CoursesPage() {
       progress: 45,
       lastUpdated: "2024-01-20",
       status: "active",
-      thumbnail: "from-[#1E3A8A] to-[#60A5FA]",
-      description: "Machine learning basics, neural networks, and AI applications"
-    }
+      description: "Machine learning basics, neural networks, and AI applications",
+    },
   ];
 
+  // فلترة الكورسات
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
+      course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || course.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // إحصائيات سريعة
+  const stats = {
+    totalCourses: courses.length,
+    activeCourses: courses.filter((c) => c.status === "active").length,
+    totalStudents: courses.reduce((sum, c) => sum + c.students, 0),
+    totalLessons: courses.reduce((sum, c) => sum + c.lessons, 0),
+  };
+
   return (
-<div className="w-full">
-<div className="px-6 py-6 md:px-10 space-y-8 w-full">
-        {/* Header with Dark Mode Toggle */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">
-              My Courses
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
-              Manage and organize your course content
-            </p>
-          </div>
-
-          <div>
-
-
-            <Link
-              href="/teacher/courses/create"
-              className="
-                flex items-center gap-2 px-4 py-2 rounded-xl
-                bg-[#1E3A8A] hover:bg-[#1E40AF] text-white
-                transition
-              "
-            >
-              <Plus className="w-5 h-5" />
-              New Course
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      {/* Header + زر New Course */}
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            My Courses
+          </h1>
         </div>
 
-        {/* Stats Summary */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">          <div className="
-            backdrop-blur-xl
-            bg-white/70 dark:bg-white/5
-            border border-slate-200 dark:border-white/10
-            rounded-2xl p-5
-          ">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Total Courses</p>
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white mt-1">12</p>
-          </div>
-          <div className="
-            backdrop-blur-xl
-            bg-white/70 dark:bg-white/5
-            border border-slate-200 dark:border-white/10
-            rounded-2xl p-5
-          ">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Active Courses</p>
-            <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1">8</p>
-          </div>
-          <div className="
-            backdrop-blur-xl
-            bg-white/70 dark:bg-white/5
-            border border-slate-200 dark:border-white/10
-            rounded-2xl p-5
-          ">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Total Students</p>
-            <p className="text-2xl font-semibold text-[#1E3A8A] dark:text-blue-400 mt-1">163</p>
-          </div>
-          <div className="
-            backdrop-blur-xl
-            bg-white/70 dark:bg-white/5
-            border border-slate-200 dark:border-white/10
-            rounded-2xl p-5
-          ">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Total Lessons</p>
-            <p className="text-2xl font-semibold text-[#1E3A8A] dark:text-blue-400 mt-1">108</p>
-          </div>
-        </div>
+        <Link
+          href="/teacher/courses/create"
+          className="
+            group inline-flex items-center gap-2
+            px-4 py-2.5 rounded-xl
+            bg-gradient-to-r from-blue-600 to-blue-700
+            hover:from-blue-700 hover:to-blue-800
+            text-white font-semibold text-sm
+            shadow-sm hover:shadow-md
+            border border-blue-500/50
+            transition-all duration-200
+            active:scale-95
+          "
+        >
+          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+          New Course
+        </Link>
+      </div>
 
-        {/* Search and View Toggle */}
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: "Total Courses", value: stats.totalCourses.toString(), trend: "+4", icon: Squares2X2Icon },
+          { label: "Active Courses", value: stats.activeCourses.toString(), trend: "+2", icon: BookOpenIcon },
+          { label: "Total Students", value: stats.totalStudents.toString(), trend: "+15", icon: UsersIcon },
+          { label: "Total Lessons", value: stats.totalLessons.toString(), trend: "+12", icon: AcademicCapIcon },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="
+              bg-white dark:bg-gray-800
+              rounded-xl
+              border border-blue-200 dark:border-blue-800
+              shadow-sm
+              p-5
+              hover:-translate-y-1 hover:shadow-lg
+              transition-all duration-200
+            "
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
+              </div>
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                {card.trend}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls: Search + Filter */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search courses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by title or code..."
               className="
-                w-full pl-10 pr-4 py-3 rounded-xl
-                backdrop-blur-xl
-                bg-white/70 dark:bg-white/5
-                border border-slate-200 dark:border-white/10
-                text-slate-900 dark:text-white
-                placeholder:text-slate-400
-                focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20
+                w-full pl-10 pr-4 py-2.5 rounded-lg
+                border border-gray-200 dark:border-gray-700
+                bg-gray-50 dark:bg-gray-900
+                text-gray-800 dark:text-gray-100
+                outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900
               "
             />
           </div>
 
-          <div className="flex gap-2">
-            <button className="
-              px-4 py-2 rounded-xl
-              backdrop-blur-xl
-              bg-white/70 dark:bg-white/5
-              border border-slate-200 dark:border-white/10
-              text-slate-600 dark:text-slate-400
-              hover:bg-slate-200 dark:hover:bg-white/20
-              transition flex items-center gap-2
-            ">
-              <Filter className="w-5 h-5" />
-              Filter
-            </button>
-
-            <div className="flex border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 transition ${
-                  viewMode === "grid"
-                    ? "bg-[#1E3A8A] text-white"
-                    : "bg-white/70 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/20"
-                }`}
-              >
-                <Grid3x3 className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 transition ${
-                  viewMode === "list"
-                    ? "bg-[#1E3A8A] text-white"
-                    : "bg-white/70 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/20"
-                }`}
-              >
-                <List className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Courses Grid/List */}
-       {viewMode === "grid" ? (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {courses.map((course) => (
-      <div
-        key={course.id}
-        className="
-          bg-white dark:bg-gray-800
-          border border-gray-200 dark:border-gray-700
-          rounded-2xl overflow-hidden
-          transition-all duration-300
-          hover:-translate-y-1 hover:shadow-xl
-        "
-      >
-        {/* Header بسيط */}
-        <div className="p-4 pb-1">
-          <div className="flex items-start justify-between">
-            <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-              <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-              course.status === 'active'
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-            }`}>
-              {course.status === 'active' ? 'Active' : 'Draft'}
-            </span>
-          </div>
-          
-        <Link href={`/teacher/courses/${course.code}`}>
-  <h3 className="font-medium text-2xl text-gray-900 dark:text-white mt-4 mb-1 hover:text-blue-600 dark:hover:text-blue-400 transition line-clamp-1">
-    {course.name}
-  </h3>
-</Link>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Code: {course.code}</p>
-        </div>
-
-        {/* Course Content - مكثف */}
-        <div className="p-4 pt-1">
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">{course.description}</p>
-
-          {/* Stats - سطر واحد */}
-          <div className="flex items-center justify-between mb-3 text-sm">
-            <div className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium text-gray-700 dark:text-gray-300">{course.students}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium text-gray-700 dark:text-gray-300">{course.modules} mod</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Video className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-              <span className="font-medium text-gray-700 dark:text-gray-300">{course.lessons} les</span>
-            </div>
-          </div>
-
-          {/* Progress Bar - مصغر */}
-          <div className="mb-2">
-            <div className="flex justify-between text-sm mb-0.5">
-              <span className="text-gray-600 dark:text-gray-400">Progress</span>
-              <span className="font-medium text-blue-600 dark:text-blue-400">{course.progress}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full"
-                style={{ width: `${course.progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Footer - مصغر */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-            <span className="text-[10px] text-gray-400">{course.lastUpdated}</span>
-            <Link
-              href={`/teacher/courses/${course.code}`}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 text-sm font-medium flex items-center gap-0.5"
+          <div className="flex items-center gap-2">
+            <FunnelIcon className="w-5 h-5 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="
+                px-3 py-2.5 rounded-lg
+                border border-gray-200 dark:border-gray-700
+                bg-gray-50 dark:bg-gray-900
+                text-gray-800 dark:text-gray-100
+                outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900
+              "
             >
-              Manage
-              <ChevronRight className="w-3 h-3" />
-            </Link>
+              <option value="all">All status</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+            </select>
           </div>
         </div>
       </div>
-    ))}
-  </div>
-) : (
-          /* List View */
-          <div className="
-            backdrop-blur-xl
-            bg-white/70 dark:bg-white/5
-            border border-slate-200 dark:border-white/10
-            rounded-2xl overflow-hidden
-          ">
-            <table className="w-full">
-              <thead className="bg-slate-100/50 dark:bg-white/5 border-b border-slate-200 dark:border-white/10">
-                <tr>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Course</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Students</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Modules</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Lessons</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Progress</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-slate-600 dark:text-slate-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-white/10">
-                {courses.map((course) => (
-                  <tr key={course.id} className="hover:bg-slate-100/50 dark:hover:bg-white/5 transition">
-                    <td className="py-4 px-6">
-                      <div>
-                        <Link href={`/teacher/courses/${course.code}`} className="font-medium text-slate-900 dark:text-white hover:text-[#1E3A8A] dark:hover:text-blue-400">
-                          {course.name}
-                        </Link>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{course.code}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-slate-600 dark:text-slate-300">{course.students}</td>
-                    <td className="py-4 px-6 text-slate-600 dark:text-slate-300">{course.modules}</td>
-                    <td className="py-4 px-6 text-slate-600 dark:text-slate-300">{course.lessons}</td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#1E3A8A] to-[#1E40AF] rounded-full"
-                            style={{ width: `${course.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{course.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        course.status === 'active'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                          : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'
-                      }`}>
-                        {course.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/teacher/courses/${course.code}`} className="p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg transition">
-                          <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                        </Link>
-                        <button className="p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg transition">
-                          <Edit className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                        </button>
-                        <button className="p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg transition">
-                          <Copy className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
 
-        {/* Quick Actions */}
-        <div className="
-          backdrop-blur-xl
-          bg-white/70 dark:bg-white/5
-          border border-slate-200 dark:border-white/10
-          rounded-2xl p-6
-        ">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">            <button className="
-              p-4 bg-slate-100/50 dark:bg-white/5
-              rounded-xl hover:bg-slate-200 dark:hover:bg-white/10
-              transition text-left
-            ">
-              <BookOpen className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 mb-2" />
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Add Module</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Create new course module</p>
-            </button>
-            <button className="
-              p-4 bg-slate-100/50 dark:bg-white/5
-              rounded-xl hover:bg-slate-200 dark:hover:bg-white/10
-              transition text-left
-            ">
-              <Video className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 mb-2" />
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Upload Video</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Add new lesson video</p>
-            </button>
-            <button className="
-              p-4 bg-slate-100/50 dark:bg-white/5
-              rounded-xl hover:bg-slate-200 dark:hover:bg-white/10
-              transition text-left
-            ">
-              <FileText className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 mb-2" />
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Add Material</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Upload PDF or slides</p>
-            </button>
-            <button className="
-              p-4 bg-slate-100/50 dark:bg-white/5
-              rounded-xl hover:bg-slate-200 dark:hover:bg-white/10
-              transition text-left
-            ">
-              <LinkIcon className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 mb-2" />
-              <p className="font-medium text-sm text-slate-900 dark:text-white">Add Link</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Share external resource</p>
-            </button>
+      {/* Courses Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+        {filteredCourses.map((course) => (
+          <div
+            key={course.id}
+            className="
+              bg-white dark:bg-gray-800
+              rounded-xl
+              border border-blue-200 dark:border-blue-800
+              shadow-sm
+              p-5
+              hover:-translate-y-1 hover:shadow-lg
+              transition-all duration-200
+            "
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <BookOpenIcon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
+                </div>
+                <div>
+                  <Link
+                    href={`/teacher/courses/${course.code}`}
+                    className="font-semibold text-gray-800 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
+                  >
+                    {course.name}
+                  </Link>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Code: {course.code}</p>
+                </div>
+              </div>
+
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  course.status === "active"
+                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800"
+                    : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800"
+                }`}
+              >
+                {course.status === "active" ? "Active" : "Draft"}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+              {course.description}
+            </p>
+
+            <div className="grid grid-cols-3 gap-3 text-center text-sm">
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-100">{course.students}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Students</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-100">{course.progress}%</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Progress</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 dark:text-gray-100">{course.lessons}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Lessons</p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+              <Link
+                href={`/teacher/courses/${course.code}`}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center gap-1"
+              >
+                Manage Course
+                <ChevronRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {filteredCourses.length === 0 && (
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          No courses found matching your search or filter.
         </div>
+      )}
 
+      {/* Quick Actions */}
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
+          Quick Actions
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              icon: BookOpenIcon,
+              title: "Add Module",
+              desc: "Create new course module",
+            },
+            {
+              icon: VideoCameraIcon,
+              title: "Upload Video",
+              desc: "Add new lesson video",
+            },
+            {
+              icon: DocumentTextIcon,
+              title: "Add Material",
+              desc: "Upload PDF or slides",
+            },
+            {
+              icon: LinkIcon,
+              title: "Add Link",
+              desc: "Share external resource",
+            },
+          ].map((action, index) => (
+            <button
+              key={index}
+              className="
+                flex flex-col items-center text-center p-5
+                bg-gray-50 dark:bg-gray-900/50
+                rounded-xl border border-gray-200 dark:border-gray-700
+                hover:bg-gray-100 dark:hover:bg-gray-800
+                hover:border-blue-300 dark:hover:border-blue-700
+                transition-all duration-200
+              "
+            >
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-3">
+                <action.icon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
+              </div>
+              <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
+                {action.title}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {action.desc}
+              </p>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

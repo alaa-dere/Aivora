@@ -5,6 +5,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { 
+  LayoutDashboard, BookOpen, BrainCircuit, Users, Video, 
+  Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
+  Sun, Moon, X
+} from "lucide-react";
 import {
   HomeIcon,
   UsersIcon,
@@ -73,6 +78,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             ) : (
               <MoonIcon className="w-5 h-5 text-white" />
             )}
+          </button>
+           {/* Notifications */}
+          <button className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
+            <Bell className="w-5 h-5 text-white" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
 
           {/* زر تسجيل الخروج بنص "Logout" */}

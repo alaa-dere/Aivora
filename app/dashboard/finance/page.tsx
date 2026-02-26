@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   CalendarDaysIcon,
   Squares2X2Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 type TxStatus = 'success' | 'failed' | 'pending';
@@ -19,15 +20,15 @@ type TxType = 'enrollment' | 'refund' | 'payout';
 
 type Transaction = {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   studentName?: string;
   teacherName?: string;
   courseTitle?: string;
   type: TxType;
   status: TxStatus;
-  amount: number; // + for incoming, - for outgoing
-  teacherShare?: number; // part of enrollment to teacher
-  platformShare?: number; // part of enrollment to platform
+  amount: number;
+  teacherShare?: number;
+  platformShare?: number;
   method?: 'wallet' | 'card' | 'cash';
 };
 
@@ -114,7 +115,7 @@ export default function AdminFinancePage() {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TxStatus>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | TxType>('all');
-  const [month, setMonth] = useState<string>('2026-02'); // YYYY-MM for monthly report
+  const [month, setMonth] = useState<string>('2026-02');
 
   const stats = useMemo(() => {
     const monthTx = tx.filter((t) => t.date.startsWith(month));
@@ -167,7 +168,6 @@ export default function AdminFinancePage() {
     });
   }, [tx, q, statusFilter, typeFilter]);
 
-  // mock export
   function exportCSV() {
     const header = [
       'id,date,type,status,amount,student,teacher,course,teacherShare,platformShare,method',
@@ -203,17 +203,15 @@ export default function AdminFinancePage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <BanknotesIcon className="w-7 h-7 text-blue-700 dark:text-blue-400" />
             Finance
           </h1>
-        
         </div>
 
         <button
           onClick={exportCSV}
           className="
             group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-xl
+            px-5 py-2.5 rounded-xl
             bg-gradient-to-r from-blue-600 to-blue-700
             hover:from-blue-700 hover:to-blue-800
             text-white font-semibold text-sm
@@ -228,7 +226,7 @@ export default function AdminFinancePage() {
         </button>
       </div>
 
-      {/* Monthly stats (admin small cards style) */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Income (month)', value: money(stats.income), trend: '+6.2%', icon: CurrencyDollarIcon },
@@ -243,23 +241,21 @@ export default function AdminFinancePage() {
               rounded-xl
               border border-blue-200 dark:border-blue-800
               shadow-sm
-              p-4
+              p-5
+              hover:-translate-y-1 hover:shadow-lg
               transition-all duration-200
-              hover:-translate-y-1 hover:shadow-md
             "
           >
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                 {card.trend}
               </span>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{card.value}</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
-            </div>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
@@ -268,37 +264,34 @@ export default function AdminFinancePage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            {/* Search */}
             <div className="relative">
               <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by id / student / teacher / course..."
-                className="w-full sm:w-96 pl-10 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full sm:w-96 pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
 
-            {/* Month */}
             <div className="flex items-center gap-2">
               <CalendarDaysIcon className="w-5 h-5 text-gray-400" />
               <input
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
           </div>
 
-          {/* Status + Type */}
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div className="flex items-center gap-2">
               <FunnelIcon className="w-5 h-5 text-gray-400" />
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               >
                 <option value="all">All types</option>
                 <option value="enrollment">Enrollment</option>
@@ -310,7 +303,7 @@ export default function AdminFinancePage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All status</option>
               <option value="success">Success</option>
@@ -420,30 +413,30 @@ export default function AdminFinancePage() {
         </div>
       </div>
 
-      {/* Monthly Summary box */}
-      <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
+      {/* Monthly Summary */}
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5">
         <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Monthly report summary</p>
 
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
             <p className="text-gray-500 dark:text-gray-400">Income</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{money(stats.income)}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{money(stats.income)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
             <p className="text-gray-500 dark:text-gray-400">Teacher profit</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{money(stats.teacherProfit)}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{money(stats.teacherProfit)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
             <p className="text-gray-500 dark:text-gray-400">Platform profit</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{money(stats.platformProfit)}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{money(stats.platformProfit)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
             <p className="text-gray-500 dark:text-gray-400">Payouts</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{money(stats.payouts)}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{money(stats.payouts)}</p>
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
           * Connect this to real payments + payout rules later (teacher share % from course settings).
         </p>
       </div>
