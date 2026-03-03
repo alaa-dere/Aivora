@@ -21,41 +21,52 @@ export default function AuthPage() {
 async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   e.preventDefault();
   setErr("");
-    if (!email || !password) {
-      setErr("Please enter email and password");
-      return;
-    }
+  setLoading(true);
 
-    // حالياً مشروعنا: تسجيل الدخول فقط (للأدمن)
-    // الـ signup بنضيفه بعدين
-    if (!isLogin) {
-      setErr("Signup will be added later. Use Sign In for now.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setErr(data.message || "Login failed");
-        return;
-      }
-
-      // role-based redirect
-      if (data.role === "admin") router.push("/dashboard");
-      else if (data.role === "teacher") router.push("/teacher");
-      else router.push("/student");
-    } finally {
-      setLoading(false);
-    }
+  if (!email || !password) {
+    setErr("الرجاء إدخال البريد وكلمة المرور");
+    setLoading(false);
+    return;
   }
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setErr(data.message || "فشل تسجيل الدخول");
+      setLoading(false);
+      return;
+    }
+
+    // ← التعديل المهم هنا
+    const userRole = data.user?.role;
+
+    console.log("Logged in role:", userRole); // ← هتشوفي في Console الـ role اللي رجع
+
+    if (userRole === "admin") {
+      router.push("/dashboard");
+    } else if (userRole === "teacher") {
+      router.push("/teacher");
+    } else if (userRole === "student") {
+      router.push("/student");
+    } else {
+      setErr("دور المستخدم غير معروف");
+      return;
+    }
+
+    router.refresh(); // يحدث الصفحة عشان يشوف الـ session
+  } catch (err) {
+    setErr("خطأ في الاتصال بالسيرفر");
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">

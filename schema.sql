@@ -1,0 +1,31 @@
+-- schema.sql
+
+CREATE DATABASE IF NOT EXISTS aivora_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE aivora_db;
+
+-- جدول Role
+CREATE TABLE IF NOT EXISTS Role (
+  id VARCHAR(25) PRIMARY KEY,
+  name VARCHAR(191) UNIQUE NOT NULL
+);
+
+-- جدول User
+CREATE TABLE IF NOT EXISTS User (
+  id VARCHAR(25) PRIMARY KEY,
+  roleId VARCHAR(25) NOT NULL,
+  fullName VARCHAR(191) NOT NULL,
+  email VARCHAR(191) UNIQUE NOT NULL,
+  passwordHash VARCHAR(191) NOT NULL,
+  status VARCHAR(191) DEFAULT 'active',
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (roleId) REFERENCES Role(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  INDEX idx_roleId (roleId)
+);
+
+-- بيانات أولية (اختياري)
+INSERT IGNORE INTO Role (id, name) VALUES 
+  (UUID(), 'admin'),
+  (UUID(), 'teacher'),
+  (UUID(), 'student');

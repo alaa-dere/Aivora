@@ -1,54 +1,95 @@
+// app/api/auth/login/route.js
 import "dotenv/config";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { prisma } from "@/lib/prisma";
+import db from "@/lib/db";  // ← استيراد الـ connection pool
 
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const email = (body.email || "").trim().toLowerCase();
+    const password = body.password || "";
 
-    const normalizedEmail = (email || "").trim().toLowerCase();
-    const pwd = password || "";
-
-    if (!normalizedEmail || !pwd) {
-      return NextResponse.json({ message: "Missing credentials" }, { status: 400 });
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: "البريد الإلكتروني وكلمة المرور مطلوبان" },
+        { status: 400 }
+      );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: { role: true },
-    });
-
-    if (!user || user.status !== "active") {
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
-    }
-
-    const ok = await bcrypt.compare(pwd, user.passwordHash);
-    if (!ok) {
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
-    }
-
-    const res = NextResponse.json({
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role.name,
-    });
-
-    res.cookies.set(
-      "aivora_session",
-      JSON.stringify({ id: user.id, role: user.role.name }),
-      {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24, // 1 day
-      }
+    // جلب المستخدم من الداتابيز باستخدام mysql2
+    const [users] = await db.query(
+      "SELECT u.*, r.name AS roleName FROM User u LEFT JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+      [email]
     );
 
-    return res;
-  } catch (e) {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    const user = users[0];
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "بيانات الدخول غير صحيحة" },
+        { status: 401 }
+      );
+    }
+
+    if (user.status !== "active") {
+      return NextResponse.json(
+        { message: "الحساب غير نشط" },
+        { status: 403 }
+      );
+    }
+
+    // داخل الـ try block، بعد جلب user
+console.log('User found:', user.email, 'Role:', user.roleName, 'Status:', user.status);
+
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatch) {
+      return NextResponse.json(
+        { message: "بيانات الدخول غير صحيحة" },
+        { status: 401 }
+      );
+    }
+
+// بعد الـ passwordMatch
+console.log('Password match result:', passwordMatch);
+
+
+    // البيانات اللي هتحفظ في الكوكي
+    const sessionData = {
+      id: user.id,
+      email: user.email,
+      role: user.roleName,         // ← roleName من الـ JOIN
+      fullName: user.fullName,
+    };
+
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.roleName,
+      },
+    });
+// قبل ضبط الكوكي
+console.log('Setting session cookie with data:', sessionData);
+
+
+    // ضبط الكوكي بشكل آمن
+    response.cookies.set("aivora_session", JSON.stringify(sessionData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 أيام
+    });
+
+    return response;
+  } catch (error) {
+// في الـ catch
+console.error('Login route error:', error.message);    return NextResponse.json(
+      { message: "خطأ في السيرفر" },
+      { status: 500 }
+    );
   }
 }

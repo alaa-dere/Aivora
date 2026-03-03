@@ -1,22 +1,23 @@
-import { NextResponse } from "next/server";
+// middleware.js
+import { NextResponse } from 'next/server';
 
-export function middleware(req) {
-  const { pathname } = req.nextUrl;
+export function middleware(request) {
+  const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/dashboard")) {
-    const cookie = req.cookies.get("aivora_session")?.value;
+  if (pathname.startsWith('/dashboard')) {
+    const cookie = request.cookies.get('aivora_session')?.value;
 
     if (!cookie) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
     try {
       const session = JSON.parse(cookie);
-      if (session.role !== "admin") {
-        return NextResponse.redirect(new URL("/login", req.url));
+      if (session.role !== 'admin') {
+        return NextResponse.redirect(new URL('/login', request.url));
       }
     } catch {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
@@ -24,5 +25,5 @@ export function middleware(req) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ['/dashboard/:path*'],
 };
