@@ -5,14 +5,14 @@ USE aivora_db;
 
 -- جدول Role
 CREATE TABLE IF NOT EXISTS Role (
-  id VARCHAR(25) PRIMARY KEY,
+  id VARCHAR(36) PRIMARY KEY,   -- ← غيّرنا لـ 36 عشان UUID()
   name VARCHAR(191) UNIQUE NOT NULL
 );
 
 -- جدول User
 CREATE TABLE IF NOT EXISTS User (
-  id VARCHAR(25) PRIMARY KEY,
-  roleId VARCHAR(25) NOT NULL,
+  id VARCHAR(36) PRIMARY KEY,   -- ← غيّرنا لـ 36 عشان UUID()
+  roleId VARCHAR(36) NOT NULL,
   fullName VARCHAR(191) NOT NULL,
   email VARCHAR(191) UNIQUE NOT NULL,
   passwordHash VARCHAR(191) NOT NULL,
@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS User (
 );
 
 -- بيانات أولية (اختياري)
+-- استخدمي UUID() هنا، أو قيم ثابتة لو بدك
 INSERT IGNORE INTO Role (id, name) VALUES 
   (UUID(), 'admin'),
   (UUID(), 'teacher'),
