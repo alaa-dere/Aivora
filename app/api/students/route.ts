@@ -2,11 +2,11 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import bcrypt from 'bcrypt';
+import { RowDataPacket, OkPacket } from 'mysql2'; // ← أضيفي ده لو مش موجود
 
 export async function GET() {
   try {
-    // ← هنا الحل: أضفنا as [any[]]
-    const [rows] = await db.query(`
+    const result = await db.query(`
       SELECT 
         u.id,
         u.fullName,
@@ -17,7 +17,10 @@ export async function GET() {
       JOIN Role r ON u.roleId = r.id
       WHERE r.name = 'student'
       ORDER BY u.createdAt DESC
-    `) as [any[]];
+    `);
+
+    // result[0] هو الصفوف (rows)
+    const rows = result[0] as RowDataPacket[];
 
     return NextResponse.json({ students: rows });
   } catch (error) {
@@ -36,13 +39,15 @@ export async function POST(req: Request) {
     }
 
     // 1. Check if email already exists
-    const [existingRows] = await db.query('SELECT id FROM User WHERE email = ?', [email]) as [any[]];
+    const emailCheck = await db.query('SELECT id FROM User WHERE email = ?', [email]);
+    const existingRows = emailCheck[0] as RowDataPacket[];
     if (existingRows.length > 0) {
       return NextResponse.json({ message: 'Email already in use' }, { status: 409 });
     }
 
     // 2. Get roleId for 'student'
-    const [roleRows] = await db.query("SELECT id FROM Role WHERE name = 'student' LIMIT 1") as [any[]];
+    const roleCheck = await db.query("SELECT id FROM Role WHERE name = 'student' LIMIT 1");
+    const roleRows = roleCheck[0] as RowDataPacket[];
     if (roleRows.length === 0) {
       return NextResponse.json({ message: 'Student role not found' }, { status: 500 });
     }
@@ -51,15 +56,18 @@ export async function POST(req: Request) {
     // 3. Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // 4. Insert new student (no need for insertId since we use UUID())
-    await db.query(
+    // 4. Insert new student
+    const insertResult = await db.query(
       `INSERT INTO User (id, roleId, fullName, email, passwordHash, status)
        VALUES (UUID(), ?, ?, ?, ?, ?)`,
       [studentRoleId, fullName, email, passwordHash, status]
     );
 
+    // insertResult[0] هنا OkPacket
+    const insertInfo = insertResult[0] as OkPacket;
+
     const newStudent = {
-      id: crypto.randomUUID(), // أو أي طريقة لتوليد id إذا بدك
+      id: crypto.randomUUID(), // أو استخدمي LAST_INSERT_ID لو غيّرتي الـ id لـ AUTO_INCREMENT
       fullName,
       email,
       status,
@@ -72,6 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Failed to add student' }, { status: 500 });
   }
 }
+
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
@@ -81,16 +90,17 @@ export async function PUT(req: Request) {
       return NextResponse.json({ message: 'All fields are required' }, { status: 400 });
     }
 
-    // تحقق إذا الإيميل موجود عند طالب تاني
-    const [existing] = await db.query(
+    // Check if email exists for another student
+    const emailCheck = await db.query(
       'SELECT id FROM User WHERE email = ? AND id != ?',
       [email, id]
     );
+    const existing = emailCheck[0] as RowDataPacket[];
     if (existing.length > 0) {
       return NextResponse.json({ message: 'Email already in use by another student' }, { status: 409 });
     }
 
-    // تحديث الطالب
+    // Update student
     await db.query(
       `UPDATE User 
        SET fullName = ?, email = ?, status = ?, updatedAt = NOW()
@@ -103,7 +113,7 @@ export async function PUT(req: Request) {
       fullName,
       email,
       status,
-      createdAt: new Date().toISOString().slice(0, 10), // أو اجيبيه من الداتابيز لو بدك
+      createdAt: new Date().toISOString().slice(0, 10),
     };
 
     return NextResponse.json({ success: true, student: updatedStudent }, { status: 200 });
@@ -112,6 +122,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ message: 'Failed to update student' }, { status: 500 });
   }
 }
+
 export async function DELETE(req: Request) {
   try {
     const { id } = await req.json();
@@ -120,8 +131,8 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ message: 'Student ID is required' }, { status: 400 });
     }
 
-    // حذف الطالب
-    const [result] = await db.query('DELETE FROM User WHERE id = ?', [id]);
+    const deleteResult = await db.query('DELETE FROM User WHERE id = ?', [id]);
+    const result = deleteResult[0] as OkPacket;
 
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Student not found' }, { status: 404 });

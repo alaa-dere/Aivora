@@ -30,3 +30,6 @@ INSERT IGNORE INTO Role (id, name) VALUES
   (UUID(), 'admin'),
   (UUID(), 'teacher'),
   (UUID(), 'student');
+
+  ALTER TABLE User 
+MODIFY updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;

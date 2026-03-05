@@ -24,30 +24,41 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   setLoading(true);
 
   if (!email || !password) {
-    setErr("الرجاء إدخال البريد وكلمة المرور");
+    setErr("Email and password are required");
+    setLoading(false);
+    return;
+  }
+
+  if (!isLogin && !fullName) {
+    setErr("Full name is required for registration");
     setLoading(false);
     return;
   }
 
   try {
-    const res = await fetch("/api/auth/login", {
+    const url = isLogin ? "/api/auth/login" : "/api/auth/register";
+    
+    const body = isLogin 
+      ? { email, password }
+      : { fullName, email, password, role: "student" };
+    console.log("Sending request to:", url, "with body:", body); 
+
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      setErr(data.message || "فشل تسجيل الدخول");
+      setErr(data.message || (isLogin ? "Failed to login" : "Failed to register"));
       setLoading(false);
       return;
     }
 
-    // ← التعديل المهم هنا
     const userRole = data.user?.role;
-
-    console.log("Logged in role:", userRole); // ← هتشوفي في Console الـ role اللي رجع
+    console.log("User role:", userRole);
 
     if (userRole === "admin") {
       router.push("/dashboard");
@@ -56,13 +67,13 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     } else if (userRole === "student") {
       router.push("/student");
     } else {
-      setErr("دور المستخدم غير معروف");
+      setErr("Role does not exist");
       return;
     }
 
-    router.refresh(); // يحدث الصفحة عشان يشوف الـ session
+    router.refresh();
   } catch (err) {
-    setErr("خطأ في الاتصال بالسيرفر");
+    setErr("Error connecting to server");
   } finally {
     setLoading(false);
   }
@@ -242,9 +253,7 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
                 </button>
               </div>
 
-              <div className="mt-4 text-center text-xs text-slate-500">
-                Admin test: <span className="font-mono">admin@aivora.com</span> / <span className="font-mono">Admin@12345</span>
-              </div>
+             
             </div>
           </motion.div>
         </div>
