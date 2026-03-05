@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { 
-  LayoutDashboard, BookOpen, BrainCircuit, Users, Video, 
   Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
   Sun, Moon, X
 } from "lucide-react";
@@ -27,6 +26,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const navigation = [
+  { name: 'Home', href: '/student/home', icon: HomeIcon },
   { name: 'Dashboard', href: '/student', icon: HomeIcon },
   { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
