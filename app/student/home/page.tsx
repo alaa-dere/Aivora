@@ -1,207 +1,249 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, Clock, Award, Star, BookOpen } from 'lucide-react';
+import { StarIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon
+ } from '@heroicons/react/24/outline';
+
+// Navigation items
+const navItems = [
+  { name: 'Home', id: 'home' },
+  { name: 'About', id: 'about' },
+  { name: 'Courses', id: 'courses' },
+  { name: 'Feedback', id: 'testimonials' },
+  { name: 'Contact', id: 'contact' },
+];
+
+// Featured Courses (مختصرة شوية)
+const featuredCourses = [
+  {
+    id: 1,
+    title: "Full-Stack Web Development",
+    price: 199,
+    image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=2070",
+    instructor: "John Doe",
+  },
+  {
+    id: 2,
+    title: "Machine Learning Basics",
+    price: 249,
+    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=2070",
+    instructor: "Sara Ahmed",
+  },
+  {
+    id: 3,
+    title: "UI/UX Design Masterclass",
+    price: 149,
+    image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=2070",
+    instructor: "Maria Lopez",
+  },
+  {
+    id: 4,
+    title: "Digital Marketing 2025",
+    price: 179,
+    image: "https://images.unsplash.com/photo-1556155099-490a1ba16284?auto=format&fit=crop&q=80&w=2070",
+    instructor: "Ahmed Ali",
+  },
+];
+
+// Testimonials (مختصرة)
+const testimonials = [
+  {
+    name: "Sarah Mohammed",
+    role: "Full-Stack Developer",
+    content: "Aivora changed my career completely!",
+    avatar: "https://images.unsplash.com/photo-1494790108777-223d9d6b9f4f?auto=format&fit=crop&q=80&w=200",
+    rating: 5,
+  },
+  {
+    name: "Omar Hassan",
+    role: "Data Scientist",
+    content: "Best platform for practical learning.",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
+    rating: 5,
+  },
+  {
+    name: "Lina Khalil",
+    role: "UI/UX Designer",
+    content: "Amazing projects and feedback.",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    rating: 4.8,
+  },
+];
 
 export default function HomePage() {
-  const featuredCourses = [
-    {
-      id: 1,
-      title: "Complete Web Development Bootcamp",
-      price: 199,
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 2,
-      title: "Machine Learning & AI Fundamentals",
-      price: 249,
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 3,
-      title: "UI/UX Design Masterclass 2025",
-      price: 149,
-      image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 4,
-      title: "Digital Marketing & Growth Hacking",
-      price: 179,
-      image: "https://images.unsplash.com/photo-1556155099-490a1ba16284?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 5,
-      title: "Python for Data Science",
-      price: 189,
-      image: "https://images.unsplash.com/photo-1526379095098-400b3c5e9b6c?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 6,
-      title: "iOS App Development with Swift",
-      price: 229,
-      image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 7,
-      title: "Graphic Design Fundamentals",
-      price: 139,
-      image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=2070",
-    },
-    {
-      id: 8,
-      title: "Business Analytics & Strategy",
-      price: 199,
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070",
-    },
-  ];
+  const [activeSection, setActiveSection] = useState('home');
 
-  const features = [
-    {
-      icon: <Users className="w-8 h-8 text-blue-600" />,
-      title: "5,000+ Students",
-      description: "Join a global community of learners",
-    },
-    {
-      icon: <Clock className="w-8 h-8 text-blue-600" />,
-      title: "Learn at Your Pace",
-      description: "Recorded lessons available anytime, anywhere",
-    },
-    {
-      icon: <Award className="w-8 h-8 text-blue-600" />,
-      title: "Certified Courses",
-      description: "Earn recognized certificates upon completion",
-    },
-    {
-      icon: <Star className="w-8 h-8 text-blue-600" />,
-      title: "Real Reviews",
-      description: "All courses rated by past students",
-    },
-  ];
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 80;
+      for (const item of navItems) {
+        const el = document.getElementById(item.id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            setActiveSection(item.id);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 min-h-screen font-sans">
-      {/* Hero Section - with updated image */}
-      <section className="relative h-[50vh] md:h-[60vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=2070"
-            alt="Students studying together"
-            className="w-full h-full object-cover brightness-50 scale-105 animate-slow-zoom"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 via-blue-950/40 to-transparent" />
-        </div>
+    <div className="min-h-screen text-white relative">
+      {/* خلفية ثابتة أزرق بحري ناعم وأفتح */}
+      <div
+        className="fixed inset-0 bg-cover bg-center z-[-1]"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=2070')",
+          filter: "brightness(0.65) contrast(1.05) saturate(0.95)",
+        }}
+      />
 
-        <div className="relative z-10 text-center px-6 max-w-4xl">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-4 drop-shadow-2xl leading-tight">
-            Unlock Your Potential with Aivora
-          </h1>
-          <p className="text-base md:text-xl text-gray-200 max-w-3xl mx-auto drop-shadow-lg">
-            Professional courses, expert instructors, and recognized certificates — all in one place.
-          </p>
+      {/* Navigation Bar - صغير جدًا، ناعم، شفاف */}
+      <nav className="sticky top-0 z-40 bg-black/20 backdrop-blur-xl border-b border-white/5 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex justify-center space-x-6 md:space-x-10">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => scrollTo(item.id)}
+              className={`relative text-sm md:text-base font-medium transition-all duration-300 px-3 py-1.5 rounded-full ${
+                activeSection === item.id
+                  ? 'text-white bg-white/10 shadow-md'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {item.name}
+            </button>
+          ))}
         </div>
-      </section>
+      </nav>
 
-      {/* About Section */}
-      <section className="py-12 px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
-            <BookOpen className="w-8 h-8 text-blue-600" />
+      {/* Main Content - قصير جدًا */}
+      <main className="relative z-10 pt-6 space-y-8 md:space-y-12">
+        {/* Home - صغير جدًا */}
+        <section id="home" className="min-h-[35vh] flex items-center justify-center py-8 px-6">
+          <div className="text-center max-w-3xl mx-auto bg-black/30 backdrop-blur-xl rounded-2xl p-8 border border-white/10 shadow-xl">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 text-white">
+              Learn Without Limits with Aivora
+            </h1>
+            <p className="text-base md:text-lg text-gray-200 mb-6">
+              Professional courses • Expert instructors • Certificates
+            </p>
+            <button
+              onClick={() => scrollTo('courses')}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white text-base font-medium shadow-lg hover:shadow-blue-500/40 hover:-translate-y-1 transition-all"
+            >
+              Explore Courses
+            </button>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-            About Aivora
-          </h2>
-          <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-            Aivora is an online learning platform dedicated to helping individuals gain in-demand skills. 
-            We partner with industry experts to bring you high-quality courses in web development, data science, design, marketing, and more. 
-            Whether you're starting your career or looking to advance, Aivora provides the tools you need to succeed.
-          </p>
-        </div>
-      </section>
+        </section>
 
-      {/* Features Section */}
-      <section className="py-16 px-6 bg-white dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-4">
-            Why Choose Aivora?
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 text-center mb-12 max-w-3xl mx-auto">
-            A comprehensive learning platform combining quality and flexibility
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="text-center p-5 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group"
-              >
-                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
+        {/* About - صغير جدًا */}
+        <section id="about" className="min-h-[35vh] flex items-center py-8 px-6">
+          <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-xl rounded-2xl p-8 border border-white/10 shadow-xl text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">About Aivora</h2>
+            <p className="text-base md:text-lg text-gray-200 leading-relaxed">
+              Aivora is your modern platform for high-quality online courses in tech, design, and business.
+            </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Featured Courses - فقط صورة، عنوان، سعر */}
-      <section id="featured" className="py-16 px-6 md:px-12 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-4">
-            Featured Courses
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 text-center mb-12 max-w-3xl mx-auto">
-            Choose from the top-rated courses loved by students
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-            {featuredCourses.map((course) => (
-              <div
-                key={course.id}
-                className="group bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:-translate-y-1"
-              >
-                <div className="relative h-36 md:h-40 overflow-hidden">
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-
-                <div className="p-3 md:p-4">
-                  <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                    {course.title}
-                  </h3>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400">
-                      ${course.price}
-                    </span>
-                    <Link
-                      href={`/courses/${course.id}`}
-                      className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-blue-600 text-white text-xs md:text-sm font-medium hover:bg-blue-700 transition"
-                    >
-                      Details
-                    </Link>
+        {/* Courses - أكبر شوية */}
+        <section id="courses" className="min-h-[60vh] flex items-center py-12 px-6 bg-black/20 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-4xl font-bold text-center text-white mb-10">Featured Courses</h2>
+            <div className="grid md:grid-cols-4 gap-6">
+              {featuredCourses.map((course) => (
+                <div key={course.id} className="bg-black/30 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition border border-white/10">
+                  <div className="h-48 overflow-hidden">
+                    <img src={course.image} alt={course.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2">{course.title}</h3>
+                    <p className="text-sm text-gray-300 mb-3">By {course.instructor}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-bold text-blue-400">${course.price}</span>
+                      <Link href={`/courses/${course.id}`} className="bg-blue-600/80 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition text-sm">
+                        View
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+        </section>
 
-          <div className="text-center mt-12">
-            <Link
-              href="/courses"
-              className="inline-block px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white text-lg md:text-xl font-bold shadow-lg hover:shadow-blue-500/50 hover:-translate-y-1 transition-all duration-300"
-            >
-              View All Courses
-            </Link>
+        {/* Feedback */}
+        <section id="testimonials" className="min-h-[60vh] flex items-center py-12 px-6 bg-black/20 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto text-center">
+            <h2 className="text-4xl font-bold text-white mb-10">What Students Say</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              {testimonials.map((t) => (
+                <div key={t.name} className="bg-black/30 backdrop-blur-lg p-6 rounded-2xl shadow-lg border border-white/10 hover:shadow-xl transition">
+                  <div className="flex items-center gap-3 mb-4">
+                    <img src={t.avatar} alt={t.name} className="w-12 h-12 rounded-full border-2 border-blue-500/40" />
+                    <div>
+                      <h4 className="font-bold text-white text-base">{t.name}</h4>
+                      <p className="text-xs text-gray-300">{t.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <StarIcon
+                        key={i}
+                        className={`w-4 h-4 ${i < t.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm italic text-gray-200">"{t.content}"</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Contact */}
+        <section id="contact" className="min-h-[60vh] flex items-center py-12 px-6 bg-black/20 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto text-center">
+            <h2 className="text-4xl font-bold text-white mb-8">Get In Touch</h2>
+            <p className="text-lg text-gray-200 mb-10">We're here to help you start learning today.</p>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="p-6 rounded-2xl bg-black/30 backdrop-blur-lg border border-white/10 shadow-lg">
+                <EnvelopeIcon className="w-10 h-10 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Email</h3>
+                <p className="text-gray-200 text-sm">support@aivora.com</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-black/30 backdrop-blur-lg border border-white/10 shadow-lg">
+                <PhoneIcon className="w-10 h-10 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Phone</h3>
+                <p className="text-gray-200 text-sm">+970 599 123 456</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-black/30 backdrop-blur-lg border border-white/10 shadow-lg">
+                <MapPinIcon className="w-10 h-10 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Location</h3>
+                <p className="text-gray-200 text-sm">Nablus, Palestine</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
