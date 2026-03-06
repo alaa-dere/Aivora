@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react'; // أضف useEffect
 import {
   BookOpenIcon,
   MagnifyingGlassIcon,
@@ -15,12 +15,14 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-type CourseStatus = 'active' | 'paused';
+type CourseStatus = 'active' | 'paused' | 'draft';
 
 type Course = {
   id: string;
   title: string;
+  description?: string;
   teacherName: string;
+  teacherId: string;
   price: number;
   teacherSharePct: number;
   students: number;
@@ -28,83 +30,76 @@ type Course = {
   createdAt: string;
 };
 
-const initialCourses: Course[] = [
-  {
-    id: 'C-1001',
-    title: 'English Basics A1',
-    teacherName: 'Mohammad Hasan',
-    price: 49,
-    teacherSharePct: 60,
-    students: 112,
-    status: 'active',
-    createdAt: '2026-01-12',
-  },
-  {
-    id: 'C-1002',
-    title: 'Math Fundamentals',
-    teacherName: 'Lina Omar',
-    price: 39,
-    teacherSharePct: 55,
-    students: 78,
-    status: 'paused',
-    createdAt: '2025-12-05',
-  },
-  {
-    id: 'C-1003',
-    title: 'Programming JS for Beginners',
-    teacherName: 'Mohammad Hasan',
-    price: 79,
-    teacherSharePct: 65,
-    students: 45,
-    status: 'active',
-    createdAt: '2026-02-01',
-  },
-];
-
-function statusBadge(status: CourseStatus) {
-  if (status === 'active') {
-    return 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800';
-  }
-  return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700';
-}
-
-function money(n: number) {
-  return `$${n.toLocaleString()}`;
-}
-
-type ModalMode = 'create' | 'edit';
+// ... باقي الأنواع
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [teachers, setTeachers] = useState<{ id: string; fullName: string }[]>([]);
 
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
 
   const [openModal, setOpenModal] = useState(false);
-  const [modalMode, setModalMode] = useState<ModalMode>('create');
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState<{
     title: string;
-    teacherName: string;
+    description: string;
+    teacherId: string;
     price: string;
     teacherSharePct: string;
     status: CourseStatus;
   }>({
     title: '',
-    teacherName: '',
+    description: '',
+    teacherId: '',
     price: '0',
     teacherSharePct: '60',
-    status: 'active',
+    status: 'draft',
   });
+
+  // جلب الكورسات من API
+  useEffect(() => {
+    fetchCourses();
+    fetchTeachers();
+  }, []);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/courses');
+      const data = await res.json();
+      if (res.ok) {
+        setCourses(data.courses);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const res = await fetch('/api/teachers/list');
+      const data = await res.json();
+      if (res.ok) {
+        setTeachers(data.teachers);
+      }
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = courses.length;
     const active = courses.filter((c) => c.status === 'active').length;
-    const totalStudents = courses.reduce((acc, c) => acc + c.students, 0);
+    const totalStudents = courses.reduce((acc, c) => acc + (c.students || 0), 0);
     const revenueMonthlyMock = courses
       .filter((c) => c.status === 'active')
-      .reduce((acc, c) => acc + c.students * c.price, 0);
+      .reduce((acc, c) => acc + (c.students || 0) * c.price, 0);
 
     return { total, active, totalStudents, revenueMonthlyMock };
   }, [courses]);
@@ -116,7 +111,7 @@ export default function AdminCoursesPage() {
       const matchesQuery =
         !query ||
         c.title.toLowerCase().includes(query) ||
-        c.teacherName.toLowerCase().includes(query) ||
+        c.teacherName?.toLowerCase().includes(query) ||
         c.id.toLowerCase().includes(query);
       return matchesStatus && matchesQuery;
     });
@@ -125,10 +120,11 @@ export default function AdminCoursesPage() {
   function resetForm() {
     setForm({
       title: '',
-      teacherName: '',
+      description: '',
+      teacherId: '',
       price: '0',
       teacherSharePct: '60',
-      status: 'active',
+      status: 'draft',
     });
     setEditingId(null);
   }
@@ -144,66 +140,81 @@ export default function AdminCoursesPage() {
     setEditingId(course.id);
     setForm({
       title: course.title,
-      teacherName: course.teacherName,
+      description: course.description || '',
+      teacherId: course.teacherId,
       price: String(course.price),
-      teacherSharePct: String(course.teacherSharePct),
+      teacherSharePct: String(course.teacherSharePct || 60),
       status: course.status,
     });
     setOpenModal(true);
   }
 
-  function saveCourse() {
-    const title = form.title.trim();
-    const teacherName = form.teacherName.trim();
-    const price = Number(form.price || 0);
-    const teacherSharePct = Number(form.teacherSharePct || 0);
+async function saveCourse() {
+  const title = form.title.trim();
+  const description = form.description.trim();
+  const teacherId = form.teacherId;
+  const price = Number(form.price || 0);
 
-    if (!title || !teacherName) return;
-    if (Number.isNaN(price) || price < 0) return;
-    if (Number.isNaN(teacherSharePct) || teacherSharePct < 0 || teacherSharePct > 100) return;
+  if (!title || !description || !teacherId) return;
 
+  // تحويل status للقيم المتوقعة
+  let dbStatus = 'draft';
+  if (form.status === 'active') dbStatus = 'published';
+  else if (form.status === 'paused') dbStatus = 'archived';
+  else dbStatus = 'draft';
+
+  try {
     if (modalMode === 'create') {
-      const newCourse: Course = {
-        id: `C-${Math.floor(1000 + Math.random() * 9000)}`,
-        title,
-        teacherName,
-        price,
-        teacherSharePct,
-        students: 0,
-        status: form.status,
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-      setCourses((prev) => [newCourse, ...prev]);
-    } else {
-      setCourses((prev) =>
-        prev.map((c) =>
-          c.id === editingId
-            ? { ...c, title, teacherName, price, teacherSharePct, status: form.status }
-            : c
-        )
-      );
+      const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description,
+          teacherId,
+          price,
+          teacherSharePct: Number(form.teacherSharePct),
+          status: dbStatus,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        fetchCourses();
+        setOpenModal(false);
+        resetForm();
+      } else {
+        console.error('Error response:', data);
+      }
     }
+  } catch (error) {
+    console.error('Error saving course:', error);
+  }
+}
 
-    setOpenModal(false);
-    resetForm();
+  async function toggleStatus(id: string) {
+    const course = courses.find(c => c.id === id);
+    if (!course) return;
+
+    try {
+      const res = await fetch(`/api/courses/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: course.status === 'active' ? 'paused' : 'active',
+        }),
+      });
+
+      if (res.ok) {
+        fetchCourses();
+      }
+    } catch (error) {
+      console.error('Error toggling status:', error);
+    }
   }
 
-  function toggleStatus(id: string) {
-    setCourses((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, status: c.status === 'active' ? 'paused' : 'active' } : c
-      )
-    );
-  }
-
-  const teacherShareAmountPreview = useMemo(() => {
-    const price = Number(form.price || 0);
-    const pct = Number(form.teacherSharePct || 0);
-    const teacherAmount = Math.round((price * pct) / 100);
-    const platformAmount = price - teacherAmount;
-    return { teacherAmount, platformAmount };
-  }, [form.price, form.teacherSharePct]);
-
+  // باقي الكود (JSX) مع بعض التعديلات
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
@@ -233,15 +244,15 @@ export default function AdminCoursesPage() {
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards - نفس الشيء */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Courses', value: stats.total.toLocaleString(), trend: '+3.1%', icon: Squares2X2Icon },
-          { label: 'Active Courses', value: stats.active.toLocaleString(), trend: '+1.4%', icon: BookOpenIcon },
-          { label: 'Total Students', value: stats.totalStudents.toLocaleString(), trend: '+6.2%', icon: UsersIcon },
+          { label: 'Total Courses', value: stats.total.toString(), trend: '+3.1%', icon: Squares2X2Icon },
+          { label: 'Active Courses', value: stats.active.toString(), trend: '+1.4%', icon: BookOpenIcon },
+          { label: 'Total Students', value: stats.totalStudents.toString(), trend: '+6.2%', icon: UsersIcon },
           {
             label: 'Monthly Revenue',
-            value: money(stats.revenueMonthlyMock),
+            value: `$${stats.revenueMonthlyMock}`,
             trend: '+9.8%',
             icon: CurrencyDollarIcon,
           },
@@ -279,7 +290,7 @@ export default function AdminCoursesPage() {
         ))}
       </div>
 
-      {/* Controls */}
+      {/* Search & Filter */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="relative">
@@ -302,12 +313,13 @@ export default function AdminCoursesPage() {
               <option value="all">All status</option>
               <option value="active">Active</option>
               <option value="paused">Paused</option>
+              <option value="draft">Draft</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Courses Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -330,85 +342,95 @@ export default function AdminCoursesPage() {
             </thead>
 
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">{c.title}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        <span className="font-mono">{c.id}</span> • Created: {c.createdAt}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.teacherName}</td>
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{money(c.price)}</td>
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.teacherSharePct}%</td>
-                  <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.students}</td>
-
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${statusBadge(
-                        c.status
-                      )}`}
-                    >
-                      {c.status === 'active' ? 'Active' : 'Paused'}
-                    </span>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEdit(c)}
-                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <PencilSquareIcon className="w-4 h-4" />
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => toggleStatus(c.id)}
-                        className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border transition-colors ${
-                          c.status === 'active'
-                            ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                            : 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
-                        }`}
-                      >
-                        {c.status === 'active' ? (
-                          <>
-                            <PauseCircleIcon className="w-4 h-4" />
-                            Pause
-                          </>
-                        ) : (
-                          <>
-                            <PlayCircleIcon className="w-4 h-4" />
-                            Activate
-                          </>
-                        )}
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                    Loading...
                   </td>
                 </tr>
-              ))}
-
-              {filtered.length === 0 && (
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                     No courses found. Try changing filters or add a new course.
                   </td>
                 </tr>
+              ) : (
+                filtered.map((c) => (
+                  <tr key={c.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-800 dark:text-gray-100">{c.title}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ID: {c.id.slice(0, 8)}... • {c.createdAt}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.teacherName}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">${c.price}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.teacherSharePct || 60}%</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{c.students || 0}</td>
+
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${
+                          c.status === 'active'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800'
+                            : c.status === 'paused'
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'
+                            : 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-800'
+                        }`}
+                      >
+                        {c.status === 'active' ? 'Active' : c.status === 'paused' ? 'Paused' : 'Draft'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEdit(c)}
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => toggleStatus(c.id)}
+                          className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border transition-colors ${
+                            c.status === 'active'
+                              ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                              : 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+                          }`}
+                        >
+                          {c.status === 'active' ? (
+                            <>
+                              <PauseCircleIcon className="w-4 h-4" />
+                              Pause
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircleIcon className="w-4 h-4" />
+                              {c.status === 'paused' ? 'Activate' : 'Publish'}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       {openModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70 p-4">
           <div className="relative w-full max-w-xl lg:max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-900/40 dark:border-gray-700 overflow-hidden">
             
-            {/* Header - نفس لون topbar */}
+            {/* Header */}
             <div className="px-6 py-1 md:py-2 bg-blue-950 border-b border-blue-900 flex items-center justify-between">
               <h2 className="text-xl md:text-2xl font-bold text-white">
                 {modalMode === 'create' ? 'Add Course' : 'Edit Course'}
@@ -423,9 +445,9 @@ export default function AdminCoursesPage() {
             </div>
 
             {/* Body */}
-            <div className="p-6 md:p-8 max-h-[80vh] overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
+            <div className="p-6 md:p-8 max-h-[80vh] overflow-y-auto space-y-6">
+              <div className="space-y-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Course Title
                   </label>
@@ -439,15 +461,84 @@ export default function AdminCoursesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Teacher Name
+                    Description
                   </label>
-                  <input
-                    value={form.teacherName}
-                    onChange={(e) => setForm((p) => ({ ...p, teacherName: e.target.value }))}
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                    rows={4}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
-                    placeholder="Teacher"
+                    placeholder="Course description..."
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Teacher
+                  </label>
+                  <select
+                    value={form.teacherId}
+                    onChange={(e) => setForm((p) => ({ ...p, teacherId: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                  >
+                    <option value="">Select teacher...</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.fullName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Price ($)
+                    </label>
+                    <input
+                      value={form.price}
+                      onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
+                      type="number"
+                      min={0}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Teacher Share (%)
+                    </label>
+                    <input
+                      value={form.teacherSharePct}
+                      onChange={(e) => setForm((p) => ({ ...p, teacherSharePct: e.target.value }))}
+                      type="number"
+                      min={0}
+                      max={100}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
+                    />
+                  </div>
+                </div>
+
+                {/* Profit preview section */}
+                {Number(form.price) > 0 && Number(form.teacherSharePct) > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 mt-6">
+                    <p className="text-base font-semibold text-blue-800 dark:text-blue-200 mb-3">
+                      Profit split preview (per sale)
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
+                        <span className="text-gray-600 dark:text-gray-300">Teacher</span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          ${((Number(form.price) * Number(form.teacherSharePct)) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
+                        <span className="text-gray-600 dark:text-gray-300">Platform</span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          ${(Number(form.price) - (Number(form.price) * Number(form.teacherSharePct)) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -458,67 +549,15 @@ export default function AdminCoursesPage() {
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as CourseStatus }))}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
                   >
+                    <option value="draft">Draft</option>
                     <option value="active">Active</option>
                     <option value="paused">Paused</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Price
-                  </label>
-                  <input
-                    value={form.price}
-                    onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
-                    type="number"
-                    min={0}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Teacher Share (%)
-                  </label>
-                  <input
-                    value={form.teacherSharePct}
-                    onChange={(e) => setForm((p) => ({ ...p, teacherSharePct: e.target.value }))}
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 outline-none transition-all text-base"
-                    placeholder="60"
-                  />
-                </div>
-              </div>
-
-              {/* Profit preview */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-5 mt-6">
-                <p className="text-base font-semibold text-blue-800 dark:text-blue-200 mb-3">
-                  Profit split preview (per sale)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
-                    <span className="text-gray-600 dark:text-gray-300">Teacher</span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {money(teacherShareAmountPreview.teacherAmount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between bg-white/70 dark:bg-gray-900/40 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
-                    <span className="text-gray-600 dark:text-gray-300">Platform</span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {money(teacherShareAmountPreview.platformAmount)}
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                  (This is a preview only — connect it to your payments/reporting later.)
-                </p>
               </div>
             </div>
 
-            {/* Footer - أصغر حجم + لون Save نفس الهيدر */}
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-3 bg-gray-50/80 dark:bg-gray-950/50">
               <button
                 onClick={() => {
