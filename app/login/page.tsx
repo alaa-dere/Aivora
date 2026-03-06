@@ -63,9 +63,9 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (userRole === "admin") {
       router.push("/dashboard");
     } else if (userRole === "teacher") {
-      router.push("/teacher/home");
+      router.push("/teacher");
     } else if (userRole === "student") {
-      router.push("/student/home");
+      router.push("/student");
     } else {
       setErr("Role does not exist");
       return;

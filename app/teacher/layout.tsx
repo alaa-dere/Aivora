@@ -22,7 +22,6 @@ import {
 import { BrainCircuit } from 'lucide-react'; // احتفظنا بـ lucide لهذه الأيقونة فقط
 
 const menuItems = [
-  { href: '/teacher/home', name: 'Home', icon: HomeIcon },
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
   { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
   { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },

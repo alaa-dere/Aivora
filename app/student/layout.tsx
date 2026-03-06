@@ -26,7 +26,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Home', href: '/student/home', icon: HomeIcon },
   { name: 'Dashboard', href: '/student', icon: HomeIcon },
   { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
