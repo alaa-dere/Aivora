@@ -1,5 +1,5 @@
 "use client";
-
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
@@ -287,6 +287,8 @@ if (!email) {
               </form>
 
                 {/* خيارات السوشال ميديا - كلها في صف واحد */}
+
+{/* خيارات السوشال ميديا - كلها في صف واحد */}
 <div className="relative my-6">
   <div className="absolute inset-0 flex items-center">
     <div className="w-full border-t border-slate-200"></div>
@@ -299,7 +301,7 @@ if (!email) {
 <div className="flex gap-3">
   <button
     type="button"
-    onClick={() => {/* هون ضيف منطق Google */}}
+    onClick={() => signIn("google", { callbackUrl: "/" })}
     className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 text-slate-700 font-medium text-sm"
   >
     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -325,7 +327,7 @@ if (!email) {
   
   <button
     type="button"
-    onClick={() => {/* هون ضيف منطق Facebook */}}
+    onClick={() => signIn("facebook", { callbackUrl: "/" })}
     className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 text-slate-700 font-medium text-sm"
   >
     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -336,7 +338,7 @@ if (!email) {
 
   <button
     type="button"
-    onClick={() => {/* هون ضيف منطق GitHub */}}
+    onClick={() => signIn("github", { callbackUrl: "/" })}
     className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 text-slate-700 font-medium text-sm"
   >
     <svg className="w-5 h-5" viewBox="0 0 24 24">
