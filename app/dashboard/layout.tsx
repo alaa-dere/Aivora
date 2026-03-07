@@ -230,6 +230,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Finance
               </Link>
 
+              {/* Notifications */}
+              <Link
+                href="/dashboard/notifications"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isActive('/dashboard/finance')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Bell className="w-5 h-5 mr-3" />
+                Notifications
+              </Link>
+
             </nav>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
