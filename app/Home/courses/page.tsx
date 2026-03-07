@@ -153,7 +153,7 @@ export default function AllCoursesPage() {
               </button>
 
               <Link href="/Home">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-950/80 hover:bg-blue-800 text-white text-sm font-medium transition-all">
+                <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
                   <ArrowLeftIcon className="w-5 h-5" />
                   <span className="hidden sm:inline">Back to Home</span>
                 </button>
@@ -168,9 +168,6 @@ export default function AllCoursesPage() {
         <div className="max-w-7xl mx-auto">
           {/* Title */}
           <div className="mb-12 text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight">
-              All Courses
-            </h1>
             <p className="mt-4 text-slate-300 text-lg max-w-2xl mx-auto">
               Explore our complete collection of courses in programming, AI, design, marketing, and more.
             </p>

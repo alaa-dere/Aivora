@@ -220,8 +220,8 @@ async function saveCourse() {
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            Courses
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+           All Courses
           </h1>
         </div>
 
@@ -240,7 +240,7 @@ async function saveCourse() {
           "
         >
           <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-          Add Course
+          Add New Course
         </button>
       </div>
 
