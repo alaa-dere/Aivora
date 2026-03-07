@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { email, password } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ message: 'البريد الإلكتروني وكلمة المرور مطلوبان' }, { status: 400 });
+      return NextResponse.json({ message: 'email and password are required' }, { status: 400 });
     }
 
     const [users] = await pool.query<RowDataPacket[]>(
@@ -25,20 +25,20 @@ export async function POST(req: Request) {
     console.log("Found users:", users.length);
 
     if (users.length === 0) {
-      return NextResponse.json({ message: 'بيانات الدخول غير صحيحة' }, { status: 401 });
+      return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
     }
 
     const user = users[0];
 
     if (user.status !== 'active') {
-      return NextResponse.json({ message: 'الحساب غير نشط' }, { status: 403 });
+      return NextResponse.json({ message: 'Account is not active' }, { status: 403 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     console.log("Password match:", passwordMatch);
     
     if (!passwordMatch) {
-      return NextResponse.json({ message: 'بيانات الدخول غير صحيحة' }, { status: 401 });
+      return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
     }
 
     const session = {

@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
     // تعيين الكوكيز
     (await cookies()).set({
-      name: "token",
+      name: "aivora_session",
       value: token,
       httpOnly: true,
       path: "/",

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import {
   HomeIcon,
   BookOpenIcon,
@@ -42,11 +43,23 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
+const router = useRouter();
 
-  const handleLogout = () => {
-    console.log('Teacher logout clicked');
-    // هنا ضع منطق تسجيل الخروج الحقيقي
-  };
+const handleLogout = async () => {
+  try {
+    const res = await fetch('/api/auth/logout', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (res.ok) {
+      // استخدم window.location لإعادة تحميل كامل
+      window.location.href = '/login';
+    }
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+};
 
   if (!mounted) {
     return null; // أو skeleton loader إذا حابب

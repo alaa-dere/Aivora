@@ -40,11 +40,21 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
-  const handleLogout = () => {
-    // ضع منطق تسجيل الخروج الحقيقي هنا
-    console.log('Student logout clicked');
-  };
-
+ const handleLogout = async () => {
+  try {
+    const res = await fetch('/api/auth/logout', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (res.ok) {
+      // استخدم window.location لإعادة تحميل كامل
+      window.location.href = '/login';
+    }
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+};
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header - نفس ستايل الأدمن */}

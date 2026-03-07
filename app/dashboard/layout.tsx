@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
 import { useTheme } from 'next-themes';
 import { Bell } from "lucide-react";
 import {
@@ -21,6 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter(); // ← أضف هذا السطر
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
@@ -33,6 +34,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/');
+
+  // ← أضف دالة handleLogout هنا
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (res.ok) {
+        router.push('/login');
+        router.refresh();
+      } else {
+        console.error('Logout failed');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -73,14 +93,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
 
-          <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white">
+          {/* ← أضف onClick للزر */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"
+          >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
             <span>Logout</span>
           </button>
         </div>
       </header>
 
-      {/* BODY */}
+      {/* باقي الكود كما هو... */}
       <div className="flex">
 
         {/* SIDEBAR */}
@@ -125,56 +149,56 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* USERS DROPDOWN */}
               <button
-  onClick={() => setUsersOpen(!usersOpen)}
-  className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg ${
-    pathname.startsWith('/dashboard/students') ||
-    pathname.startsWith('/dashboard/teachers')
-      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-  }`}
->
-  <div className="flex items-center">
-    <UsersIcon className="w-5 h-5 mr-3" />
-    Users
-  </div>
-  <ChevronDownIcon
-    className={`w-4 h-4 transition-transform ${
-      usersOpen ? 'rotate-180' : ''
-    }`}
-  />
-</button>
+                onClick={() => setUsersOpen(!usersOpen)}
+                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg ${
+                  pathname.startsWith('/dashboard/students') ||
+                  pathname.startsWith('/dashboard/teachers')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <div className="flex items-center">
+                  <UsersIcon className="w-5 h-5 mr-3" />
+                  Users
+                </div>
+                <ChevronDownIcon
+                  className={`w-4 h-4 transition-transform ${
+                    usersOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
               {usersOpen && (
                 <div className="ml-8 mt-1 space-y-1">
                   <Link
-  href="/dashboard/students"
-  onClick={() => {
-    setUsersOpen(false);
-    setSidebarOpen(false);
-  }}
-  className={`block px-4 py-2 text-sm rounded-lg ${
-    isActive('/dashboard/students')
-      ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
-      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-  }`}
->
-  Students
-</Link>
+                    href="/dashboard/students"
+                    onClick={() => {
+                      setUsersOpen(false);
+                      setSidebarOpen(false);
+                    }}
+                    className={`block px-4 py-2 text-sm rounded-lg ${
+                      isActive('/dashboard/students')
+                        ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Students
+                  </Link>
 
                   <Link
-  href="/dashboard/teachers"
-  onClick={() => {
-    setUsersOpen(false);
-    setSidebarOpen(false);
-  }}
-  className={`block px-4 py-2 text-sm rounded-lg ${
-    isActive('/dashboard/teachers')
-      ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
-      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-  }`}
->
-  Teachers
-</Link>
+                    href="/dashboard/teachers"
+                    onClick={() => {
+                      setUsersOpen(false);
+                      setSidebarOpen(false);
+                    }}
+                    className={`block px-4 py-2 text-sm rounded-lg ${
+                      isActive('/dashboard/teachers')
+                        ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Teachers
+                  </Link>
                 </div>
               )}
 
@@ -204,6 +228,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <CurrencyDollarIcon className="w-5 h-5 mr-3" />
                 Finance
+              </Link>
+
+              {/* Notifications */}
+              <Link
+                href="/dashboard/notifications"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isActive('/dashboard/finance')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Bell className="w-5 h-5 mr-3" />
+                Notifications
               </Link>
 
             </nav>
