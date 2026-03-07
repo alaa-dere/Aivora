@@ -100,6 +100,16 @@ CREATE TABLE IF NOT EXISTS LessonProgress (
   UNIQUE KEY unique_progress (enrollmentId, lessonId)
 );
 
+CREATE TABLE IF NOT EXISTS PasswordResetToken (
+  id VARCHAR(36) PRIMARY KEY,
+  userId VARCHAR(36) NOT NULL,
+  token VARCHAR(255) NOT NULL UNIQUE,
+  expiresAt DATETIME NOT NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- بيانات أولية (اختياري)
 INSERT IGNORE INTO Role (id, name) VALUES 
   (UUID(), 'admin'),
