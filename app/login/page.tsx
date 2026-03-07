@@ -157,7 +157,7 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
             transition={{ duration: 1.2, ease: [0.25, 0.8, 0.25, 1] }}
             className="w-full md:w-1/2 flex justify-center"
           >
-            <div className="w-full max-w-md bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
+            <div className="w-full max-w-md bg-blue/95 ackdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
               <div className="text-center mb-6 md:mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
                   {isLogin ? "Sign In" : "Create Account"}
