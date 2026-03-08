@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
 import { useTheme } from 'next-themes';
+import { signOut } from 'next-auth/react';
 import { Bell } from "lucide-react";
 import {
   HomeIcon,
@@ -38,17 +39,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // ← أضف دالة handleLogout هنا
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (res.ok) {
-        router.push('/login');
-        router.refresh();
-      } else {
-        console.error('Logout failed');
-      }
+      await Promise.all([
+        fetch('/api/auth/logout', { method: 'POST' }),
+        signOut({ redirect: false }),
+      ]);
+      router.replace('/login');
+      router.refresh();
     } catch (error) {
       console.error('Logout error:', error);
     }
