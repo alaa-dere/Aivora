@@ -1,4 +1,5 @@
 'use client';
+import Image from "next/image";
 
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -243,10 +244,15 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center shrink-0">
-              <AcademicCapIcon className="w-8 h-8 text-blue-950 dark:text-blue-400 mr-2" />
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Aivora</h1>
-            </Link>
+           {/* Logo */}
+<Link href="/" className="flex items-center shrink-0">
+ <Image
+  src="/alaa.png"
+  alt="Aivora Logo"
+  width={100}
+  height={35}
+className="h-7 w-auto dark:brightness-100 brightness-25"/>
+</Link>
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center justify-center gap-2">

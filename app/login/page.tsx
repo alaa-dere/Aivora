@@ -304,7 +304,7 @@ useEffect(() => {
             className="pointer-events-auto"
           >
             <Image
-              src="/logo2.png"
+              src="/aivora2.png"
               alt="Logo"
               width={280}
               height={280}
