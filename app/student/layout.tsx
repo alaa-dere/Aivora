@@ -3,8 +3,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { signOut } from 'next-auth/react';
 import { 
   Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
   Sun, Moon, X
@@ -37,20 +38,18 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
  const handleLogout = async () => {
   try {
-    const res = await fetch('/api/auth/logout', { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (res.ok) {
-      // استخدم window.location لإعادة تحميل كامل
-      window.location.href = '/login';
-    }
+    await Promise.all([
+      fetch('/api/auth/logout', { method: 'POST' }),
+      signOut({ redirect: false }),
+    ]);
+    router.replace('/login');
+    router.refresh();
   } catch (error) {
     console.error('Logout failed:', error);
   }

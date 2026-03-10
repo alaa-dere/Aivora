@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
 import { useTheme } from 'next-themes';
+import { signOut } from 'next-auth/react';
 import { Bell } from "lucide-react";
 import {
   HomeIcon,
@@ -39,17 +40,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // ← أضف دالة handleLogout هنا
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (res.ok) {
-        router.push('/login');
-        router.refresh();
-      } else {
-        console.error('Logout failed');
-      }
+      await Promise.all([
+        fetch('/api/auth/logout', { method: 'POST' }),
+        signOut({ redirect: false }),
+      ]);
+      router.replace('/login');
+      router.refresh();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -146,19 +142,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <HomeIcon className="w-5 h-5 mr-3" />
                 Dashboard
-              </Link>
-
-              <Link
-                href="/dashboard/home"
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                  isActive('/dashboard/home')
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <PencilSquareIcon className="w-5 h-5 mr-3" />
-                Edit Website
               </Link>
 
               {/* USERS DROPDOWN */}

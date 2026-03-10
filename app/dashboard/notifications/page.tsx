@@ -147,50 +147,29 @@ export default function NotificationsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Stay updated with your courses and students
-          </p>
         </div>
 
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-3 mb-6">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === "all"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter("unread")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === "unread"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            Unread
-          </button>
-          <button
-            onClick={() => setFilter("important")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === "important"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            Important
-          </button>
-
-          <button className="ml-auto inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
             <Filter className="w-4 h-4" />
             Filter by course
           </button>
+
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as "all" | "unread" | "important")}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            >
+              <option value="all">All</option>
+              <option value="unread">Unread</option>
+              <option value="important">Important</option>
+            </select>
+          </div>
         </div>
       </div>
 

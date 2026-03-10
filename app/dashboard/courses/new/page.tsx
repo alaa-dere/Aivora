@@ -87,7 +87,7 @@ export default function NewCoursePage() {
         throw new Error(err.message || 'Failed to create course');
       }
 
-      router.push('/admin/courses');
+      router.push('/dashboard/courses');
       router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while saving');
