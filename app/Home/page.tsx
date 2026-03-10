@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
+import { FaInstagram } from "react-icons/fa";
 import { useEffect, useMemo, useState } from 'react';
 import {
   SunIcon,
@@ -576,8 +577,15 @@ export default function HomePage() {
                     ? 'أرسل أسئلتك في أي وقت وسيرد فريقنا عليك.'
                     : 'Send us your questions anytime and our team will get back to you.'}
                 </p>
-                <p className="text-blue-200 font-medium">support@aivora.com</p>
-              </div>
+<a
+  href="https://mail.google.com/mail/?view=cm&fs=1&to=alaadere35@gmail.com"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-blue-200 font-medium hover:underline"
+>
+  click here to email us
+</a>
+            </div>
 
               <div className="group p-6 rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
                 <div className="w-14 h-14 rounded-2xl bg-blue-600/20 flex items-center justify-center mb-5 group-hover:bg-blue-600/30 transition">
@@ -591,25 +599,42 @@ export default function HomePage() {
                     ? 'تحدث مع فريق الدعم للحصول على مساعدة سريعة.'
                     : 'Talk to our support team for quick help and direct assistance.'}
                 </p>
-                <p className="text-blue-200 font-medium">+970 599 123 456</p>
-              </div>
+<a
+  href="https://wa.me/972597889750"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-blue-200 font-medium hover:underline"
+>
+  +972 597 889 750
+</a>
+            </div>
 
               <div className="group p-6 rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
-                <div className="w-14 h-14 rounded-2xl bg-blue-600/20 flex items-center justify-center mb-5 group-hover:bg-blue-600/30 transition">
-                  <MapPinIcon className="w-7 h-7 text-blue-300" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">
-                  {isArabic ? 'الموقع' : 'Location'}
-                </h3>
-                <p className="text-slate-300 text-sm leading-7 mb-2">
-                  {isArabic
-                    ? 'زورنا أو تواصل مع فريقنا من فلسطين.'
-                    : 'Visit us or connect with our team from Palestine.'}
-                </p>
-                <p className="text-blue-200 font-medium">
-                  {isArabic ? 'نابلس، فلسطين' : 'Nablus, Palestine'}
-                </p>
-              </div>
+
+  <div className="w-14 h-14 rounded-2xl bg-blue-600/20 flex items-center justify-center mb-5 group-hover:bg-blue-600/30 transition">
+    <FaInstagram className="w-7 h-7 text-blue-300" />
+  </div>
+
+  <h3 className="text-2xl font-bold text-white mb-3">
+    {isArabic ? 'إنستغرام' : 'Instagram'}
+  </h3>
+
+  <p className="text-slate-300 text-sm leading-7 mb-2">
+    {isArabic
+      ? 'تابعنا على إنستغرام لمعرفة آخر التحديثات.'
+      : 'Follow us on Instagram for the latest updates.'}
+  </p>
+
+  <a
+    href="https://www.instagram.com/aivora_gb/"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-200 font-medium hover:underline"
+  >
+    @aivora_gb
+  </a>
+
+</div>
             </div>
           </div>
         </section>

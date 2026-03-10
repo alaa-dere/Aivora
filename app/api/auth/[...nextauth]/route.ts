@@ -121,13 +121,17 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" || account?.provider === "github") {
-        const oauthEmail = user?.email?.trim().toLowerCase();
+        const oauthEmail =
+          user?.email ||
+          (account.provider === "github" && account.providerAccountId
+            ? `${account.providerAccountId}@users.noreply.github.com`
+            : undefined);
 
         if (oauthEmail && !user.email) {
           user.email = oauthEmail;
         }
 
-        if (!oauthEmail) {
+        if (!oauthEmail && account.provider !== "github") {
           return "/login?error=OAuthEmailMissing";
         }
 
@@ -156,8 +160,11 @@ export const authOptions: NextAuthOptions = {
       if (account && (account.provider === "google" || account.provider === "github")) {
         try {
           const oauthEmail =
-            user?.email?.trim().toLowerCase() ||
-            (typeof token.email === "string" ? token.email.trim().toLowerCase() : undefined);
+            user?.email ||
+            token.email ||
+            (account.provider === "github" && account.providerAccountId
+              ? `${account.providerAccountId}@users.noreply.github.com`
+              : undefined);
 
           if (!oauthEmail) {
             console.error("OAuth login failed: provider did not return an email");

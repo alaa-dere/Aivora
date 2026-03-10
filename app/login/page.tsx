@@ -100,7 +100,7 @@ useEffect(() => {
       } else if (error === 'OAuthNoAccount') {
         setErr('This Google/GitHub email is not registered. Create an account first, then link social login.');
       } else if (error === 'OAuthEmailMissing') {
-        setErr('GitHub/Google did not return an email. In GitHub, disable "Keep my email addresses private" or use an account with a public primary email, then try again.');
+        setErr('Your provider did not return an email. Please use another sign-in method.');
       } else {
         setErr('Authentication failed. Please try again.');
       }
@@ -568,6 +568,5 @@ useEffect(() => {
     </div>
   );
 }
-
 
 
