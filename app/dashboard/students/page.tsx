@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   MagnifyingGlassIcon,
@@ -8,9 +8,8 @@ import {
   PencilSquareIcon,
   TrashIcon,
   FunnelIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   XMarkIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 
 type Status = 'active' | 'inactive';
@@ -30,7 +29,7 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Status>('all');
 
-  // Modal states
+  // Add/Edit Modal states
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [formData, setFormData] = useState({
@@ -42,11 +41,10 @@ export default function AdminStudentsPage() {
   });
   const [modalError, setModalError] = useState('');
 
-  // Delete confirmation modal
+  // Delete modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<StudentRow | null>(null);
 
-  // Load students
   useEffect(() => {
     async function fetchStudents() {
       try {
@@ -64,6 +62,22 @@ export default function AdminStudentsPage() {
     fetchStudents();
   }, []);
 
+  // Filtered students
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      const matchesQuery =
+        !searchQuery ||
+        student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+
+      return matchesQuery && matchesStatus;
+    });
+  }, [students, searchQuery, statusFilter]);
+
+  const filteredCount = filteredStudents.length;
+
   // Open modal for Add
   function openAddModal() {
     setModalMode('add');
@@ -79,14 +93,14 @@ export default function AdminStudentsPage() {
       id: student.id,
       fullName: student.fullName,
       email: student.email,
-      password: '', 
+      password: '',
       status: student.status,
     });
     setModalError('');
     setIsAddEditModalOpen(true);
   }
 
-  // Open delete confirmation
+  // Open delete modal
   function openDeleteModal(student: StudentRow) {
     setStudentToDelete(student);
     setIsDeleteModalOpen(true);
@@ -136,7 +150,6 @@ export default function AdminStudentsPage() {
         return;
       }
 
-      // Update the list
       if (modalMode === 'add') {
         setStudents((prev) => [data.student, ...prev]);
       } else {
@@ -145,7 +158,6 @@ export default function AdminStudentsPage() {
         );
       }
 
-      // Close modal
       setIsAddEditModalOpen(false);
       setFormData({ id: '', fullName: '', email: '', password: '', status: 'active' });
     } catch (err) {
@@ -170,10 +182,8 @@ export default function AdminStudentsPage() {
         return;
       }
 
-      // Remove from list
       setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
 
-      // Close modal
       setIsDeleteModalOpen(false);
       setStudentToDelete(null);
     } catch (err) {
@@ -181,139 +191,153 @@ export default function AdminStudentsPage() {
     }
   }
 
-  const filteredStudents = students.filter((student) => {
-    const matchesQuery =
-      !searchQuery ||
-      student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
-
-    return matchesQuery && matchesStatus;
-  });
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-           All Students
-        </h1>
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Students</h1>
+        </div>
 
         <button
           onClick={openAddModal}
-          className="group px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200 active:scale-95"
+          className="
+            group inline-flex items-center gap-2
+            px-4 py-2.5 rounded-xl
+            bg-gradient-to-r from-blue-600 to-blue-700
+            hover:from-blue-700 hover:to-blue-800
+            text-white font-semibold text-sm
+            shadow-sm hover:shadow-md
+            border border-blue-500/50
+            transition-all duration-200
+            active:scale-95
+          "
         >
-          <PlusIcon className="w-5 h-5 inline mr-2 group-hover:rotate-90 transition-transform" />
+          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
           Add New Student
         </button>
       </div>
 
       {/* Search & Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4 mb-6 flex flex-col sm:flex-row gap-3 justify-between">
-        <div className="relative">
-          <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search students..."
-            className="pl-10 pr-3 py-2 w-80 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-blue-300 outline-none"
-          />
-        </div>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name / email..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            />
+          </div>
 
-        <div className="flex items-center gap-2">
-          <FunnelIcon className="w-5 h-5 text-gray-400" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-blue-300"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <FunnelIcon className="w-5 h-5 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden w-full">
+      {/* Table Container */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+        {/* Title with filtered count */}
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            Students List <span className="text-gray-400 font-normal">({filteredCount})</span>
+          </p>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed w-full">
+          <table className="min-w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr>
-                <th className="w-1/5 px-4 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
-                  Name
-                </th>
-                <th className="w-1/4 px-4 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </th>
-                <th className="w-1/6 px-4 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
-                  Status
-                </th>
-                <th className="w-1/6 px-4 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
-                  Registration Date
-                </th>
-                <th className="w-1/6 px-4 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
-                  Actions
-                </th>
+              <tr className="text-left text-gray-600 dark:text-gray-300">
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Registration Date</th>
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredStudents.length > 0 ? (
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                    Loading...
+                  </td>
+                </tr>
+              ) : filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                    No students found. Try changing filters or add a new student.
+                  </td>
+                </tr>
+              ) : (
                 filteredStudents.map((student) => (
-                  <tr
-                    key={student.id}
-                    className="hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors"
-                  >
-                    <td className="px-4 py-4 text-center text-gray-900 dark:text-white font-medium">
-                      {student.fullName}
+                  <tr key={student.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                    <td className="px-4 py-4">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {student.fullName}
+                      </span>
                     </td>
-                    <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-300 truncate">
+
+                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
                       {student.email}
                     </td>
-                    <td className="px-4 py-4 text-center">
+
+                    <td className="px-4 py-4">
                       <span
-                        className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
                           student.status === 'active'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
                         }`}
                       >
                         {student.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-300">
-                      {student.createdAt}
+
+                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                      {new Date(student.createdAt).toLocaleDateString('en-US')}
                     </td>
-                    <td className="px-4 py-4 text-center flex items-center justify-center gap-6">
-                      <Link
-                        href={`/dashboard/students/${student.id}`}
-                        className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                      >
-                        View
-                      </Link>
-                      <button
-                        onClick={() => openEditModal(student)}
-                        className="text-amber-600 hover:text-amber-800 hover:underline text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => openDeleteModal(student)}
-                        className="text-red-600 hover:text-red-800 hover:underline text-sm"
-                      >
-                        Delete
-                      </button>
+
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <Link
+                          href={`/dashboard/students/${student.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                          View
+                        </Link>
+
+                        <button
+                          onClick={() => openEditModal(student)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 transition-colors"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => openDeleteModal(student)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                    No students registered yet
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
@@ -324,7 +348,7 @@ export default function AdminStudentsPage() {
       {isAddEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r  bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+            <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">
                 {modalMode === 'add' ? 'Add New Student' : 'Edit Student'}
               </h2>
@@ -411,7 +435,7 @@ export default function AdminStudentsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-lg  bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
+                  className="px-6 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
                 >
                   {modalMode === 'add' ? 'Add Student' : 'Save Changes'}
                 </button>
@@ -425,7 +449,7 @@ export default function AdminStudentsPage() {
       {isDeleteModalOpen && studentToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-800 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r  bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+            <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Confirm Delete</h2>
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
@@ -448,7 +472,7 @@ export default function AdminStudentsPage() {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-6 py-2 rounded-lg  bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
+                  className="px-6 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
                 >
                   Delete Student
                 </button>
