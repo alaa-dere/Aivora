@@ -267,9 +267,12 @@ export default function AdminCoursesPage() {
                 filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
                     <td className="px-4 py-4">
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      <Link
+                        href={`/dashboard/courses/${c.id}/content`}
+                        className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                      >
                         {c.title}
-                      </span>
+                      </Link>
                     </td>
 
                     <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
@@ -305,11 +308,11 @@ export default function AdminCoursesPage() {
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2 flex-wrap">
                         <Link
-                          href={`/dashboard/courses/${c.id}`}
+                          href={`/dashboard/courses/${c.id}/content`}
                           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
                         >
                           <EyeIcon className="w-4 h-4" />
-                          View
+                          Content
                         </Link>
 
                         <Link
