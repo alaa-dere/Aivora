@@ -1,4 +1,3 @@
-// app/api/auth/forgot-password/route.ts
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import crypto from 'crypto';
@@ -8,56 +7,79 @@ import { RowDataPacket } from 'mysql2';
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-    if (!email || typeof email !== 'string' || !email.trim()) {
+    if (!normalizedEmail) {
       return NextResponse.json({ message: 'Email is required' }, { status: 400 });
     }
 
-    // جلب اليوزر (حددنا النوع RowDataPacket[])
     const [users] = await db.query<RowDataPacket[]>(
       'SELECT id FROM User WHERE email = ?',
-      [email.trim()]
+      [normalizedEmail]
     );
 
-    // لو ما لقيناش يوزر، نرجع نفس الرسالة للأمان (security best practice)
     if (users.length === 0) {
       return NextResponse.json(
-        { message: 'If the email exists, a reset link has been sent' },
-        { status: 200 }
+        { message: 'No account found with this email address' },
+        { status: 404 }
       );
     }
 
     const userId = users[0].id;
-
-    // توليد token عشوائي آمن
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 ساعة
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-    // حذف أي tokens قديمة لنفس اليوزر
     await db.query('DELETE FROM PasswordResetToken WHERE userId = ?', [userId]);
-
-    // حفظ الـ token الجديد
     await db.query(
       'INSERT INTO PasswordResetToken (id, userId, token, expiresAt) VALUES (UUID(), ?, ?, ?)',
       [userId, token, expiresAt]
     );
 
-    // رابط إعادة التعيين
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
+    const resetLink = `${appUrl}/auth/reset-password?token=${token}`;
 
-    // إعداد nodemailer (Gmail مثال)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // لازم App Password لو Gmail
-      },
-    });
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const smtpSecure = process.env.SMTP_SECURE === 'true';
+    const emailFrom = process.env.EMAIL_FROM || emailUser;
 
-    // إرسال الإيميل
+    if (!emailFrom) {
+      console.error('Forgot password mail config error: EMAIL_FROM or EMAIL_USER is required');
+      return NextResponse.json(
+        { message: 'Mail server is not configured. Set EMAIL_USER/EMAIL_PASS (or SMTP_*) in .env.' },
+        { status: 500 }
+      );
+    }
+
+    if (!smtpHost && (!emailUser || !emailPass)) {
+      return NextResponse.json(
+        { message: 'Missing EMAIL_USER/EMAIL_PASS for Gmail transport in .env.' },
+        { status: 500 }
+      );
+    }
+
+    const transporter = smtpHost
+      ? nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpSecure,
+          auth: emailUser && emailPass ? { user: emailUser, pass: emailPass } : undefined,
+        })
+      : nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: emailUser,
+            pass: emailPass,
+          },
+        });
+
+    await transporter.verify();
+
     await transporter.sendMail({
-      from: `"Aivora Support" <${process.env.EMAIL_USER}>`,
-      to: email.trim(),
+      from: `"Aivora Support" <${emailFrom}>`,
+      to: normalizedEmail,
       subject: 'Reset Your Aivora Password',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -80,10 +102,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(
-      { message: 'If the email exists, a reset link has been sent' },
+      { message: 'Password reset link sent. Check your inbox and spam folder.' },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Forgot password error:', error);
     return NextResponse.json(
       { message: 'Server error. Please try again later.' },

@@ -3,6 +3,7 @@ export type CourseStatus = "draft" | "published" | "archived";
 export type Course = {
   id: string;
   title: string;
+  description: string;
   category: string;
   level: "beginner" | "intermediate" | "advanced";
   price: number;
@@ -18,6 +19,7 @@ const seedCourses: Course[] = [
   {
     id: "C-1001",
     title: "HTML & CSS",
+    description: "Learn to build responsive websites from scratch using HTML and CSS.",
     category: "Web",
     level: "beginner",
     price: 15,

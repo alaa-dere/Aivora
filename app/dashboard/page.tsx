@@ -1,6 +1,7 @@
 // app/admin/dashboard/page.tsx
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import {
   UserGroupIcon,
   AcademicCapIcon,
@@ -20,36 +21,28 @@ import {
 } from 'recharts';
 
 // الإحصائيات الرئيسية
-const stats = [
+const statCards = [
   {
+    key: 'totalStudents',
     name: 'Total Students',
-    value: '1,240',
-    change: '+6.2%',
-    changeType: 'increase',
     icon: UserGroupIcon,
   },
   {
+    key: 'totalTeachers',
     name: 'Total Teachers',
-    value: '38',
-    change: '+1.4%',
-    changeType: 'increase',
     icon: AcademicCapIcon,
   },
   {
+    key: 'activeCourses',
     name: 'Active Courses',
-    value: '112',
-    change: '+3.1%',
-    changeType: 'increase',
     icon: BookOpenIcon,
   },
   {
+    key: 'monthlyRevenue',
     name: 'Monthly Revenue',
-    value: '$12,450',
-    change: '+9.8%',
-    changeType: 'increase',
     icon: CurrencyDollarIcon,
   },
-];
+] as const;
 
 // بيانات الرسم البياني للإيرادات (آخر 12 أسبوعًا)
 const revenueData = [
@@ -124,6 +117,47 @@ const aiInsights = [
 ];
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    activeCourses: 0,
+    monthlyRevenue: 0,
+  });
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/dashboard/stats', { cache: 'no-store' });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setStats({
+          totalStudents: Number(data.totalStudents || 0),
+          totalTeachers: Number(data.totalTeachers || 0),
+          activeCourses: Number(data.activeCourses || 0),
+          monthlyRevenue: Number(data.monthlyRevenue || 0),
+        });
+      } catch (error) {
+        console.error('Failed to load dashboard stats', error);
+      }
+    }
+
+    loadStats();
+  }, []);
+
+  const formattedStats = useMemo(
+    () => ({
+      totalStudents: stats.totalStudents.toLocaleString(),
+      totalTeachers: stats.totalTeachers.toLocaleString(),
+      activeCourses: stats.activeCourses.toLocaleString(),
+      monthlyRevenue: `$${stats.monthlyRevenue.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+    }),
+    [stats]
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* رأس الصفحة */}
@@ -135,7 +169,7 @@ export default function AdminDashboard() {
 
       {/* بطاقات الإحصائيات مع تأثير hover */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div
             key={stat.name}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
@@ -144,17 +178,10 @@ export default function AdminDashboard() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <stat.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span
-                className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  stat.changeType === 'increase'
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                }`}
-              >
-                {stat.change}
-              </span>
             </div>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{stat.value}</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">
+              {formattedStats[stat.key]}
+            </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.name}</p>
           </div>
         ))}

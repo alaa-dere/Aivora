@@ -1,11 +1,13 @@
 // app/teacher/layout.tsx
 'use client';
+import Image from "next/image";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import {
   HomeIcon,
   BookOpenIcon,
@@ -47,15 +49,12 @@ const router = useRouter();
 
 const handleLogout = async () => {
   try {
-    const res = await fetch('/api/auth/logout', { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (res.ok) {
-      // استخدم window.location لإعادة تحميل كامل
-      window.location.href = '/login';
-    }
+    await Promise.all([
+      fetch('/api/auth/logout', { method: 'POST' }),
+      signOut({ redirect: false }),
+    ]);
+    router.replace('/login');
+    router.refresh();
   } catch (error) {
     console.error('Logout failed:', error);
   }
@@ -77,13 +76,15 @@ const handleLogout = async () => {
           >
             <Bars3Icon className="w-6 h-6 text-white" />
           </button>
-          <div className="flex items-center ml-2">
-            <AcademicCapIcon className="w-8 h-8 text-white mr-2" />
-            <div className="leading-tight">
-              <h1 className="text-xl font-bold text-white">Aivora</h1>
-              <p className="text-[11px] text-blue-100/80">Teacher Portal</p>
-            </div>
-          </div>
+                           <div className="flex items-center ml-2">
+  <Image
+    src="/alaa.png"
+    alt="Aivora Logo"
+    width={100}
+    height={30}
+    className="object-contain"
+  />
+</div>
         </div>
 
         <div className="flex items-center space-x-3">
