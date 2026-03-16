@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  PlusIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   BookOpenIcon,
@@ -19,58 +18,42 @@ import {
 export default function CoursesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "draft">("all");
+  const [courses, setCourses] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    activeCourses: 0,
+    totalStudents: 0,
+    totalLessons: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // بيانات وهمية (استبدليها ببيانات حقيقية لاحقًا)
-  const courses = [
-    {
-      id: "CS401",
-      name: "Advanced Python Programming",
-      code: "CS401",
-      students: 45,
-      modules: 8,
-      lessons: 24,
-      progress: 78,
-      lastUpdated: "2024-01-15",
-      status: "active",
-      description: "Object-oriented programming, decorators, generators, and advanced Python concepts",
-    },
-    {
-      id: "CS301",
-      name: "Web Development with React",
-      code: "CS301",
-      students: 38,
-      modules: 6,
-      lessons: 18,
-      progress: 92,
-      lastUpdated: "2024-01-10",
-      status: "active",
-      description: "Modern web development with React, hooks, state management, and Next.js",
-    },
-    {
-      id: "CS201",
-      name: "Data Structures & Algorithms",
-      code: "CS201",
-      students: 52,
-      modules: 10,
-      lessons: 30,
-      progress: 65,
-      lastUpdated: "2024-01-05",
-      status: "draft",
-      description: "Arrays, linked lists, trees, graphs, sorting, and searching algorithms",
-    },
-    {
-      id: "CS501",
-      name: "AI Fundamentals",
-      code: "CS501",
-      students: 28,
-      modules: 12,
-      lessons: 36,
-      progress: 45,
-      lastUpdated: "2024-01-20",
-      status: "active",
-      description: "Machine learning basics, neural networks, and AI applications",
-    },
-  ];
+    useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/teacher/courses', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load courses');
+        }
+        setCourses(data.courses || []);
+        setStats(data.stats || {
+          totalCourses: 0,
+          activeCourses: 0,
+          totalStudents: 0,
+          totalLessons: 0,
+        });
+      } catch (err: any) {
+        setError(err.message || 'Failed to load courses');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
 
   // فلترة الكورسات
   const filteredCourses = courses.filter((course) => {
@@ -82,49 +65,31 @@ export default function CoursesPage() {
   });
 
   // إحصائيات سريعة
-  const stats = {
-    totalCourses: courses.length,
-    activeCourses: courses.filter((c) => c.status === "active").length,
-    totalStudents: courses.reduce((sum, c) => sum + c.students, 0),
-    totalLessons: courses.reduce((sum, c) => sum + c.lessons, 0),
+  const displayStats = {
+    totalCourses: stats.totalCourses,
+    activeCourses: stats.activeCourses,
+    totalStudents: stats.totalStudents,
+    totalLessons: stats.totalLessons,
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
-      {/* Header + زر New Course */}
+      {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
             My Courses
           </h1>
         </div>
-
-        <Link
-          href="/teacher/courses/create"
-          className="
-            group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-xl
-            bg-gradient-to-r from-blue-600 to-blue-700
-            hover:from-blue-700 hover:to-blue-800
-            text-white font-semibold text-sm
-            shadow-sm hover:shadow-md
-            border border-blue-500/50
-            transition-all duration-200
-            active:scale-95
-          "
-        >
-          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-          New Course
-        </Link>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Courses", value: stats.totalCourses.toString(), trend: "+4", icon: Squares2X2Icon },
-          { label: "Active Courses", value: stats.activeCourses.toString(), trend: "+2", icon: BookOpenIcon },
-          { label: "Total Students", value: stats.totalStudents.toString(), trend: "+15", icon: UsersIcon },
-          { label: "Total Lessons", value: stats.totalLessons.toString(), trend: "+12", icon: AcademicCapIcon },
+          { label: "Total Courses", value: displayStats.totalCourses.toString(), trend: "+0", icon: Squares2X2Icon },
+          { label: "Active Courses", value: displayStats.activeCourses.toString(), trend: "+0", icon: BookOpenIcon },
+          { label: "Total Students", value: displayStats.totalStudents.toString(), trend: "+0", icon: UsersIcon },
+          { label: "Total Lessons", value: displayStats.totalLessons.toString(), trend: "+0", icon: AcademicCapIcon },
         ].map((card) => (
           <div
             key={card.label}
@@ -195,7 +160,11 @@ export default function CoursesPage() {
 
       {/* Courses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-        {filteredCourses.map((course) => (
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : filteredCourses.map((course) => (
           <div
             key={course.id}
             className="
@@ -215,7 +184,7 @@ export default function CoursesPage() {
                 </div>
                 <div>
                   <Link
-                    href={`/teacher/courses/${course.code}`}
+                    href={`/dashboard/courses/${course.id}/content`}
                     className="font-semibold text-gray-800 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     {course.name}
@@ -256,10 +225,10 @@ export default function CoursesPage() {
 
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
               <Link
-                href={`/teacher/courses/${course.code}`}
+                href={`/dashboard/courses/${course.id}/content`}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center gap-1"
               >
-                Manage Course
+                Manage Content
                 <ChevronRightIcon className="w-4 h-4" />
               </Link>
             </div>
@@ -267,7 +236,7 @@ export default function CoursesPage() {
         ))}
       </div>
 
-      {filteredCourses.length === 0 && (
+      {!loading && !error && filteredCourses.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           No courses found matching your search or filter.
         </div>
@@ -329,3 +298,7 @@ export default function CoursesPage() {
     </div>
   );
 }
+
+
+
+

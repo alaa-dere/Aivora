@@ -41,6 +41,11 @@ export async function POST(req: Request, { params }: Params) {
       ? typeRaw
       : inferType(content, codeContent, videoUrl);
     const enableLiveEditor = Boolean(body?.enableLiveEditor);
+    const liveEditorLanguageRaw = String(body?.liveEditorLanguage ?? 'python');
+    const liveEditorLanguage =
+      liveEditorLanguageRaw === 'javascript' || liveEditorLanguageRaw === 'html_css'
+        ? liveEditorLanguageRaw
+        : 'python';
 
     if (!title) {
       return NextResponse.json({ message: 'Lesson title is required' }, { status: 400 });
@@ -67,9 +72,9 @@ export async function POST(req: Request, { params }: Params) {
     await pool.query<ResultSetHeader>(
       `
       INSERT INTO Lesson
-        (id, moduleId, title, description, content, codeContent, videoUrl, orderNumber, durationMinutes, isPublished, type, enableLiveEditor, createdAt, updatedAt)
+        (id, moduleId, title, description, content, codeContent, videoUrl, orderNumber, durationMinutes, isPublished, type, enableLiveEditor, liveEditorLanguage, createdAt, updatedAt)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `,
       [
         lessonId,
@@ -84,6 +89,7 @@ export async function POST(req: Request, { params }: Params) {
         isPublished,
         type,
         enableLiveEditor,
+        liveEditorLanguage,
       ]
     );
 

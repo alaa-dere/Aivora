@@ -68,6 +68,14 @@ export async function PATCH(req: Request, { params }: Params) {
       values.push(Boolean(body.enableLiveEditor));
     }
 
+    if (body?.liveEditorLanguage !== undefined) {
+      const langRaw = String(body.liveEditorLanguage);
+      const lang =
+        langRaw === 'javascript' || langRaw === 'html_css' ? langRaw : 'python';
+      updates.push('liveEditorLanguage = ?');
+      values.push(lang);
+    }
+
     if (updates.length === 0) {
       return NextResponse.json({ message: 'No changes provided' }, { status: 400 });
     }

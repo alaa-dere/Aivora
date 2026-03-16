@@ -7,26 +7,26 @@ import fs from 'fs';
 import { requirePermission } from '@/lib/request-auth';
 
 interface Params {
-  params: Promise<{ id: string }>;
+  params: Promise<{ courseId: string }>;
 }
 export async function GET(_req: Request, { params }: Params) {
   try {
-    const { id } = await params;
-    const courseId = decodeURIComponent(id).trim();
+    const { courseId } = await params;
+    const normalizedCourseId = decodeURIComponent(courseId).trim();
 
-    console.log('Route param id:', id);
-    console.log('Normalized courseId:', courseId);
+    console.log('Route param courseId:', courseId);
+    console.log('Normalized courseId:', normalizedCourseId);
 
     const [basicRows] = await pool.query<RowDataPacket[]>(
       `SELECT id, teacherId FROM Course WHERE id = ? LIMIT 1`,
-      [courseId]
+      [normalizedCourseId]
     );
 
     console.log('Basic query result:', basicRows);
 
     if (basicRows.length === 0) {
       return NextResponse.json(
-        { message: 'Course not found at basic query level', courseId },
+        { message: 'Course not found at basic query level', courseId: normalizedCourseId },
         { status: 404 }
       );
     }
@@ -55,14 +55,14 @@ export async function GET(_req: Request, { params }: Params) {
       WHERE c.id = ?
       LIMIT 1
       `,
-      [courseId]
+      [normalizedCourseId]
     );
 
     console.log('Full query result:', rows);
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { message: 'Course not found after full query', courseId },
+        { message: 'Course not found after full query', courseId: normalizedCourseId },
         { status: 404 }
       );
     }
@@ -101,7 +101,8 @@ export async function PATCH(req: Request, { params }: Params) {
   const authError = await requirePermission(req, 'course:edit');
   if (authError) return authError;
 
-  const { id } = await params;
+  const { courseId } = await params;
+  const id = decodeURIComponent(courseId).trim();
 
   try {
     const formData = await req.formData();
@@ -287,7 +288,8 @@ export async function DELETE(_req: Request, { params }: Params) {
   const authError = await requirePermission(_req, 'course:delete');
   if (authError) return authError;
 
-  const { id } = await params;
+  const { courseId } = await params;
+  const id = decodeURIComponent(courseId).trim();
 
   try {
     const [existingRows] = await pool.query<RowDataPacket[]>(

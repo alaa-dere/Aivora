@@ -1,74 +1,61 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   BookOpenIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
 type Course = {
   id: string;
   title: string;
-  teacher: string;
+  teacherName: string;
   price: number;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  lessons: number;
-  hours: number;
   description: string;
+  durationWeeks: number;
+  imageUrl?: string;
+  enrolled: boolean;
 };
-
-const mockCourses: Course[] = [
-  {
-    id: 'c1',
-    title: 'React Basics',
-    teacher: 'Alaa',
-    price: 25,
-    level: 'Beginner',
-    lessons: 18,
-    hours: 6,
-    description: 'Build components, state, props, and hooks foundations.',
-  },
-  {
-    id: 'c2',
-    title: 'JavaScript Essentials',
-    teacher: 'Batool',
-    price: 20,
-    level: 'Beginner',
-    lessons: 22,
-    hours: 7,
-    description: 'Core JS, async, DOM, and best practices.',
-  },
-  {
-    id: 'c3',
-    title: 'CSS & Layout Mastery',
-    teacher: 'Sara',
-    price: 18,
-    level: 'Intermediate',
-    lessons: 16,
-    hours: 5,
-    description: 'Flexbox, Grid, responsive UI, and modern layouts.',
-  },
-];
 
 export default function StudentCoursesPage() {
   const [q, setQ] = useState('');
-  const [level, setLevel] = useState<'All' | Course['level']>('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/student/courses', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load courses');
+        }
+        setCourses(data.courses || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load courses');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return mockCourses.filter((c) => {
+    return courses.filter((c) => {
       const matchQ =
         !query ||
         c.title.toLowerCase().includes(query) ||
-        c.teacher.toLowerCase().includes(query) ||
+        c.teacherName.toLowerCase().includes(query) ||
         c.description.toLowerCase().includes(query);
-      const matchLevel = level === 'All' ? true : c.level === level;
-      return matchQ && matchLevel;
+      return matchQ;
     });
-  }, [q, level]);
+  }, [q, courses]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -78,7 +65,7 @@ export default function StudentCoursesPage() {
         </h1>
       </div>
 
-      {/* Search / Filter */}
+      {/* Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <div className="flex-1 relative">
@@ -90,26 +77,16 @@ export default function StudentCoursesPage() {
               className="w-full pl-10 pr-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none"
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <FunnelIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value as any)}
-              className="px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none"
-            >
-              <option value="All">All levels</option>
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-          </div>
         </div>
       </div>
 
       {/* Courses */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.map((c) => (
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : filtered.map((c) => (
           <div
             key={c.id}
             className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
@@ -123,7 +100,7 @@ export default function StudentCoursesPage() {
                   </h3>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Teacher: <span className="text-gray-700 dark:text-gray-200">{c.teacher}</span>
+                  Teacher: <span className="text-gray-700 dark:text-gray-200">{c.teacherName}</span>
                 </p>
               </div>
 
@@ -136,14 +113,13 @@ export default function StudentCoursesPage() {
 
             <div className="flex flex-wrap gap-2 mt-4">
               <span className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                {c.level}
+                {c.durationWeeks} weeks
               </span>
-              <span className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                {c.lessons} lessons
-              </span>
-              <span className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                {c.hours} hours
-              </span>
+              {c.enrolled && (
+                <span className="text-xs px-2 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300">
+                  Enrolled
+                </span>
+              )}
             </div>
 
             <div className="mt-5">
@@ -158,7 +134,7 @@ export default function StudentCoursesPage() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!loading && !error && filtered.length === 0 && (
         <div className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
           No courses match your search.
         </div>

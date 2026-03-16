@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS Lesson (
     videoUrl        VARCHAR(255) COLLATE utf8mb4_unicode_ci,
     type            ENUM('text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed') DEFAULT 'text',
     enableLiveEditor BOOLEAN DEFAULT FALSE,
+    liveEditorLanguage ENUM('python', 'javascript', 'html_css') DEFAULT 'python',
     orderNumber     INT NOT NULL,
     durationMinutes INT DEFAULT 0,
     isPublished     BOOLEAN DEFAULT FALSE,

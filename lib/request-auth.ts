@@ -37,6 +37,42 @@ export async function getRequestRole(req: Request): Promise<Role | null> {
   return null;
 }
 
+export async function getRequestUser(
+  req: Request
+): Promise<{ id: string; role: Role } | null> {
+  const cookieStore = await cookies();
+  const legacyToken = cookieStore.get('aivora_session')?.value;
+
+  if (legacyToken) {
+    try {
+      const { payload } = await jwtVerify(legacyToken, secretKey);
+      const legacyRole = (payload as { role?: string }).role?.toLowerCase();
+      const legacyId = (payload as { id?: string }).id;
+      if (
+        legacyId &&
+        (legacyRole === 'admin' || legacyRole === 'teacher' || legacyRole === 'student')
+      ) {
+        return { id: legacyId, role: legacyRole };
+      }
+    } catch (error) {
+      console.error('Request auth legacy token error:', error);
+    }
+  }
+
+  const nextAuthToken = await getToken({
+    req: req as any,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  const role = typeof nextAuthToken?.role === 'string' ? nextAuthToken.role.toLowerCase() : undefined;
+  const id = typeof nextAuthToken?.id === 'string' ? nextAuthToken.id : undefined;
+
+  if (id && (role === 'admin' || role === 'teacher' || role === 'student')) {
+    return { id, role };
+  }
+
+  return null;
+}
+
 export async function requirePermission(req: Request, permission: Permission) {
   const role = await getRequestRole(req);
 
