@@ -47,9 +47,14 @@ export async function middleware(request: NextRequest) {
 
   const normalizedRole = role.toLowerCase();
 
-  // Protect admin routes
+  // Protect admin routes (allow teachers to access course content page)
   if (pathname.startsWith('/dashboard') && normalizedRole !== 'admin') {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const isTeacherContent =
+      normalizedRole === 'teacher' &&
+      /^\/dashboard\/courses\/[^/]+\/content/.test(pathname);
+    if (!isTeacherContent) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
   // Protect teacher routes

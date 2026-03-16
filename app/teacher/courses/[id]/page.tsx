@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 interface CourseDetail {
@@ -8,20 +9,25 @@ interface CourseDetail {
   price: number;
   teacherSharePct: number;
   status: 'draft' | 'published' | 'archived';
-  coverImage?: string | null;
+  imageUrl?: string | null;
   students: number;
   createdAt: string;
-  // You can add more later: modules count, lessons count, etc.
 }
 
 async function getCourse(id: string): Promise<CourseDetail | null> {
-  const res = await fetch(`http://localhost:3000/api/courses/${id}`, { cache: 'no-store' });
+  const res = await fetch(`http://localhost:3000/api/courses/${id}`, {
+    cache: 'no-store',
+  });
   if (!res.ok) return null;
   const data = await res.json();
   return data.course || null;
 }
 
-export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TeacherCourseDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const course = await getCourse(id);
 
@@ -32,28 +38,20 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Header with title and actions */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             {course.title}
           </h1>
           <div className="flex gap-3">
-            <a
-              href={`/dashboard/courses/${course.id}/edit`}
-              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
-            >
-              Edit
-            </a>
-            <a
-              href="/dashboard/courses"
+            <Link
+              href="/teacher/courses"
               className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               Back to List
-            </a>
+            </Link>
           </div>
         </div>
 
-        {/* Cover Image */}
         {course.imageUrl && (
           <div className="mb-8 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700">
             <img
@@ -65,7 +63,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         )}
 
         <div className="grid md:grid-cols-3 gap-8">
-          {/* Main Content - Description */}
           <div className="md:col-span-2 space-y-6">
             <section>
               <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
@@ -75,15 +72,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                 {course.description || 'No description available yet.'}
               </p>
             </section>
-
-            {/* You can add more sections here later, e.g. Modules, Lessons, Reviews... */}
           </div>
 
-          {/* Sidebar - General Info */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">
-                General Information
+                Course Information
               </h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
@@ -101,14 +95,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                 </div>
 
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Teacher Share</dt>
-                  <dd className="font-medium text-gray-900 dark:text-gray-200">
-                    {Number(course.teacherSharePct).toFixed(1)}%
-                  </dd>
-                </div>
-
-                <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Enrolled Students</dt>
+                  <dt className="text-gray-500 dark:text-gray-400">Students</dt>
                   <dd className="font-medium text-gray-900 dark:text-gray-200">
                     {course.students}
                   </dd>
@@ -132,17 +119,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                         ? 'Archived'
                         : 'Draft'}
                     </span>
-                  </dd>
-                </div>
-
-                <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Created At</dt>
-                  <dd className="font-medium text-gray-900 dark:text-gray-200">
-                    {new Date(course.createdAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
                   </dd>
                 </div>
               </dl>

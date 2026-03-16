@@ -2,13 +2,33 @@
 
 import Link from 'next/link';
 import { PlayCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-
-const myCourses = [
-  { id: 'c1', title: 'React Basics', progress: 72 },
-  { id: 'c2', title: 'JavaScript Essentials', progress: 44 },
-];
+import { useEffect, useState } from 'react';
 
 export default function MyCoursesPage() {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadMyCourses = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/student/my-courses', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load courses');
+        }
+        setCourses(data.courses || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load courses');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMyCourses();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="mb-6">
@@ -18,7 +38,11 @@ export default function MyCoursesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {myCourses.map((c) => (
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : courses.map((c) => (
           <div
             key={c.id}
             className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
@@ -40,10 +64,10 @@ export default function MyCoursesPage() {
 
             <div className="mt-4 flex gap-3">
               <Link
-                href={`/student/my-courses/${c.id}/player`}
+                href={`/student/my-courses/${c.id}`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
               >
-                Open Player <ArrowRightIcon className="w-4 h-4" />
+                Open Course <ArrowRightIcon className="w-4 h-4" />
               </Link>
 
               <Link

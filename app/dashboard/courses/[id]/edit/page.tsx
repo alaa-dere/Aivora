@@ -52,8 +52,8 @@ export default function EditCoursePage() {
             status: c.status || 'draft',
           });
 
-          if (c.coverImage) {
-            setCoverPreview(c.coverImage);
+          if (c.imageUrl) {
+            setCoverPreview(c.imageUrl);
           }
         } else {
           setErrorMsg('Course not found');
@@ -102,7 +102,7 @@ export default function EditCoursePage() {
 
     // Only append new image if user selected one
     if (coverFile) {
-      payload.append('coverImage', coverFile);
+      payload.append('image', coverFile);
     }
 
     try {
@@ -116,7 +116,7 @@ export default function EditCoursePage() {
         throw new Error(err.message || 'Failed to update course');
       }
 
-      router.push(`/admin/courses/${id}`);
+      router.push(`/dashboard/courses/${id}`);
       router.refresh();
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while saving');

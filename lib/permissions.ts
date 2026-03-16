@@ -17,7 +17,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'course:delete',
     'course:view-content',
   ],
-  teacher: [],
+  teacher: [
+    'course:add-chapter',
+    'course:add-lesson',
+    'course:edit',
+    'course:delete',
+    'course:view-content',
+  ],
   student: [],
 };
 

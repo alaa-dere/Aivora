@@ -56,7 +56,8 @@ export async function GET(_req: Request, { params }: Params) {
           durationMinutes,
           isPublished,
           type,
-          enableLiveEditor
+          enableLiveEditor,
+          liveEditorLanguage
         FROM Lesson
         WHERE moduleId IN (${placeholders})
         ORDER BY orderNumber ASC
@@ -73,6 +74,7 @@ export async function GET(_req: Request, { params }: Params) {
           title: row.title,
           type: row.type || (row.videoUrl ? 'video_embed' : 'text'),
           enableLiveEditor: Boolean(row.enableLiveEditor),
+          liveEditorLanguage: row.liveEditorLanguage || 'python',
           description: row.description,
           content: row.content,
           codeContent: row.codeContent,

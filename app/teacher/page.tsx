@@ -166,33 +166,48 @@ const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 
 export default function TeacherDashboard() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeCourses: 0,
+    avgScore: 0,
+    completion: 0,
+  });
+  const [courses, setCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/teacher/dashboard', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load teacher dashboard');
+        }
+        setStats(data.stats);
+        setCourses(data.courses || []);
+        setStudents(data.students || []);
+        setRecentActivities(data.recentActivities || []);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load teacher dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (mounted) {
+      loadDashboard();
+    }
+  }, [mounted]);
+
   if (!mounted) return null;
-
-  const stats = [
-    { title: 'Total Students', value: '1,284', change: '+12%', changeType: 'increase', icon:UserGroupIcon, delay: 0 },
-    { title: 'Active Courses', value: '112', change: '+3.1%', changeType: 'increase', icon: BookOpenIcon, delay: 100 },
-    { title: 'Avg Score', value: '78%', change: '+5%', changeType: 'increase', icon: AcademicCapIcon, delay: 200 },
-    { title: 'Completion', value: '82%', change: '+8%', changeType: 'increase', icon: ChartBarIcon, delay: 300 },
-  ];
-
-  const courses = [
-    { name: "Advanced Python", code: "CS401", students: 45, completion: 78, averageScore: 82 },
-    { name: "Web Development", code: "CS301", students: 38, completion: 92, averageScore: 88 },
-    { name: "Data Structures", code: "CS201", students: 52, completion: 65, averageScore: 74 },
-    { name: "AI Fundamentals", code: "CS501", students: 28, completion: 45, averageScore: 91 },
-  ];
-
-  const students = [
-    { name: "Ahmed Mohamed", avatar: "AM", progress: 85, status: "passed" },
-    { name: "Sara Khaled", avatar: "SK", progress: 45, status: "failed" },
-    { name: "Omar Hassan", avatar: "OH", progress: 72, status: "passed" },
-    { name: "Lina Ahmad", avatar: "LA", progress: 92, status: "passed" },
-  ];
 
   const aiInsights = [
     {
@@ -212,10 +227,8 @@ export default function TeacherDashboard() {
     },
   ];
 
-  const recentActivities = [
-    { type: 'ENROLL', description: 'Batoo enrolled in React Basics', time: '2 min ago' },
-    { type: 'QUIZ', description: 'New quiz submitted in JavaScript', time: '15 min ago' },
-    { type: 'CERT', description: 'Sara completed HTML & CSS', time: '1 hour ago' },
+  const recentActivitiesFallback = [
+    { type: 'ENROLL', description: 'No recent activity yet', time: '' },
   ];
 
   return (
@@ -229,7 +242,12 @@ export default function TeacherDashboard() {
 
       {/* بطاقات الإحصائيات - نفس الستايل والأيقونات اللي في Admin */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat) => (
+        {[
+          { title: 'Total Students', value: stats.totalStudents.toLocaleString(), change: '+0%', changeType: 'increase', icon:UserGroupIcon, delay: 0 },
+          { title: 'Active Courses', value: stats.activeCourses.toString(), change: '+0%', changeType: 'increase', icon: BookOpenIcon, delay: 100 },
+          { title: 'Avg Score', value: `${stats.avgScore}%`, change: '+0%', changeType: 'increase', icon: AcademicCapIcon, delay: 200 },
+          { title: 'Completion', value: `${stats.completion}%`, change: '+0%', changeType: 'increase', icon: ChartBarIcon, delay: 300 },
+        ].map((stat) => (
           <StatCard
             key={stat.title}
             title={stat.title}
@@ -255,9 +273,17 @@ export default function TeacherDashboard() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {courses.map((course, i) => (
+            {loading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
+            ) : error ? (
+              <p className="text-sm text-red-500">{error}</p>
+            ) : courses.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No courses yet.</p>
+            ) : (
+              courses.map((course, i) => (
               <CourseCard key={i} course={course} index={i} />
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -284,9 +310,17 @@ export default function TeacherDashboard() {
             Student Performance
           </h2>
           <div className="divide-y divide-blue-100 dark:divide-blue-800">
-            {students.map((student, i) => (
-              <StudentRow key={i} student={student} />
-            ))}
+            {loading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading students...</p>
+            ) : error ? (
+              <p className="text-sm text-red-500">{error}</p>
+            ) : students.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No students yet.</p>
+            ) : (
+              students.map((student, i) => (
+                <StudentRow key={i} student={student} />
+              ))
+            )}
           </div>
         </div>
 
@@ -296,7 +330,7 @@ export default function TeacherDashboard() {
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Live platform events</p>
           <div className="space-y-4">
-            {recentActivities.map((activity, idx) => (
+            {(recentActivities.length ? recentActivities : recentActivitiesFallback).map((activity, idx) => (
               <div key={idx} className="flex gap-3">
                 <span
                   className={`text-xs font-bold px-2 py-1 rounded-full ${

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CreditCardIcon,
   CheckCircleIcon,
@@ -8,11 +8,35 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function WalletPage() {
-  const [balance, setBalance] = useState(18.5);
+  const [balance, setBalance] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
   const [status, setStatus] = useState<'idle' | 'success' | 'failed'>('idle');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const coursePrice = 20; // Demo
-  const courseTitle = 'JavaScript Essentials';
+  const coursePrice = 20; // Placeholder
+  const courseTitle = 'Course Enrollment';
+
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/student/wallet', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load wallet');
+        }
+        setBalance(Number(data.balance || 0));
+        setTotalSpent(Number(data.totalSpent || 0));
+      } catch (err: any) {
+        setError(err.message || 'Failed to load wallet');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadWallet();
+  }, []);
 
   const payWithBalance = () => {
     if (balance >= coursePrice) {
@@ -39,7 +63,18 @@ export default function WalletPage() {
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Balance</h2>
           </div>
 
-          <p className="mt-4 text-3xl font-bold text-gray-800 dark:text-white">${balance.toFixed(2)}</p>
+          {loading ? (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          ) : error ? (
+            <p className="mt-4 text-sm text-red-500">{error}</p>
+          ) : (
+            <>
+              <p className="mt-4 text-3xl font-bold text-gray-800 dark:text-white">${balance.toFixed(2)}</p>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Total spent: ${totalSpent.toFixed(2)}
+              </p>
+            </>
+          )}
 
           <button
             onClick={() => setBalance((b) => +(b + 10).toFixed(2))}
@@ -64,7 +99,7 @@ export default function WalletPage() {
               onClick={payWithBalance}
               className="mt-4 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
             >
-              Pay with Balance
+              Pay with Balance (demo)
             </button>
 
             {status === 'success' && (

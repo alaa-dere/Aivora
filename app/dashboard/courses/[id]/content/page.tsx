@@ -4,12 +4,16 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircle, MoreVertical } from 'lucide-react';
+import LivePythonEditor from '@/components/live-python-editor';
+import LiveJsEditor from '@/components/live-js-editor';
+import LiveHtmlPreview from '@/components/live-html-preview';
 
 type Lesson = {
   id: string;
   title: string;
   type: 'text' | 'code_example' | 'live_python' | 'video_embed' | 'quiz' | 'mixed';
   enableLiveEditor: boolean;
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
   durationMinutes: number;
   isPublished: boolean;
   content?: string;
@@ -49,6 +53,7 @@ export default function CourseContentPage() {
     isPublished: false,
     type: 'text' as Lesson['type'],
     enableLiveEditor: false,
+    liveEditorLanguage: 'python' as NonNullable<Lesson['liveEditorLanguage']>,
   });
   const [openModuleMenuId, setOpenModuleMenuId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
@@ -150,6 +155,7 @@ export default function CourseContentPage() {
       isPublished: false,
       type: 'text',
       enableLiveEditor: false,
+      liveEditorLanguage: 'python',
     });
     setEditingLessonId(null);
   };
@@ -203,6 +209,7 @@ export default function CourseContentPage() {
       isPublished: Boolean(lesson.isPublished),
       type: lesson.type,
       enableLiveEditor: Boolean(lesson.enableLiveEditor),
+      liveEditorLanguage: lesson.liveEditorLanguage || 'python',
     });
     setShowLessonModal(true);
   };
@@ -314,6 +321,7 @@ export default function CourseContentPage() {
             isPublished: lessonForm.isPublished,
             type: computedType,
             enableLiveEditor: lessonForm.enableLiveEditor,
+            liveEditorLanguage: lessonForm.liveEditorLanguage,
           }),
         });
 
@@ -331,6 +339,7 @@ export default function CourseContentPage() {
             isPublished: lessonForm.isPublished,
             type: computedType,
             enableLiveEditor: lessonForm.enableLiveEditor,
+            liveEditorLanguage: lessonForm.liveEditorLanguage,
           }),
         });
 
@@ -399,8 +408,8 @@ export default function CourseContentPage() {
   };
 
   const parseLessonContent = (content: string) => {
-    const segments: { type: 'text' | 'code' | 'video'; value: string }[] = [];
-    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}/gi;
+    const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
+    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
@@ -412,6 +421,8 @@ export default function CourseContentPage() {
         segments.push({ type: 'code', value: match[1].trim() });
       } else if (match[2] !== undefined) {
         segments.push({ type: 'video', value: match[2].trim() });
+      } else if (match[3] !== undefined) {
+        segments.push({ type: 'starter', value: match[3].trim() });
       }
       lastIndex = regex.lastIndex;
     }
@@ -421,6 +432,113 @@ export default function CourseContentPage() {
     }
 
     return segments.filter((segment) => segment.value.trim() !== '');
+  };
+
+  const renderTextWithLinks = (text: string) => {
+    const parts: Array<{ type: 'text' | 'link'; value: string; href?: string }> = [];
+    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|\bhttps?:\/\/[^\s)]+/gi;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+      }
+      if (match[1] && match[2]) {
+        parts.push({ type: 'link', value: match[1], href: match[2] });
+      } else if (match[0]) {
+        parts.push({ type: 'link', value: match[0], href: match[0] });
+      }
+      lastIndex = linkRegex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({ type: 'text', value: text.slice(lastIndex) });
+    }
+
+    return parts.map((part, idx) => {
+      if (part.type === 'link' && part.href) {
+        return (
+          <a
+            key={`link-${idx}`}
+            href={part.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300"
+          >
+            {part.value}
+          </a>
+        );
+      }
+      return <span key={`text-${idx}`}>{part.value}</span>;
+    });
+  };
+
+  const renderFormattedText = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return <div key={`spacer-${idx}`} className="h-3" />;
+      }
+
+      if (trimmed.startsWith('### ')) {
+        return (
+          <h3 key={`h3-${idx}`} className="text-lg font-semibold text-gray-900 dark:text-white">
+            {renderTextWithLinks(trimmed.replace(/^###\s+/, ''))}
+          </h3>
+        );
+      }
+      if (trimmed.startsWith('## ')) {
+        return (
+          <h2 key={`h2-${idx}`} className="text-xl font-semibold text-gray-900 dark:text-white">
+            {renderTextWithLinks(trimmed.replace(/^##\s+/, ''))}
+          </h2>
+        );
+      }
+      if (trimmed.startsWith('# ')) {
+        return (
+          <h1 key={`h1-${idx}`} className="text-2xl font-bold text-gray-900 dark:text-white">
+            {renderTextWithLinks(trimmed.replace(/^#\s+/, ''))}
+          </h1>
+        );
+      }
+
+      return (
+        <p key={`p-${idx}`} className="text-sm leading-6 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+          {renderTextWithLinks(line)}
+        </p>
+      );
+    });
+  };
+
+  const normalizeVideoUrl = (rawUrl: string) => {
+    try {
+      const url = new URL(rawUrl);
+
+      if (url.hostname.includes('youtube.com')) {
+        const vid = url.searchParams.get('v');
+        if (vid) return `https://www.youtube.com/embed/${vid}`;
+        if (url.pathname.startsWith('/embed/')) return rawUrl;
+      }
+
+      if (url.hostname === 'youtu.be') {
+        const vid = url.pathname.replace('/', '').trim();
+        if (vid) return `https://www.youtube.com/embed/${vid}`;
+      }
+
+      if (url.hostname.includes('vimeo.com')) {
+        const parts = url.pathname.split('/').filter(Boolean);
+        const vid = parts[parts.length - 1];
+        if (vid && /^[0-9]+$/.test(vid)) {
+          return `https://player.vimeo.com/video/${vid}`;
+        }
+      }
+
+      return rawUrl;
+    } catch {
+      return rawUrl;
+    }
   };
 
   if (loading) {
@@ -542,6 +660,13 @@ export default function CourseContentPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => appendToLessonContent('{{starter:\n\n}}')}
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Insert Starter Code
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
                         const url = prompt('Video URL');
                         if (url) appendToLessonContent(`{{video:${url}}}`);
@@ -559,7 +684,9 @@ export default function CourseContentPage() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
                   />
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Tip: Use triple backticks for code blocks and <code className="px-1">{"{{video:URL}}"}</code> to embed videos inline.
+                    Tip: Use triple backticks for code blocks, <code className="px-1">{"{{video:URL}}"}</code> for videos,
+                    <code className="px-1">{"{{starter: ... }}"}</code> for the live editor starter code, and regular links like
+                    <code className="px-1">[Title](https://example.com)</code> or <code className="px-1">https://example.com</code>.
                   </p>
                 </div>
 
@@ -597,6 +724,28 @@ export default function CourseContentPage() {
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">Enable live editor</span>
                 </div>
+
+                {lessonForm.enableLiveEditor && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Live Editor Language
+                    </label>
+                    <select
+                      value={lessonForm.liveEditorLanguage}
+                      onChange={(e) =>
+                        setLessonForm((prev) => ({
+                          ...prev,
+                          liveEditorLanguage: e.target.value as NonNullable<Lesson['liveEditorLanguage']>,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="python">Python</option>
+                      <option value="javascript">JavaScript</option>
+                      <option value="html_css">HTML/CSS</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-3 pt-2">
                   <button
@@ -682,17 +831,17 @@ export default function CourseContentPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column - Modules List */}
           <div className="lg:col-span-3 space-y-4">
+            <button
+              type="button"
+              onClick={openCreateModule}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add New Chapter
+            </button>
             {modules.length === 0 ? (
               <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                <p className="text-gray-500 dark:text-gray-400 mb-3">No modules yet. Add your first module to get started.</p>
-                <button
-                  type="button"
-                  onClick={openCreateModule}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Module
-                </button>
+                <p className="text-gray-500 dark:text-gray-400">No modules yet.</p>
               </div>
             ) : (
               modules.map((module) => (
@@ -703,27 +852,27 @@ export default function CourseContentPage() {
                   {/* Module Header */}
                   <div
                     onClick={() => toggleModule(module.id)}
-                    className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
+                    className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
                   >
-                    <div className="flex items-center flex-1">
+                    <div className="flex items-start">
                       {expandedModules[module.id] ? (
-                        <ChevronDown className="w-5 h-5 text-gray-500 mr-2" />
+                        <ChevronDown className="w-5 h-5 text-gray-500 mr-2 mt-1" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-500 mr-2" />
+                        <ChevronRight className="w-5 h-5 text-gray-500 mr-2 mt-1" />
                       )}
                       <div>
                         <h2 className="font-semibold text-lg text-gray-900 dark:text-white">
                           {module.title}
                         </h2>
                         {module.description && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">
                             {module.description}
                           </p>
                         )}
                       </div>
                     </div>
                     
-                    <div className="relative flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative flex items-center gap-3 self-end" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         {module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}
                       </span>
@@ -770,7 +919,7 @@ export default function CourseContentPage() {
                         module.lessons.map((lesson) => (
                           <div
                             key={lesson.id}
-                            className={`px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group cursor-pointer ${
+                            className={`px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 group cursor-pointer ${
                               selectedLessonId === lesson.id ? 'bg-blue-50/60 dark:bg-blue-900/20' : ''
                             }`}
                             onClick={() => setSelectedLessonId(lesson.id)}
@@ -783,7 +932,8 @@ export default function CourseContentPage() {
                               }
                             }}
                           >
-                            <div className="flex items-center gap-3 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
                               {getLessonIcon(lesson.type, lesson.enableLiveEditor)}
                               <div>
                                 <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -804,26 +954,27 @@ export default function CourseContentPage() {
                                 </div>
                               </div>
                             </div>
+                            </div>
 
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => togglePublishLesson(lesson)}
-                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-400"
+                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               >
                                 {lesson.isPublished ? 'Unpublish' : 'Publish'}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => openEditLesson(lesson, module.id)}
-                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-sm text-gray-600 dark:text-gray-400"
+                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               >
                                 Edit
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteLesson(lesson.id)}
-                                className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-sm text-red-600 dark:text-red-400"
+                                className="px-2 py-0.5 rounded-md border border-red-200 dark:border-red-800 text-[11px] text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
                               >
                                 Delete
                               </button>
@@ -889,7 +1040,9 @@ export default function CourseContentPage() {
                       <p className="text-xs uppercase tracking-wide text-gray-400">Lesson</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{lesson.title}</p>
                       {lesson.description && (
-                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{lesson.description}</p>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                          {lesson.description}
+                        </p>
                       )}
                     </div>
                     <div className="space-y-3">
@@ -904,8 +1057,24 @@ export default function CourseContentPage() {
                             </pre>
                           );
                         }
+                        if (seg.type === 'starter') {
+                          if (!lesson.enableLiveEditor) {
+                            return (
+                              <div key={idx} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-200">
+                                Starter code found, but Live Editor is disabled for this lesson.
+                              </div>
+                            );
+                          }
+                          if (lesson.liveEditorLanguage === 'javascript') {
+                            return <LiveJsEditor key={idx} initialCode={seg.value} />;
+                          }
+                          if (lesson.liveEditorLanguage === 'html_css') {
+                            return <LiveHtmlPreview key={idx} initialCode={seg.value} />;
+                          }
+                          return <LivePythonEditor key={idx} initialCode={seg.value} />;
+                        }
                         if (seg.type === 'video') {
-                          const url = seg.value;
+                          const url = normalizeVideoUrl(seg.value);
                           return (
                             <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Embedded Video</p>
@@ -922,9 +1091,9 @@ export default function CourseContentPage() {
                           );
                         }
                         return (
-                          <p key={idx} className="text-sm leading-6 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-                            {seg.value}
-                          </p>
+                          <div key={idx} className="space-y-1">
+                            {renderFormattedText(seg.value)}
+                          </div>
                         );
                       })}
                     </div>
@@ -945,7 +1114,7 @@ export default function CourseContentPage() {
                   className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center"
                 >
                   <Plus className="w-5 h-5 text-blue-500 mr-3" />
-                  <span className="text-gray-700 dark:text-gray-300">Add Module</span>
+                  <span className="text-gray-700 dark:text-gray-300">Add New Chapter</span>
                 </button>
                 <button
                   type="button"
