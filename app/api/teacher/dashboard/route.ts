@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const [courseRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT id, status
-      FROM Course
+      FROM course
       WHERE teacherId = ?
       `,
       [teacherId]
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         `
         SELECT COUNT(DISTINCT studentId) AS totalStudents,
                AVG(progressPercentage) AS avgProgress
-        FROM Enrollment
+        FROM enrollment
         WHERE courseId IN (${placeholders})
         `,
         courseIds
@@ -57,21 +57,21 @@ export async function GET(req: Request) {
         c.status,
         c.description,
         (
-          SELECT COUNT(*) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT COUNT(*) FROM enrollment e WHERE e.courseId = c.id
         ) AS students,
         (
-          SELECT COUNT(*) FROM Module m WHERE m.courseId = c.id
+          SELECT COUNT(*) FROM module m WHERE m.courseId = c.id
         ) AS modules,
         (
           SELECT COUNT(*) 
-          FROM Lesson l 
-          JOIN Module m2 ON m2.id = l.moduleId
+          FROM lesson l 
+          JOIN module m2 ON m2.id = l.moduleId
           WHERE m2.courseId = c.id
         ) AS lessons,
         (
-          SELECT AVG(e.progressPercentage) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT AVG(e.progressPercentage) FROM enrollment e WHERE e.courseId = c.id
         ) AS progress
-      FROM Course c
+      FROM course c
       WHERE c.teacherId = ?
       ORDER BY c.updatedAt DESC
       LIMIT 4
@@ -96,9 +96,9 @@ export async function GET(req: Request) {
         u.fullName AS name,
         e.progressPercentage AS progress,
         e.status AS status
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
-      JOIN User u ON u.id = e.studentId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
       WHERE c.teacherId = ?
       ORDER BY e.enrolledAt DESC
       LIMIT 4
@@ -124,9 +124,9 @@ export async function GET(req: Request) {
         u.fullName AS studentName,
         c.title AS courseTitle,
         e.enrolledAt AS time
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
-      JOIN User u ON u.id = e.studentId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
       WHERE c.teacherId = ?
       ORDER BY e.enrolledAt DESC
       LIMIT 3

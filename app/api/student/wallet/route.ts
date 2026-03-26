@@ -13,8 +13,8 @@ export async function GET(req: Request) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `
       SELECT COALESCE(SUM(c.price), 0) AS totalSpent
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
       WHERE e.studentId = ?
       `,
       [user.id]

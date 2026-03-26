@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const [users] = await db.query<RowDataPacket[]>(
-      'SELECT id FROM User WHERE email = ?',
+      'SELECT id FROM user WHERE email = ?',
       [normalizedEmail]
     );
 
@@ -29,9 +29,9 @@ export async function POST(req: Request) {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-    await db.query('DELETE FROM PasswordResetToken WHERE userId = ?', [userId]);
+    await db.query('DELETE FROM passwordresettoken WHERE userId = ?', [userId]);
     await db.query(
-      'INSERT INTO PasswordResetToken (id, userId, token, expiresAt) VALUES (UUID(), ?, ?, ?)',
+      'INSERT INTO passwordresettoken (id, userId, token, expiresAt) VALUES (UUID(), ?, ?, ?)',
       [userId, token, expiresAt]
     );
 

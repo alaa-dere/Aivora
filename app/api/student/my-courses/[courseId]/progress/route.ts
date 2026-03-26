@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [enrollRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
+      `SELECT id FROM enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
       [id, user.id]
     );
     if (enrollRows.length === 0) {
@@ -33,7 +33,7 @@ export async function POST(req: Request, { params }: Params) {
     const enrollmentId = enrollRows[0].id as string;
 
     const [existing] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM LessonProgress WHERE enrollmentId = ? AND lessonId = ? LIMIT 1`,
+      `SELECT id FROM lessonprogress WHERE enrollmentId = ? AND lessonId = ? LIMIT 1`,
       [enrollmentId, lessonId]
     );
 
@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: Params) {
       const progressId = idRows[0].id as string;
       await pool.query<ResultSetHeader>(
         `
-        INSERT INTO LessonProgress
+        INSERT INTO lessonprogress
           (id, enrollmentId, lessonId, completed, progressPercentage, startedAt, completedAt)
         VALUES
           (?, ?, ?, TRUE, 100, NOW(), NOW())
@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: Params) {
     } else {
       await pool.query<ResultSetHeader>(
         `
-        UPDATE LessonProgress
+        UPDATE lessonprogress
         SET completed = TRUE, progressPercentage = 100, completedAt = NOW()
         WHERE id = ?
         `,
@@ -63,8 +63,8 @@ export async function POST(req: Request, { params }: Params) {
     const [totalRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT COUNT(*) AS totalLessons
-      FROM Lesson l
-      JOIN Module m ON m.id = l.moduleId
+      FROM lesson l
+      JOIN module m ON m.id = l.moduleId
       WHERE m.courseId = ?
       `,
       [id]
@@ -74,9 +74,9 @@ export async function POST(req: Request, { params }: Params) {
     const [completedRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT COUNT(*) AS completedLessons
-      FROM LessonProgress lp
-      JOIN Lesson l ON l.id = lp.lessonId
-      JOIN Module m ON m.id = l.moduleId
+      FROM lessonprogress lp
+      JOIN lesson l ON l.id = lp.lessonId
+      JOIN module m ON m.id = l.moduleId
       WHERE m.courseId = ? AND lp.enrollmentId = ? AND lp.completed = TRUE
       `,
       [id, enrollmentId]
@@ -87,7 +87,7 @@ export async function POST(req: Request, { params }: Params) {
 
     await pool.query<ResultSetHeader>(
       `
-      UPDATE Enrollment
+      UPDATE enrollment
       SET progressPercentage = ?, status = IF(?, 'completed', status)
       WHERE id = ?
       `,

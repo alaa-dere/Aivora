@@ -98,7 +98,7 @@ export const authOptions: NextAuthOptions = {
         const password = credentials.password as string;
 
         const [users] = await db.query<RowDataPacket[]>(
-          "SELECT u.*, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+          "SELECT u.*, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
           [email]
         );
 
@@ -137,7 +137,7 @@ export const authOptions: NextAuthOptions = {
 
         if (oauthEmail) {
           const [existingUser] = await db.query<RowDataPacket[]>(
-            "SELECT u.id, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+            "SELECT u.id, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
             [oauthEmail]
           );
           if (existingUser.length > 0) {
@@ -174,7 +174,7 @@ export const authOptions: NextAuthOptions = {
           token.email = oauthEmail;
 
           const [existingUser] = await db.query<RowDataPacket[]>(
-            "SELECT u.id, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+            "SELECT u.id, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
             [oauthEmail]
           );
 

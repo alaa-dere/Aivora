@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     }
 
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?',
+      'SELECT r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?',
       [email]
     );
 

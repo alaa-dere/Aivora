@@ -45,51 +45,27 @@ const statCards = [
 ] as const;
 
 // بيانات الرسم البياني للإيرادات (آخر 12 أسبوعًا)
-const revenueData = [
-  { week: 'W1', revenue: 3000 },
-  { week: 'W2', revenue: 4500 },
-  { week: 'W3', revenue: 3200 },
-  { week: 'W4', revenue: 5000 },
-  { week: 'W5', revenue: 4800 },
-  { week: 'W6', revenue: 6000 },
-  { week: 'W7', revenue: 5500 },
-  { week: 'W8', revenue: 6200 },
-  { week: 'W9', revenue: 7000 },
-  { week: 'W10', revenue: 6800 },
-  { week: 'W11', revenue: 7500 },
-  { week: 'W12', revenue: 8200 },
-];
+type RevenuePoint = { week: string; revenue: number };
 
-// بيانات المعاملات الأخيرة
-const recentTransactions = [
-  { id: 'TRX-1001', name: 'Ahmad', amount: '$25.00' },
-  { id: 'TRX-1002', name: 'Sara', amount: '$49.90' },
-  { id: 'TRX-1003', name: 'Lina', amount: '$15.30' },
-];
+// Transactions from DB
+type RecentTx = {
+  id: string;
+  name: string;
+  amount: number;
+  dateTime: string;
+};
 
-// بيانات النشاط الأخير
-const recentActivities = [
-  {
-    type: 'ENROLL',
-    description: 'Batoo enrolled in React Basics',
-    time: '2 min ago',
-  },
-  {
-    type: 'PAYMENT',
-    description: 'Payment received ($25) - TRX-10021',
-    time: '15 min ago',
-  },
-  {
-    type: 'CERT',
-    description: 'Sara completed HTML & CSS and got certificate',
-    time: '1 hour ago',
-  },
-  {
-    type: 'QUIZ',
-    description: 'New quiz submitted in JavaScript course',
-    time: '3 hours ago',
-  },
-];
+function formatMoney(value: number) {
+  const safe = Number.isFinite(value) ? value : 0;
+  return `$${safe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Recent activity from DB
+type RecentActivity = {
+  type: 'ENROLL';
+  description: string;
+  time: string;
+};
 
 // رؤى الذكاء الاصطناعي (بألوان زرقاء)
 const aiInsights = [
@@ -123,6 +99,12 @@ export default function AdminDashboard() {
     activeCourses: 0,
     monthlyRevenue: 0,
   });
+  const [recentTx, setRecentTx] = useState<RecentTx[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [revenueData, setRevenueData] = useState<RevenuePoint[]>([]);
+  const [revenueLoading, setRevenueLoading] = useState(true);
 
   useEffect(() => {
     async function loadStats() {
@@ -143,6 +125,67 @@ export default function AdminDashboard() {
     }
 
     loadStats();
+  }, []);
+
+  useEffect(() => {
+    const loadRecent = async () => {
+      try {
+        setTxLoading(true);
+        const res = await fetch('/api/finance/transactions', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        const list = (data.transactions || []).slice(0, 3).map((t: any) => ({
+          id: t.id,
+          name: t.studentName || t.teacherName || t.courseTitle || 'Unknown',
+          amount: Number(t.amount || 0),
+          dateTime: t.dateTime || t.date || '',
+        }));
+        setRecentTx(list);
+      } catch (error) {
+        console.error('Failed to load recent transactions', error);
+      } finally {
+        setTxLoading(false);
+      }
+    };
+
+    loadRecent();
+  }, []);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      try {
+        setActivityLoading(true);
+        const res = await fetch('/api/dashboard/recent-activity', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        setRecentActivities(data.activities || []);
+      } catch (error) {
+        console.error('Failed to load recent activity', error);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    loadActivity();
+  }, []);
+
+  useEffect(() => {
+    const loadRevenue = async () => {
+      try {
+        setRevenueLoading(true);
+        const res = await fetch('/api/dashboard/revenue-trend', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        setRevenueData(data.trend || []);
+      } catch (error) {
+        console.error('Failed to load revenue trend', error);
+      } finally {
+        setRevenueLoading(false);
+      }
+    };
+
+    loadRevenue();
   }, []);
 
   const formattedStats = useMemo(
@@ -233,6 +276,9 @@ export default function AdminDashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          {revenueLoading && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Loading revenue trend...</p>
+          )}
         </div>
 
         {/* رؤى الذكاء الاصطناعي مع تأثير hover */}
@@ -271,20 +317,32 @@ export default function AdminDashboard() {
             Recent Transactions
           </h2>
           <div className="space-y-3">
-            {recentTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between py-2 border-b border-blue-100 dark:border-blue-800 last:border-0"
-              >
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{tx.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{tx.id}</p>
+            {txLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+            ) : recentTx.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No transactions yet.</p>
+            ) : (
+              recentTx.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between py-2 border-b border-blue-100 dark:border-blue-800 last:border-0"
+                >
+                  <div>
+                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                      {tx.name}
+                    </span>
+                    {tx.dateTime && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {tx.dateTime}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    {formatMoney(tx.amount)}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                  {tx.amount}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -295,27 +353,27 @@ export default function AdminDashboard() {
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Live platform events</p>
           <div className="space-y-4">
-            {recentActivities.map((activity, idx) => (
-              <div key={idx} className="flex gap-3">
-                <span
-                  className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    activity.type === 'ENROLL'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                      : activity.type === 'PAYMENT'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                      : activity.type === 'CERT'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                  }`}
-                >
-                  {activity.type}
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-800 dark:text-gray-200">{activity.description}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{activity.time}</p>
+            {activityLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+            ) : recentActivities.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No recent activity.</p>
+            ) : (
+              recentActivities.map((activity, idx) => (
+                <div key={idx} className="flex gap-3">
+                  <span
+                    className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+                  >
+                    {activity.type}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{activity.description}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      {new Date(activity.time).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

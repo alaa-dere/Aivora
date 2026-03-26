@@ -24,8 +24,8 @@ export async function GET(req: Request) {
         e.courseId,
         c.title AS courseTitle,
         e.progressPercentage
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
       WHERE e.studentId = ?
       ORDER BY e.enrolledAt DESC
       `,
@@ -51,9 +51,9 @@ export async function GET(req: Request) {
       SELECT 
         DATE(lp.completedAt) AS day,
         COALESCE(SUM(l.durationMinutes), 0) AS minutes
-      FROM LessonProgress lp
-      JOIN Lesson l ON l.id = lp.lessonId
-      JOIN Enrollment e ON e.id = lp.enrollmentId
+      FROM lessonprogress lp
+      JOIN lesson l ON l.id = lp.lessonId
+      JOIN enrollment e ON e.id = lp.enrollmentId
       WHERE e.studentId = ? AND lp.completedAt >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
       GROUP BY DATE(lp.completedAt)
       ORDER BY DATE(lp.completedAt)
@@ -90,9 +90,9 @@ export async function GET(req: Request) {
           l.title,
           l.orderNumber,
           lp.completed AS completed
-        FROM Lesson l
-        JOIN Module m ON m.id = l.moduleId
-        LEFT JOIN LessonProgress lp
+        FROM lesson l
+        JOIN module m ON m.id = l.moduleId
+        LEFT JOIN lessonprogress lp
           ON lp.lessonId = l.id AND lp.enrollmentId = ?
         WHERE m.courseId = ? AND l.isPublished = TRUE
         ORDER BY m.orderNumber ASC, l.orderNumber ASC

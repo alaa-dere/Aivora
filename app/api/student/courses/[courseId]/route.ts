@@ -29,11 +29,11 @@ export async function GET(req: Request, { params }: Params) {
         u.fullName AS teacherName,
         c.status,
         EXISTS(
-          SELECT 1 FROM Enrollment e 
+          SELECT 1 FROM enrollment e 
           WHERE e.courseId = c.id AND e.studentId = ?
         ) AS enrolled
-      FROM Course c
-      JOIN User u ON u.id = c.teacherId
+      FROM course c
+      JOIN user u ON u.id = c.teacherId
       WHERE c.id = ?
       LIMIT 1
       `,

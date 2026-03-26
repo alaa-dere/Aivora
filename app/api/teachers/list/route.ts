@@ -6,8 +6,8 @@ export async function GET() {
   try {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT u.id, u.fullName 
-       FROM User u
-       JOIN Role r ON u.roleId = r.id
+       FROM user u
+       JOIN role r ON u.roleId = r.id
        WHERE r.name = 'teacher' AND u.status = 'active'
        ORDER BY u.fullName`
     );

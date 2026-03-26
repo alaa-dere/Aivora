@@ -4,14 +4,14 @@ CREATE DATABASE IF NOT EXISTS aivora_db
 
 USE aivora_db;
 
--- جدول Role
-CREATE TABLE IF NOT EXISTS Role (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ role
+CREATE TABLE IF NOT EXISTS role (
     id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     name        VARCHAR(191) UNIQUE NOT NULL COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB;
 
--- جدول User
-CREATE TABLE IF NOT EXISTS User (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ user
+CREATE TABLE IF NOT EXISTS user (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     roleId          VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     fullName        VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS User (
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (roleId) REFERENCES Role(id) 
+    FOREIGN KEY (roleId) REFERENCES role(id) 
         ON DELETE RESTRICT ON UPDATE CASCADE,
     INDEX idx_roleId (roleId)
 ) ENGINE=InnoDB;
 
--- جدول Course
-CREATE TABLE IF NOT EXISTS Course (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ course
+CREATE TABLE IF NOT EXISTS course (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     title           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
     description     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -36,18 +36,18 @@ CREATE TABLE IF NOT EXISTS Course (
     teacherId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     price           DECIMAL(10,2) DEFAULT 0.00,
     teacherSharePct DECIMAL(5,2) DEFAULT 70.00 
-        COMMENT 'نسبة حصة المدرس من سعر الكورس (مثلاً 60 = 60%)',
+        COMMENT 'Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â© ÃƒËœÃ‚Â­ÃƒËœÃ‚ÂµÃƒËœÃ‚Â© ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â±ÃƒËœÃ‚Â³ Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã¢â‚¬Â  ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¹ÃƒËœÃ‚Â± ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã†â€™Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â±ÃƒËœÃ‚Â³ (Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â«Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â¹ 60 = 60%)',
     status          ENUM('draft', 'published', 'archived') DEFAULT 'draft',
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (teacherId) REFERENCES User(id) 
+    FOREIGN KEY (teacherId) REFERENCES user(id) 
         ON DELETE RESTRICT ON UPDATE CASCADE,
     INDEX idx_teacherId (teacherId)
 ) ENGINE=InnoDB;
 
--- جدول Module
-CREATE TABLE IF NOT EXISTS Module (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ module
+CREATE TABLE IF NOT EXISTS module (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     courseId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     title           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -56,14 +56,14 @@ CREATE TABLE IF NOT EXISTS Module (
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (courseId) REFERENCES Course(id) 
+    FOREIGN KEY (courseId) REFERENCES course(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY unique_order (courseId, orderNumber),
     INDEX idx_courseId (courseId)
 ) ENGINE=InnoDB;
 
--- جدول Lesson
-CREATE TABLE IF NOT EXISTS Lesson (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ lesson
+CREATE TABLE IF NOT EXISTS lesson (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     moduleId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     title           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -80,14 +80,14 @@ CREATE TABLE IF NOT EXISTS Lesson (
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (moduleId) REFERENCES Module(id) 
+    FOREIGN KEY (moduleId) REFERENCES module(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY unique_lesson_order (moduleId, orderNumber),
     INDEX idx_moduleId (moduleId)
 ) ENGINE=InnoDB;
 
--- جدول Enrollment
-CREATE TABLE IF NOT EXISTS Enrollment (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ enrollment
+CREATE TABLE IF NOT EXISTS enrollment (
     id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     studentId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     courseId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -96,17 +96,86 @@ CREATE TABLE IF NOT EXISTS Enrollment (
     progressPercentage  DECIMAL(5,2) DEFAULT 0.00,
     completedAt         DATETIME NULL,
 
-    FOREIGN KEY (studentId) REFERENCES User(id) 
+    FOREIGN KEY (studentId) REFERENCES user(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (courseId) REFERENCES Course(id) 
+    FOREIGN KEY (courseId) REFERENCES course(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY unique_enrollment (studentId, courseId),
     INDEX idx_studentId (studentId),
     INDEX idx_courseId  (courseId)
 ) ENGINE=InnoDB;
 
--- جدول LessonProgress
-CREATE TABLE IF NOT EXISTS LessonProgress (
+-- finance_transaction
+CREATE TABLE IF NOT EXISTS finance_transaction (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    transactionDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    type            ENUM('enrollment', 'refund', 'payout') DEFAULT 'enrollment',
+    status          ENUM('success', 'failed', 'pending') DEFAULT 'success',
+    amount          DECIMAL(10,2) NOT NULL,
+    currency        CHAR(3) DEFAULT 'USD',
+    studentId       VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    teacherId       VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    courseId        VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    teacherShare    DECIMAL(10,2) DEFAULT 0.00,
+    platformShare   DECIMAL(10,2) DEFAULT 0.00,
+    method          ENUM('wallet', 'card', 'cash') DEFAULT 'card',
+    notes           VARCHAR(255) COLLATE utf8mb4_unicode_ci,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_transactionDate (transactionDate),
+    INDEX idx_studentId (studentId),
+    INDEX idx_teacherId (teacherId),
+    INDEX idx_courseId (courseId),
+    INDEX idx_status (status),
+    INDEX idx_type (type)
+) ENGINE=InnoDB;
+
+-- finance_payout
+CREATE TABLE IF NOT EXISTS finance_payout (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    payoutDate  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    teacherId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    amount      DECIMAL(10,2) NOT NULL,
+    status      ENUM('success', 'failed', 'pending') DEFAULT 'pending',
+    method      ENUM('wallet', 'card', 'cash') DEFAULT 'wallet',
+    reference   VARCHAR(191) COLLATE utf8mb4_unicode_ci,
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_payoutDate (payoutDate),
+    INDEX idx_teacherId (teacherId),
+    INDEX idx_status (status)
+) ENGINE=InnoDB;
+
+-- admin_notification
+CREATE TABLE IF NOT EXISTS admin_notification (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    type        ENUM('student_signup', 'course_enroll') DEFAULT 'student_signup',
+    title       VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    message     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    studentId   VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    courseId    VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    readAt      DATETIME NULL,
+
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_createdAt (createdAt),
+    INDEX idx_readAt (readAt),
+    INDEX idx_type (type)
+) ENGINE=InnoDB;
+
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ lessonprogress
+CREATE TABLE IF NOT EXISTS lessonprogress (
     id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     enrollmentId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     lessonId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -115,30 +184,30 @@ CREATE TABLE IF NOT EXISTS LessonProgress (
     startedAt           DATETIME NULL,
     completedAt         DATETIME NULL,
 
-    FOREIGN KEY (enrollmentId) REFERENCES Enrollment(id) 
+    FOREIGN KEY (enrollmentId) REFERENCES enrollment(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (lessonId) REFERENCES Lesson(id) 
+    FOREIGN KEY (lessonId) REFERENCES lesson(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY unique_progress (enrollmentId, lessonId),
     INDEX idx_enrollmentId (enrollmentId),
     INDEX idx_lessonId     (lessonId)
 ) ENGINE=InnoDB;
 
--- جدول PasswordResetToken
-CREATE TABLE IF NOT EXISTS PasswordResetToken (
+-- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ passwordresettoken
+CREATE TABLE IF NOT EXISTS passwordresettoken (
     id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     userId      VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
     token       VARCHAR(255) NOT NULL UNIQUE COLLATE utf8mb4_unicode_ci,
     expiresAt   DATETIME NOT NULL,
     createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (userId) REFERENCES User(id) 
+    FOREIGN KEY (userId) REFERENCES user(id) 
         ON DELETE CASCADE ON UPDATE CASCADE,
     INDEX idx_token (token)
 ) ENGINE=InnoDB;
 
--- بيانات أولية (اختياري)
-INSERT IGNORE INTO Role (id, name) VALUES 
+-- ÃƒËœÃ‚Â¨Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â§ÃƒËœÃ‚Âª ÃƒËœÃ‚Â£Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â© (ÃƒËœÃ‚Â§ÃƒËœÃ‚Â®ÃƒËœÃ‚ÂªÃƒâ„¢Ã…Â ÃƒËœÃ‚Â§ÃƒËœÃ‚Â±Ãƒâ„¢Ã…Â )
+INSERT IGNORE INTO role (id, name) VALUES 
     (UUID(), 'admin'),
     (UUID(), 'teacher'),
     (UUID(), 'student');

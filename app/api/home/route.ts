@@ -14,9 +14,9 @@ export async function GET() {
         c.durationWeeks,
         u.fullName AS instructor,
         COUNT(e.id) AS studentsCount
-      FROM Course c
-      JOIN User u ON c.teacherId = u.id
-      LEFT JOIN Enrollment e ON e.courseId = c.id
+      FROM course c
+      JOIN user u ON c.teacherId = u.id
+      LEFT JOIN enrollment e ON e.courseId = c.id
       WHERE c.status = 'published'
       GROUP BY
         c.id,

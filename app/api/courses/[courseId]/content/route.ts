@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: Params) {
     const normalizedCourseId = decodeURIComponent(courseId).trim();
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, title FROM Course WHERE id = ? LIMIT 1`,
+      `SELECT id, title FROM course WHERE id = ? LIMIT 1`,
       [normalizedCourseId]
     );
 
@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: Params) {
     const [moduleRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT id, title, description, orderNumber
-      FROM Module
+      FROM module
       WHERE courseId = ?
       ORDER BY orderNumber ASC
       `,
@@ -58,7 +58,7 @@ export async function GET(_req: Request, { params }: Params) {
           type,
           enableLiveEditor,
           liveEditorLanguage
-        FROM Lesson
+        FROM lesson
         WHERE moduleId IN (${placeholders})
         ORDER BY orderNumber ASC
         `,

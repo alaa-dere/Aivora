@@ -1,108 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
-  Award,
   Bell,
-  BrainCircuit,
   CheckCircle,
-  FileText,
   Filter,
   Trash2,
   Users,
-  Video,
 } from "lucide-react";
 
-type NotificationType =
-  | "quiz_submission"
-  | "achievement"
-  | "live_session"
-  | "alert"
-  | "ai_suggestion"
-  | "assignment";
+type NotificationType = "student_signup" | "course_enroll";
 
 type NotificationItem = {
-  id: number;
+  id: string;
   type: NotificationType;
   title: string;
   message: string;
-  course: string;
   time: string;
   read: boolean;
 };
 
-const notifications: NotificationItem[] = [
-  {
-    id: 1,
-    type: "quiz_submission",
-    title: "New Quiz Submission",
-    message: "Ahmed Mohamed submitted 'Python OOP Quiz'",
-    course: "Advanced Python",
-    time: "5 minutes ago",
-    read: false,
-  },
-  {
-    id: 2,
-    type: "achievement",
-    title: "Student Achievement",
-    message: "Sara Khaled completed 100% of 'Web Development' course",
-    course: "Web Development",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: 3,
-    type: "live_session",
-    title: "Live Session in 30 minutes",
-    message: "Your session 'Python OOP Review' starts soon",
-    course: "Advanced Python",
-    time: "30 minutes from now",
-    read: true,
-  },
-  {
-    id: 4,
-    type: "alert",
-    title: "At-Risk Students Alert",
-    message: "5 students are struggling in 'Data Structures'",
-    course: "Data Structures",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: 5,
-    type: "ai_suggestion",
-    title: "AI Teaching Suggestion",
-    message: "Generate practice exercises for OOP concepts",
-    course: "Advanced Python",
-    time: "3 hours ago",
-    read: true,
-  },
-  {
-    id: 6,
-    type: "assignment",
-    title: "Assignment Grading Needed",
-    message: "12 assignments pending for review",
-    course: "AI Fundamentals",
-    time: "5 hours ago",
-    read: false,
-  },
-];
-
 function getTypeIcon(type: NotificationType) {
   switch (type) {
-    case "quiz_submission":
+    case "student_signup":
+      return <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    case "course_enroll":
       return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
-    case "achievement":
-      return <Award className="w-5 h-5 text-violet-600 dark:text-violet-400" />;
-    case "live_session":
-      return <Video className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
-    case "alert":
-      return <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />;
-    case "ai_suggestion":
-      return <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />;
-    case "assignment":
-      return <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
     default:
       return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
   }
@@ -110,18 +33,10 @@ function getTypeIcon(type: NotificationType) {
 
 function getTypeBg(type: NotificationType) {
   switch (type) {
-    case "quiz_submission":
-      return "bg-emerald-100 dark:bg-emerald-900/30";
-    case "achievement":
-      return "bg-violet-100 dark:bg-violet-900/30";
-    case "live_session":
+    case "student_signup":
       return "bg-blue-100 dark:bg-blue-900/30";
-    case "alert":
-      return "bg-red-100 dark:bg-red-900/30";
-    case "ai_suggestion":
-      return "bg-indigo-100 dark:bg-indigo-900/30";
-    case "assignment":
-      return "bg-amber-100 dark:bg-amber-900/30";
+    case "course_enroll":
+      return "bg-emerald-100 dark:bg-emerald-900/30";
     default:
       return "bg-gray-100 dark:bg-gray-700";
   }
@@ -129,18 +44,66 @@ function getTypeBg(type: NotificationType) {
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread" | "important">("all");
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const filteredNotifications = useMemo(() => {
     if (filter === "unread") {
-      return notifications.filter((n) => !n.read);
+      return items.filter((n) => !n.read);
     }
 
     if (filter === "important") {
-      return notifications.filter((n) => n.type === "alert" || n.type === "live_session");
+      return items.filter((n) => n.type === "course_enroll");
     }
 
-    return notifications;
-  }, [filter]);
+    return items;
+  }, [filter, items]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/admin/notifications', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        const mapped = (data.notifications || []).map((n: any) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          time: new Date(n.createdAt).toLocaleString(),
+          read: Boolean(n.readAt),
+        }));
+        setItems(mapped);
+      } catch (error) {
+        console.error('Failed to load notifications', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch(`/api/admin/notifications/${id}`, { method: "PATCH" });
+      setItems((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await fetch(`/api/admin/notifications/${id}`, { method: "DELETE" });
+      setItems((prev) => prev.filter((n) => n.id !== id));
+    } catch (error) {
+      console.error("Failed to delete notification", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -182,6 +145,14 @@ export default function NotificationsPage() {
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          {loading && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+          )}
+          {!loading && filteredNotifications.length === 0 && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
+              No notifications yet.
+            </div>
+          )}
           {filteredNotifications.map((notification) => (
             <div
               key={notification.id}
@@ -213,42 +184,25 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {notification.course}
-                    </span>
-                    <span className="text-gray-300 dark:text-gray-600">|</span>
                     <span>{notification.time}</span>
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-3">
-                    <button className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
-                      View Details
-                    </button>
-                    {notification.type === "quiz_submission" && (
-                      <button className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
-                        Grade Now
-                      </button>
-                    )}
-                    {notification.type === "live_session" && (
-                      <button className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors">
-                        Join Session
-                      </button>
-                    )}
-                    {notification.type === "alert" && (
-                      <button className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
-                        View Students
-                      </button>
-                    )}
-                    {notification.type === "ai_suggestion" && (
-                      <button className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
-                        Generate Content
+                    {!notification.read && (
+                      <button
+                        onClick={() => markAsRead(notification.id)}
+                        className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      >
+                        Mark as read
                       </button>
                     )}
                   </div>
                 </div>
 
-                <button className="h-fit p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                <button
+                  onClick={() => deleteNotification(notification.id)}
+                  className="h-fit p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
