@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: Params) {
     const id = decodeURIComponent(courseId).trim();
 
     const [enrollRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
+      `SELECT id FROM enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
       [id, user.id]
     );
     if (enrollRows.length === 0) {
@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: Params) {
     }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, title FROM Course WHERE id = ? LIMIT 1`,
+      `SELECT id, title FROM course WHERE id = ? LIMIT 1`,
       [id]
     );
     if (courseRows.length === 0) {
@@ -36,7 +36,7 @@ export async function GET(req: Request, { params }: Params) {
     const [moduleRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT id, title, description, orderNumber
-      FROM Module
+      FROM module
       WHERE courseId = ?
       ORDER BY orderNumber ASC
       `,
@@ -64,8 +64,8 @@ export async function GET(req: Request, { params }: Params) {
           l.enableLiveEditor,
           l.liveEditorLanguage,
           lp.completed AS completed
-        FROM Lesson l
-        LEFT JOIN LessonProgress lp 
+        FROM lesson l
+        LEFT JOIN lessonprogress lp 
           ON lp.lessonId = l.id AND lp.enrollmentId = ?
         WHERE l.moduleId IN (${placeholders}) AND l.isPublished = TRUE
         ORDER BY l.orderNumber ASC

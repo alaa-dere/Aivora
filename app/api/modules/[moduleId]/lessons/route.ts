@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [moduleRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Module WHERE id = ? LIMIT 1`,
+      `SELECT id FROM module WHERE id = ? LIMIT 1`,
       [normalizedModuleId]
     );
 
@@ -61,7 +61,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [orderRows] = await pool.query<RowDataPacket[]>(
-      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM Lesson WHERE moduleId = ?`,
+      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM lesson WHERE moduleId = ?`,
       [normalizedModuleId]
     );
     const nextOrder = Number(orderRows[0]?.maxOrder || 0) + 1;
@@ -71,7 +71,7 @@ export async function POST(req: Request, { params }: Params) {
 
     await pool.query<ResultSetHeader>(
       `
-      INSERT INTO Lesson
+      INSERT INTO lesson
         (id, moduleId, title, description, content, codeContent, videoUrl, orderNumber, durationMinutes, isPublished, type, enableLiveEditor, liveEditorLanguage, createdAt, updatedAt)
       VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())

@@ -84,7 +84,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const [result] = await pool.query<ResultSetHeader>(
       `
-      UPDATE Lesson
+      UPDATE lesson
       SET ${updates.join(', ')}, updatedAt = NOW()
       WHERE id = ?
       `,
@@ -114,7 +114,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     const normalizedLessonId = decodeURIComponent(lessonId).trim();
 
     const [result] = await pool.query<ResultSetHeader>(
-      `DELETE FROM Lesson WHERE id = ?`,
+      `DELETE FROM lesson WHERE id = ?`,
       [normalizedLessonId]
     );
 

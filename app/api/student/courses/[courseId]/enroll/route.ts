@@ -24,7 +24,12 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Course WHERE id = ? AND status = 'published' LIMIT 1`,
+      `
+      SELECT id, teacherId, price, teacherSharePct
+      FROM course
+      WHERE id = ? AND status = 'published'
+      LIMIT 1
+      `,
       [id]
     );
     if (courseRows.length === 0) {
@@ -32,7 +37,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [existingRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
+      `SELECT id FROM enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
       [id, user.id]
     );
 
@@ -45,13 +50,61 @@ export async function POST(req: Request, { params }: Params) {
 
     await pool.query<ResultSetHeader>(
       `
-      INSERT INTO Enrollment
+      INSERT INTO enrollment
         (id, studentId, courseId, enrolledAt, status, progressPercentage)
       VALUES
         (?, ?, ?, NOW(), 'enrolled', 0)
       `,
       [enrollmentId, user.id, id]
     );
+
+    const course = courseRows[0];
+    const price = Number(course.price || 0);
+    const pct = Number(course.teacherSharePct ?? 70);
+    const teacherShare = Number(((price * pct) / 100).toFixed(2));
+    const platformShare = Number((price - teacherShare).toFixed(2));
+    const method = ['wallet', 'card', 'cash'].includes(body?.method) ? body.method : 'card';
+
+    const [txIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+    const txId = txIdRows[0].id as string;
+
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT INTO finance_transaction
+        (id, transactionDate, type, status, amount, currency, studentId, teacherId, courseId, teacherShare, platformShare, method, notes, createdAt)
+      VALUES
+        (?, NOW(), 'enrollment', 'success', ?, 'USD', ?, ?, ?, ?, ?, ?, ?, NOW())
+      `,
+      [
+        txId,
+        price,
+        user.id,
+        course.teacherId,
+        id,
+        teacherShare,
+        platformShare,
+        method,
+        'Enrollment payment',
+      ]
+    );
+
+    const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+    const notifId = notifIdRows[0].id as string;
+    await pool.query(
+      `
+      INSERT INTO admin_notification
+        (id, type, title, message, studentId, courseId, createdAt)
+      VALUES
+        (?, 'course_enroll', 'New Enrollment', ?, ?, ?, NOW())
+      `,
+      [
+        notifId,
+        `Student enrolled in course ${id}.`,
+        user.id,
+        id,
+      ]
+    );
+
 
     return NextResponse.json({ success: true, enrollmentId }, { status: 201 });
   } catch (error: any) {

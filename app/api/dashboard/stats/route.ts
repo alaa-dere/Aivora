@@ -14,28 +14,28 @@ export async function GET() {
   try {
     const [studentsRows] = await db.query<CountRow[]>(
       `SELECT COUNT(*) AS total
-       FROM User u
-       JOIN Role r ON r.id = u.roleId
+       FROM user u
+       JOIN role r ON r.id = u.roleId
        WHERE r.name = 'student'`
     );
 
     const [teachersRows] = await db.query<CountRow[]>(
       `SELECT COUNT(*) AS total
-       FROM User u
-       JOIN Role r ON r.id = u.roleId
+       FROM user u
+       JOIN role r ON r.id = u.roleId
        WHERE r.name = 'teacher'`
     );
 
     const [coursesRows] = await db.query<CountRow[]>(
       `SELECT COUNT(*) AS total
-       FROM Course
+       FROM course
        WHERE status = 'published'`
     );
 
     const [revenueRows] = await db.query<RevenueRow[]>(
       `SELECT COALESCE(SUM(c.price), 0) AS totalRevenue
-       FROM Enrollment e
-       JOIN Course c ON c.id = e.courseId
+       FROM enrollment e
+       JOIN course c ON c.id = e.courseId
        WHERE e.status IN ('enrolled', 'in_progress', 'completed')
          AND MONTH(e.enrolledAt) = MONTH(CURRENT_DATE())
          AND YEAR(e.enrolledAt) = YEAR(CURRENT_DATE())`

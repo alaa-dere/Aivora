@@ -21,21 +21,21 @@ export async function GET(req: Request) {
         c.status,
         c.updatedAt,
         (
-          SELECT COUNT(*) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT COUNT(*) FROM enrollment e WHERE e.courseId = c.id
         ) AS students,
         (
-          SELECT COUNT(*) FROM Module m WHERE m.courseId = c.id
+          SELECT COUNT(*) FROM module m WHERE m.courseId = c.id
         ) AS modules,
         (
           SELECT COUNT(*) 
-          FROM Lesson l 
-          JOIN Module m2 ON m2.id = l.moduleId
+          FROM lesson l 
+          JOIN module m2 ON m2.id = l.moduleId
           WHERE m2.courseId = c.id
         ) AS lessons,
         (
-          SELECT AVG(e.progressPercentage) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT AVG(e.progressPercentage) FROM enrollment e WHERE e.courseId = c.id
         ) AS progress
-      FROM Course c
+      FROM course c
       WHERE c.teacherId = ?
       ORDER BY c.updatedAt DESC
       `,

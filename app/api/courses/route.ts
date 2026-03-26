@@ -22,11 +22,11 @@ export async function GET() {
         DATE_FORMAT(c.createdAt, '%Y-%m-%d') AS createdAt,
         (
           SELECT COUNT(*) 
-          FROM Enrollment 
+          FROM enrollment 
           WHERE courseId = c.id
         ) AS students
-      FROM Course c
-      JOIN User u ON c.teacherId = u.id
+      FROM course c
+      JOIN user u ON c.teacherId = u.id
       ORDER BY c.createdAt DESC
     `);
 
@@ -108,8 +108,8 @@ export async function POST(req: Request) {
     const [teacherCheck] = await pool.query<RowDataPacket[]>(
       `
       SELECT u.id
-      FROM User u
-      JOIN Role r ON u.roleId = r.id
+      FROM user u
+      JOIN role r ON u.roleId = r.id
       WHERE u.id = ? AND r.name = 'teacher'
       `,
       [teacherId]
@@ -154,7 +154,7 @@ export async function POST(req: Request) {
 
     await pool.query<OkPacket>(
       `
-      INSERT INTO Course
+      INSERT INTO course
         (id, title, description, imageUrl, durationWeeks, teacherId, price, teacherSharePct, status, createdAt, updatedAt)
       VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())

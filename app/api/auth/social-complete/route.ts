@@ -34,13 +34,13 @@ export async function POST(req: Request) {
     }
 
     const [rows] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM User WHERE email = ?",
+      "SELECT id FROM user WHERE email = ?",
       [targetEmail]
     );
 
     if (rows.length === 0) {
       const [roleRows] = await pool.query<RowDataPacket[]>(
-        "SELECT id FROM Role WHERE name = ? LIMIT 1",
+        "SELECT id FROM role WHERE name = ? LIMIT 1",
         ["student"]
       );
       if (roleRows.length === 0) {
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       );
 
       await pool.query(
-        `INSERT INTO User (id, roleId, fullName, email, passwordHash, status, createdAt, updatedAt)
+        `INSERT INTO user (id, roleId, fullName, email, passwordHash, status, createdAt, updatedAt)
          VALUES (UUID(), ?, ?, ?, ?, 'active', NOW(), NOW())`,
         [
           roleRows[0].id,
@@ -64,6 +64,29 @@ export async function POST(req: Request) {
           passwordHash,
         ]
       );
+
+      const [newUserRows] = await pool.query<RowDataPacket[]>(
+        "SELECT id, fullName FROM user WHERE email = ?",
+        [targetEmail]
+      );
+      if (newUserRows.length > 0) {
+        const newUser = newUserRows[0];
+        const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+        const notifId = notifIdRows[0].id as string;
+        await pool.query(
+          `
+          INSERT INTO admin_notification
+            (id, type, title, message, studentId, createdAt)
+          VALUES
+            (?, 'student_signup', 'New Student Account', ?, ?, NOW())
+          `,
+          [
+            notifId,
+            `${newUser.fullName} created a student account.`,
+            newUser.id,
+          ]
+        );
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -77,11 +100,11 @@ export async function POST(req: Request) {
     if (password?.trim()) {
       const passwordHash = await bcrypt.hash(String(password).trim(), 10);
       await pool.query(
-        "UPDATE User SET fullName = ?, passwordHash = ? WHERE email = ?",
+        "UPDATE user SET fullName = ?, passwordHash = ? WHERE email = ?",
         [fullName || session.user.name || "", passwordHash, targetEmail]
       );
     } else {
-      await pool.query("UPDATE User SET fullName = ? WHERE email = ?", [
+      await pool.query("UPDATE user SET fullName = ? WHERE email = ?", [
         fullName || session.user.name || "",
         targetEmail,
       ]);

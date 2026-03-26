@@ -1,12 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 import {
   SunIcon,
   MoonIcon,
-  AcademicCapIcon,
   MagnifyingGlassIcon,
   ArrowLeftIcon,
   ClockIcon,
@@ -118,10 +118,13 @@ export default function AllCoursesPage() {
         <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <Link href="/" className="flex items-center shrink-0">
-              <AcademicCapIcon className="w-8 h-8 text-blue-950 dark:text-blue-400 mr-2" />
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                Aivora
-              </h1>
+              <Image
+                src="/alaa.png"
+                alt="Aivora Logo"
+                width={100}
+                height={35}
+                className="h-7 w-auto dark:brightness-100 brightness-25"
+              />
             </Link>
 
             <div className="flex-1 min-w-[200px] max-w-md mx-4 order-3 md:order-none w-full md:w-auto mt-3 md:mt-0">
@@ -183,13 +186,13 @@ export default function AllCoursesPage() {
               No courses found matching your search.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filteredCourses.map((course) => (
                 <div
                   key={course.id}
                   className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                 >
-                  <div className="h-48 overflow-hidden">
+                  <div className="h-40 overflow-hidden">
                     <img
                       src={course.imageUrl || '/default-course.jpg'}
                       alt={course.title}
@@ -197,7 +200,7 @@ export default function AllCoursesPage() {
                     />
                   </div>
 
-                  <div className="p-5">
+                  <div className="p-4">
                     <p className="text-sm text-blue-200 mb-2 font-medium">
                       By {course.teacherName}
                     </p>
@@ -228,8 +231,8 @@ export default function AllCoursesPage() {
                       </span>
 
                       <Link
-                        href={`/courses/${course.id}`}
-                        className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                        href={`/Home/courses/${course.id}`}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
                       >
                         View Course
                       </Link>

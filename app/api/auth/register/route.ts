@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     
     const { fullName, email, password, role = "student" } = body;
 
-    // التحقق من المدخلات
+    // Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ù…Ø¯Ø®Ù„Ø§Øª
     if (!fullName || !email || !password) {
       return NextResponse.json(
         { message: "All fields are required" },
@@ -27,9 +27,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // التحقق من عدم وجود المستخدم مسبقاً
+    // Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø¹Ø¯Ù… ÙˆØ¬ÙˆØ¯ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ù…Ø³Ø¨Ù‚Ø§Ù‹
     const [existingUsers] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM User WHERE email = ?",
+      "SELECT id FROM user WHERE email = ?",
       [email]
     );
 
@@ -40,9 +40,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // الحصول على roleId للطالب
+    // Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ roleId Ù„Ù„Ø·Ø§Ù„Ø¨
     const [roleResult] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM Role WHERE name = ?",
+      "SELECT id FROM role WHERE name = ?",
       [role]
     );
 
@@ -55,21 +55,21 @@ export async function POST(req: Request) {
 
     const roleId = roleResult[0].id;
 
-    // تشفير كلمة المرور
+    // ØªØ´ÙÙŠØ± ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // إدراج المستخدم الجديد
+    // Ø¥Ø¯Ø±Ø§Ø¬ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø§Ù„Ø¬Ø¯ÙŠØ¯
     await pool.query(
-      `INSERT INTO User (id, roleId, fullName, email, passwordHash, status, createdAt, updatedAt)
+      `INSERT INTO user (id, roleId, fullName, email, passwordHash, status, createdAt, updatedAt)
        VALUES (UUID(), ?, ?, ?, ?, 'active', NOW(), NOW())`,
       [roleId, fullName, email, hashedPassword]
     );
 
-    // الحصول على المستخدم المضاف
+    // Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø§Ù„Ù…Ø¶Ø§Ù
     const [newUsers] = await pool.query<RowDataPacket[]>(
       `SELECT u.id, u.fullName, u.email, u.status, r.name as role
-       FROM User u
-       JOIN Role r ON u.roleId = r.id
+       FROM user u
+       JOIN role r ON u.roleId = r.id
        WHERE u.email = ?`,
       [email]
     );
@@ -80,7 +80,25 @@ export async function POST(req: Request) {
 
     const user = newUsers[0];
 
-    // إنشاء JWT token
+    if (user.role === "student") {
+      const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+      const notifId = notifIdRows[0].id as string;
+      await pool.query(
+        `
+        INSERT INTO admin_notification
+          (id, type, title, message, studentId, createdAt)
+        VALUES
+          (?, 'student_signup', 'New Student Account', ?, ?, NOW())
+        `,
+        [
+          notifId,
+          `${user.fullName} created a student account.`,
+          user.id,
+        ]
+      );
+    }
+
+    // Ø¥Ù†Ø´Ø§Ø¡ JWT token
     const token = jwt.sign(
       { 
         id: user.id, 
@@ -91,7 +109,7 @@ export async function POST(req: Request) {
       { expiresIn: "7d" }
     );
 
-    // تعيين الكوكيز
+    // ØªØ¹ÙŠÙŠÙ† Ø§Ù„ÙƒÙˆÙƒÙŠØ²
     (await cookies()).set({
       name: "aivora_session",
       value: token,

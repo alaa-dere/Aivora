@@ -13,6 +13,8 @@ export default function AuthPage() {
   const params = useSearchParams();
   const social = params.get("social");
   const oauth = params.get("oauth");
+  const nextParam = params.get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") ? nextParam : null;
   
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState("");
@@ -22,6 +24,17 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [success, setSuccess] = useState("");
+
+  const getRedirectTarget = (role?: string) => {
+    if (safeNext) return safeNext;
+    const routes: Record<string, string> = {
+      admin: "/dashboard",
+      teacher: "/teacher",
+      student: "/student",
+    };
+    const normalized = role?.toLowerCase() || "student";
+    return routes[normalized] || "/student";
+  };
 
   // معالجة بيانات OAuth عند العودة
 useEffect(() => {
@@ -77,13 +90,7 @@ useEffect(() => {
         }
 
         const role = data.role?.toLowerCase() || "student";
-        const routes: Record<string, string> = {
-          admin: "/dashboard",
-          teacher: "/teacher",
-          student: "/student",
-        };
-
-        router.push(routes[role] || "/student");
+        router.push(getRedirectTarget(role));
         router.refresh();
       })
       .catch(() => {
@@ -141,15 +148,9 @@ useEffect(() => {
 
         // بعد الإنشاء الناجح → توجه مباشرة (الجلسة موجودة بالفعل)
         const role = session.user.role?.toLowerCase() || "student";
-        const routes: Record<string, string> = {
-          admin: "/dashboard",
-          teacher: "/teacher",
-          student: "/student",
-        };
-
         setSuccess("Account created successfully. Redirecting...");
         window.setTimeout(() => {
-          router.push(routes[role] || "/");
+          router.push(getRedirectTarget(role));
           router.refresh();
         }, 900);
         return;
@@ -188,20 +189,24 @@ useEffect(() => {
         return;
       }
 
+      // Ensure legacy session cookie is set for middleware compatibility
+      try {
+        await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        });
+      } catch (err) {
+        console.error("Legacy login cookie set failed:", err);
+      }
+
       // جلب الجلسة الجديدة لمعرفة الدور
       const sessionRes = await fetch("/api/auth/session");
       const currentSession = await sessionRes.json();
       const role = currentSession?.user?.role?.toLowerCase() || "student";
-
-      const routes: Record<string, string> = {
-        admin: "/dashboard",
-        teacher: "/teacher",
-        student: "/student",
-      };
-
       setSuccess("Account created successfully. Redirecting...");
       window.setTimeout(() => {
-        router.push(routes[role] || "/");
+        router.push(getRedirectTarget(role));
         router.refresh();
       }, 900);
       return;
@@ -224,20 +229,24 @@ useEffect(() => {
       return;
     }
 
+    // Ensure legacy session cookie is set for middleware compatibility
+    try {
+      await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+      });
+    } catch (err) {
+      console.error("Legacy login cookie set failed:", err);
+    }
+
     // جلب الجلسة بعد تسجيل الدخول الناجح
     const sessionRes = await fetch("/api/auth/session");
     const currentSession = await sessionRes.json();
     const role = currentSession?.user?.role?.toLowerCase() || "student";
-
-    const routes: Record<string, string> = {
-      admin: "/dashboard",
-      teacher: "/teacher",
-      student: "/student",
-    };
-
     setSuccess("Login successful. Redirecting...");
     window.setTimeout(() => {
-      router.push(routes[role] || "/");
+      router.push(getRedirectTarget(role));
       router.refresh();
     }, 900);
   } catch (err) {
@@ -254,9 +263,10 @@ useEffect(() => {
     setLoading(true);
 
     try {
-      const callbackUrl = isLogin
+      const base = isLogin
         ? `${window.location.origin}/login?oauth=1`
         : `${window.location.origin}/login?social=true`;
+      const callbackUrl = safeNext ? `${base}&next=${encodeURIComponent(safeNext)}` : base;
 
       await signIn(providerName, {
         callbackUrl,

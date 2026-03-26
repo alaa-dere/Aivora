@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: Params) {
     console.log('Normalized courseId:', normalizedCourseId);
 
     const [basicRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, teacherId FROM Course WHERE id = ? LIMIT 1`,
+      `SELECT id, teacherId FROM course WHERE id = ? LIMIT 1`,
       [normalizedCourseId]
     );
 
@@ -47,11 +47,11 @@ export async function GET(_req: Request, { params }: Params) {
         DATE_FORMAT(c.createdAt, '%Y-%m-%d') AS createdAt,
         (
           SELECT COUNT(*) 
-          FROM Enrollment 
+          FROM enrollment 
           WHERE courseId = c.id
         ) AS students
-      FROM Course c
-      LEFT JOIN User u ON c.teacherId = u.id
+      FROM course c
+      LEFT JOIN user u ON c.teacherId = u.id
       WHERE c.id = ?
       LIMIT 1
       `,
@@ -117,7 +117,7 @@ export async function PATCH(req: Request, { params }: Params) {
     const imageFile = formData.get('image') as File | null;
 
     const [existingRows] = await pool.query<RowDataPacket[]>(
-      `SELECT imageUrl FROM Course WHERE id = ?`,
+      `SELECT imageUrl FROM course WHERE id = ?`,
       [id]
     );
 
@@ -144,8 +144,8 @@ export async function PATCH(req: Request, { params }: Params) {
       const [teacherCheck] = await pool.query<RowDataPacket[]>(
         `
         SELECT u.id
-        FROM User u
-        JOIN Role r ON u.roleId = r.id
+        FROM user u
+        JOIN role r ON u.roleId = r.id
         WHERE u.id = ? AND r.name = 'teacher'
         `,
         [teacherId]
@@ -256,7 +256,7 @@ export async function PATCH(req: Request, { params }: Params) {
     values.push(id);
 
     const query = `
-      UPDATE Course
+      UPDATE course
       SET ${updates.join(', ')}, updatedAt = NOW()
       WHERE id = ?
     `;
@@ -293,7 +293,7 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   try {
     const [existingRows] = await pool.query<RowDataPacket[]>(
-      `SELECT imageUrl FROM Course WHERE id = ?`,
+      `SELECT imageUrl FROM course WHERE id = ?`,
       [id]
     );
 
@@ -304,7 +304,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     const imageUrl = existingRows[0].imageUrl as string | null;
 
     const [result] = await pool.query<ResultSetHeader>(
-      'DELETE FROM Course WHERE id = ?',
+      'DELETE FROM course WHERE id = ?',
       [id]
     );
 

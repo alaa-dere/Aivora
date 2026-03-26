@@ -17,8 +17,8 @@ export async function GET(req: Request) {
         c.title,
         c.description,
         e.progressPercentage AS progress
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
       WHERE e.studentId = ?
       ORDER BY e.enrolledAt DESC
       `,
