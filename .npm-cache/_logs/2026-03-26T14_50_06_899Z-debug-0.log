@@ -1,0 +1,37 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.8.0
+2 info using node@v24.13.1
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\jihad\lms-project\Aivora\.npmrc
+5 silly config load:file:C:\Users\jihad\.npmrc
+6 silly config load:file:C:\Users\jihad\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec create-expo-app Aivora-mobile --template blank
+8 verbose argv "exec" "--" "create-expo-app" "Aivora-mobile" "--template" "blank"
+9 verbose logfile logs-max:10 dir:C:\Users\jihad\lms-project\Aivora\.npm-cache\_logs\2026-03-26T14_50_06_899Z-
+10 verbose logfile C:\Users\jihad\lms-project\Aivora\.npm-cache\_logs\2026-03-26T14_50_06_899Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 http fetch GET 200 https://registry.npmjs.org/create-expo-app 742ms (cache miss)
+14 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+15 verbose Could not read global path C:\Users\jihad\AppData\Roaming\npm, ignoring
+16 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+17 warn exec The following package was not found and will be installed: create-expo-app@3.5.3
+18 silly idealTree buildDeps
+19 silly fetch manifest create-expo-app@3.5.3
+20 silly packumentCache full:https://registry.npmjs.org/create-expo-app cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/create-expo-app 340ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/create-expo-app set size:undefined disposed:false
+23 silly placeDep ROOT create-expo-app@3.5.3 OK for:  want: 3.5.3
+24 silly reify moves {}
+25 silly audit bulk request { 'create-expo-app': [ '3.5.3' ] }
+26 http cache create-expo-app@https://registry.npmjs.org/create-expo-app/-/create-expo-app-3.5.3.tgz 0ms (cache hit)
+27 silly tarball no local data for create-expo-app@https://registry.npmjs.org/create-expo-app/-/create-expo-app-3.5.3.tgz. Extracting by manifest.
+28 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 273ms
+29 silly audit report {}
+30 http fetch GET 200 https://registry.npmjs.org/create-expo-app/-/create-expo-app-3.5.3.tgz 482ms (cache miss)
+31 verbose cwd C:\Users\jihad\lms-project\Aivora
+32 verbose os Windows_NT 10.0.19045
+33 verbose node v24.13.1
+34 verbose npm  v11.8.0
+35 verbose exit 0
+36 info ok
