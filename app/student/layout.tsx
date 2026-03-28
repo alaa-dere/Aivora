@@ -2,22 +2,23 @@
 'use client';
 import Image from "next/image";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
 import { 
   Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
-  Sun, Moon, X
+  Sun, Moon, X, MessageSquare
 } from "lucide-react";
 import {
   HomeIcon,
+  ChartBarIcon,
   BookOpenIcon,
   PlayCircleIcon,
   AcademicCapIcon,
   CreditCardIcon,
-  SparklesIcon,
+  TrophyIcon,
   Bars3Icon,
   XMarkIcon,
   UserCircleIcon,
@@ -28,11 +29,15 @@ import {
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Dashboard', href: '/student', icon: HomeIcon },
+  { name: 'Home', href: '/Home', icon: HomeIcon },
+  { name: 'Dashboard', href: '/student', icon: ChartBarIcon },
   { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
   { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
-  { name: 'Wallet & Payments', href: '/student/wallet', icon: CreditCardIcon },
+  { name: 'Certificate Quizzes', href: '/student/certificate-quizzes', icon: ClipboardDocumentCheckIcon },
+  { name: 'Chat', href: '/student/chat', icon: MessageSquare },
+  { name: 'Leaderboard', href: '/student/leaderboard', icon: TrophyIcon },
+  { name: 'Profile', href: '/student/profile', icon: UserCircleIcon },
 ];
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +45,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const [profile, setProfile] = useState<{ fullName: string; email: string; imageUrl?: string | null } | null>(null);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
@@ -55,6 +61,35 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     console.error('Logout failed:', error);
   }
 };
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/student/profile', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && mounted) {
+          setProfile({
+            fullName: data?.student?.fullName || 'Student User',
+            email: data?.student?.email || 'student@aivora.com',
+            imageUrl: data?.student?.imageUrl || null,
+          });
+        }
+      } catch {
+        if (mounted) {
+          setProfile({
+            fullName: 'Student User',
+            email: 'student@aivora.com',
+            imageUrl: null,
+          });
+        }
+      }
+    }
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header - نفس ستايل الأدمن */}
@@ -96,6 +131,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <Bell className="w-5 h-5 text-white" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
           </button> 
+
+          <Link
+            href="/student/chat"
+            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Messages"
+          >
+            <MessageSquare className="w-5 h-5 text-white" />
+          </Link>
           
           <button
             onClick={handleLogout}
@@ -111,23 +154,28 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl
+            fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             w-64
           `}
         >
           <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950">
               <div className="flex items-center">
-                <AcademicCapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Aivora</span>
+                <Image
+                  src="/alaa.png"
+                  alt="Aivora Logo"
+                  width={100}
+                  height={30}
+                  className="object-contain"
+                />
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="p-1 rounded-lg hover:bg-blue-900/50"
               >
-                <XMarkIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                <XMarkIcon className="w-6 h-6 text-white" />
               </button>
             </div>
 
@@ -157,13 +205,31 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </nav>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center">
-                <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Student User</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">student@aivora.com</p>
+              <Link
+                href="/student/profile"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center">
+                  {profile?.imageUrl ? (
+                    <img
+                      src={profile.imageUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  )}
                 </div>
-              </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {profile?.fullName || 'Student User'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {profile?.email || 'student@aivora.com'}
+                  </p>
+                </div>
+              </Link>
             </div>
           </div>
         </aside>

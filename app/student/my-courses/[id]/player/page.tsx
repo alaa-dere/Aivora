@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import LivePythonEditor from '@/components/live-python-editor';
@@ -30,6 +30,7 @@ type Module = {
 export default function CoursePlayerPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const requestedLessonId = searchParams.get('lesson');
   const [modules, setModules] = useState<Module[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
@@ -37,6 +38,7 @@ export default function CoursePlayerPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
+  const [showCertPrompt, setShowCertPrompt] = useState(false);
 
   const allLessons = useMemo(
     () => modules.flatMap((m) => m.lessons),
@@ -77,6 +79,23 @@ export default function CoursePlayerPage() {
   const selectedIndex = allLessons.findIndex((l) => l.id === selectedLessonId);
   const prevLesson = selectedIndex > 0 ? allLessons[selectedIndex - 1] : null;
   const nextLesson = selectedIndex >= 0 && selectedIndex < allLessons.length - 1 ? allLessons[selectedIndex + 1] : null;
+
+  useEffect(() => {
+    if (!selectedLessonId || !params.id) return;
+    const startLesson = async () => {
+      try {
+        await fetch(`/api/student/my-courses/${params.id}/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId: selectedLessonId, event: 'start' }),
+        });
+      } catch {
+        // best-effort tracking; ignore
+      }
+    };
+
+    startLesson();
+  }, [params.id, selectedLessonId]);
 
   const parseLessonContent = (content: string) => {
     const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
@@ -140,6 +159,9 @@ export default function CoursePlayerPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update progress');
+      if (data?.needsCertificateChoice) {
+        setShowCertPrompt(true);
+      }
       const contentRes = await fetch(`/api/student/my-courses/${params.id}/content`, { cache: 'no-store' });
       const contentData = await contentRes.json();
       if (contentRes.ok) {
@@ -304,6 +326,41 @@ export default function CoursePlayerPage() {
               <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 p-3 text-xs text-blue-700 dark:text-blue-200">
                 Ask questions about the lesson, get hints, and review explanations.
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCertPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+              You completed all lessons
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              You must complete the quiz to unlock your certificate.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setShowCertPrompt(false);
+                  router.push(`/student/my-courses/${params.id}/quizzes`);
+                }}
+                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+              >
+                Take Quiz Now
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCertPrompt(false);
+                  router.push('/student/certificate-quizzes');
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+              >
+                Not Now
+              </button>
             </div>
           </div>
         </div>

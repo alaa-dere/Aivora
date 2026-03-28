@@ -48,15 +48,32 @@ export async function GET(req: Request) {
     // Study time: last 7 days from completed lessons (minutes)
     const [studyRows] = await pool.query<RowDataPacket[]>(
       `
-      SELECT 
-        DATE(lp.completedAt) AS day,
-        COALESCE(SUM(l.durationMinutes), 0) AS minutes
+      SELECT
+        DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d') AS day,
+        COALESCE(
+          SUM(
+            GREATEST(
+              TIMESTAMPDIFF(
+                MINUTE,
+                lp.startedAt,
+                CASE
+                  WHEN lp.completed = 1 AND lp.completedAt IS NOT NULL THEN lp.completedAt
+                  ELSE NOW()
+                END
+              ),
+              0
+            )
+          ),
+          0
+        ) AS minutes
       FROM lessonprogress lp
       JOIN lesson l ON l.id = lp.lessonId
       JOIN enrollment e ON e.id = lp.enrollmentId
-      WHERE e.studentId = ? AND lp.completedAt >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-      GROUP BY DATE(lp.completedAt)
-      ORDER BY DATE(lp.completedAt)
+      WHERE e.studentId = ?
+        AND lp.startedAt IS NOT NULL
+        AND COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d')
+      ORDER BY DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d')
       `,
       [user.id]
     );
@@ -66,7 +83,7 @@ export async function GET(req: Request) {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = d.toLocaleDateString('en-CA'); // YYYY-MM-DD in server local time
       const match = studyRows.find((r: any) => String(r.day) === key);
       last7.push({
         day: days[d.getDay()],

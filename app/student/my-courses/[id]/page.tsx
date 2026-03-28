@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { LockClosedIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { LockClosedIcon, PlayCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 type Lesson = {
   id: string;
@@ -24,6 +24,9 @@ export default function StudentCourseOverviewPage() {
   const params = useParams<{ id: string }>();
   const [modules, setModules] = useState<Module[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
+  const [courseProgress, setCourseProgress] = useState(0);
+  const [courseStatus, setCourseStatus] = useState<string>('');
+  const [certificateId, setCertificateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +41,9 @@ export default function StudentCourseOverviewPage() {
         }
         setModules(data.modules || []);
         setCourseTitle(data.course?.title || '');
+        setCourseProgress(Number(data.course?.progressPercentage || 0));
+        setCourseStatus(String(data.course?.status || ''));
+        setCertificateId(data.course?.certificateId || null);
       } catch (err: any) {
         setError(err.message || 'Failed to load course content');
       } finally {
@@ -58,6 +64,13 @@ export default function StudentCourseOverviewPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <style jsx global>{`
+        @keyframes aivora-celebrate {
+          0% { transform: scale(0.98); opacity: 0.9; }
+          50% { transform: scale(1.02); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           {courseTitle || 'Course Overview'}
@@ -71,6 +84,21 @@ export default function StudentCourseOverviewPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
+            {(courseProgress >= 100 || courseStatus === 'completed') && (
+              <div
+                className="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 shadow-sm"
+                style={{ animation: 'aivora-celebrate 1.2s ease-out' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <SparklesIcon className="w-5 h-5 text-white" />
+                  <p className="text-sm font-semibold">Congratulations!</p>
+                </div>
+                <p className="text-lg font-bold">You completed this course.</p>
+                <p className="text-sm text-blue-100 mt-1">
+                  Your Aivora certificate is ready below.
+                </p>
+              </div>
+            )}
             {modules.map((module) => (
               <div key={module.id} className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{module.title}</h2>
@@ -130,6 +158,30 @@ export default function StudentCourseOverviewPage() {
                 </Link>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">No unlocked lessons yet.</p>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Certificate
+              </h3>
+              {courseProgress >= 100 || courseStatus === 'completed' ? (
+                certificateId ? (
+                  <Link
+                    href={`/student/certificates/${certificateId}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                  >
+                    Get Certificate
+                  </Link>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Your certificate is being prepared. Please check back soon.
+                  </p>
+                )
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Complete the course to unlock your certificate.
+                </p>
               )}
             </div>
           </div>

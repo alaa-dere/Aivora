@@ -69,13 +69,6 @@ export default function MyCoursesPage() {
               >
                 Open Course <ArrowRightIcon className="w-4 h-4" />
               </Link>
-
-              <Link
-                href={`/student/my-courses/${c.id}/quizzes`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
-              >
-                Quizzes
-              </Link>
             </div>
           </div>
         ))}

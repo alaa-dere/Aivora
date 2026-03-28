@@ -18,12 +18,18 @@ export async function GET(req: Request, { params }: Params) {
     const id = decodeURIComponent(courseId).trim();
 
     const [enrollRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
+      `
+      SELECT id, progressPercentage, status
+      FROM enrollment
+      WHERE courseId = ? AND studentId = ?
+      LIMIT 1
+      `,
       [id, user.id]
     );
     if (enrollRows.length === 0) {
       return NextResponse.json({ message: 'Enrollment required' }, { status: 403 });
     }
+    const enrollment = enrollRows[0];
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
       `SELECT id, title FROM course WHERE id = ? LIMIT 1`,
@@ -117,10 +123,19 @@ export async function GET(req: Request, { params }: Params) {
       })),
     }));
 
+    const [certRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id FROM certificate WHERE studentId = ? AND courseId = ? LIMIT 1`,
+      [user.id, id]
+    );
+    const certificateId = certRows[0]?.id as string | undefined;
+
     return NextResponse.json({
       course: {
         id: courseRows[0].id,
         title: courseRows[0].title,
+        progressPercentage: Number(enrollment.progressPercentage || 0),
+        status: enrollment.status,
+        certificateId: certificateId || null,
       },
       modules,
     });

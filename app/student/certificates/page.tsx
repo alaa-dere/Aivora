@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AcademicCapIcon,
   ArrowRightIcon,
@@ -15,15 +16,52 @@ type CertificateItem = {
   progress?: number; // for locked
 };
 
-const certificates: CertificateItem[] = [
-  { id: 'cert1', courseTitle: 'HTML & CSS', issuedAt: '2026-02-10', status: 'ready' },
-  { id: 'cert2', courseTitle: 'Git Fundamentals', issuedAt: '2026-02-15', status: 'ready' },
-  { id: 'cert3', courseTitle: 'React Basics', issuedAt: '-', status: 'locked', progress: 72 },
-];
-
 export default function CertificatesPage() {
-  const ready = certificates.filter((c) => c.status === 'ready');
-  const locked = certificates.filter((c) => c.status === 'locked');
+  const [items, setItems] = useState<CertificateItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        setLoading(true);
+        setError('');
+        const res = await fetch('/api/student/certificates', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load certificates');
+        }
+        if (mounted) {
+          setItems([...(data.ready || []), ...(data.locked || [])]);
+        }
+      } catch (err: any) {
+        if (mounted) {
+          setError(err?.message || 'Failed to load certificates');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const ready = useMemo(() => items.filter((c) => c.status === 'ready'), [items]);
+  const locked = useMemo(() => items.filter((c) => c.status === 'locked'), [items]);
+
+  const formatDate = (value?: string) => {
+    if (!value || value === '-') return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-US');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -41,7 +79,11 @@ export default function CertificatesPage() {
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ready</h2>
         </div>
 
-        {ready.length === 0 ? (
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading certificates...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : ready.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No certificates ready yet.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -56,7 +98,7 @@ export default function CertificatesPage() {
                     <div>
                       <p className="font-semibold text-gray-800 dark:text-white">{c.courseTitle}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Issued: {c.issuedAt}
+                        Issued: {formatDate(c.issuedAt)}
                       </p>
                     </div>
                   </div>
@@ -84,7 +126,11 @@ export default function CertificatesPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Locked</h2>
 
-        {locked.length === 0 ? (
+        {loading ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading certificates...</p>
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : locked.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No locked certificates.</p>
         ) : (
           <div className="space-y-3">

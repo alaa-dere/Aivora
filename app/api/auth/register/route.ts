@@ -81,21 +81,29 @@ export async function POST(req: Request) {
     const user = newUsers[0];
 
     if (user.role === "student") {
-      const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
-      const notifId = notifIdRows[0].id as string;
-      await pool.query(
-        `
-        INSERT INTO admin_notification
-          (id, type, title, message, studentId, createdAt)
-        VALUES
-          (?, 'student_signup', 'New Student Account', ?, ?, NOW())
-        `,
-        [
-          notifId,
-          `${user.fullName} created a student account.`,
-          user.id,
-        ]
-      );
+      try {
+        const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+        const notifId = notifIdRows[0].id as string;
+        await pool.query(
+          `
+          INSERT INTO admin_notification
+            (id, type, title, message, studentId, createdAt)
+          VALUES
+            (?, 'student_signup', 'New Student Account', ?, ?, NOW())
+          `,
+          [
+            notifId,
+            `${user.fullName} created a student account.`,
+            user.id,
+          ]
+        );
+      } catch (notifError: any) {
+        if (notifError?.code === "ER_NO_SUCH_TABLE") {
+          console.warn("admin_notification table missing; skipping admin notification insert.");
+        } else {
+          throw notifError;
+        }
+      }
     }
 
     // Ø¥Ù†Ø´Ø§Ø¡ JWT token
