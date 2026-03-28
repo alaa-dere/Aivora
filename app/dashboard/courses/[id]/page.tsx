@@ -30,32 +30,29 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         {/* Header with title and actions */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {course.title}
-          </h1>
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{course.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Course overview and key details.
+            </p>
+          </div>
           <div className="flex gap-3">
             <a
               href={`/dashboard/courses/${course.id}/edit`}
-              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
             >
               Edit
-            </a>
-            <a
-              href="/dashboard/courses"
-              className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              Back to List
             </a>
           </div>
         </div>
 
         {/* Cover Image */}
         {course.imageUrl && (
-          <div className="mb-8 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="mb-8 rounded-2xl overflow-hidden shadow-sm border border-blue-200 dark:border-blue-800">
             <img
               src={course.imageUrl}
               alt={`${course.title} cover`}
@@ -67,7 +64,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         <div className="grid md:grid-cols-3 gap-8">
           {/* Main Content - Description */}
           <div className="md:col-span-2 space-y-6">
-            <section>
+            <section className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
               <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
                 Description
               </h2>
@@ -81,7 +78,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
           {/* Sidebar - General Info */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
               <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">
                 General Information
               </h3>
@@ -118,12 +115,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                   <dt className="text-gray-500 dark:text-gray-400">Status</dt>
                   <dd>
                     <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${
                         course.status === 'published'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
                           : course.status === 'archived'
-                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                          ? 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
+                          : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
                       }`}
                     >
                       {course.status === 'published'
@@ -135,16 +132,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
                   </dd>
                 </div>
 
-                <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Created At</dt>
-                  <dd className="font-medium text-gray-900 dark:text-gray-200">
-                    {new Date(course.createdAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </dd>
-                </div>
               </dl>
             </div>
           </div>

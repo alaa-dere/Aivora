@@ -44,6 +44,7 @@ export default function AdminTeachersPage() {
   // Delete modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState<TeacherRow | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     async function fetchTeachers() {
@@ -103,6 +104,7 @@ export default function AdminTeachersPage() {
   // Open delete modal
   function openDeleteModal(teacher: TeacherRow) {
     setTeacherToDelete(teacher);
+    setDeleteError('');
     setIsDeleteModalOpen(true);
   }
 
@@ -178,7 +180,9 @@ export default function AdminTeachersPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.message || 'Failed to delete teacher');
+        setDeleteError(
+          data.message || 'Failed to delete teacher. Please reassign any courses and try again.'
+        );
         return;
       }
 
@@ -186,8 +190,9 @@ export default function AdminTeachersPage() {
 
       setIsDeleteModalOpen(false);
       setTeacherToDelete(null);
+      setDeleteError('');
     } catch (err) {
-      alert('Server connection error');
+      setDeleteError('Server connection error. Please try again.');
     }
   }
 
@@ -197,6 +202,9 @@ export default function AdminTeachersPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Teachers</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage teacher accounts, status, and access.
+          </p>
         </div>
 
         <button
@@ -452,7 +460,10 @@ export default function AdminTeachersPage() {
             <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Confirm Delete</h2>
               <button
-                onClick={() => setIsDeleteModalOpen(false)}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteError('');
+                }}
                 className="text-white hover:text-gray-200 transition"
               >
                 <XMarkIcon className="w-6 h-6" />
@@ -460,12 +471,20 @@ export default function AdminTeachersPage() {
             </div>
 
             <div className="p-6 space-y-6">
+              {deleteError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                  {deleteError}
+                </div>
+              )}
               <p className="text-gray-700 dark:text-gray-300 text-center">
                 Are you sure you want to delete <strong>{teacherToDelete.fullName}</strong>?
               </p>
               <div className="flex justify-end gap-4">
                 <button
-                  onClick={() => setIsDeleteModalOpen(false)}
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteError('');
+                  }}
                   className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   Cancel

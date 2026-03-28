@@ -11,6 +11,99 @@ export async function GET(req: Request) {
 
   try {
     const teacherId = user.id;
+    const { searchParams } = new URL(req.url);
+    const notifications = searchParams.get('notifications');
+
+    if (notifications) {
+      if (notifications === 'count') {
+        const [countRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM enrollment e
+          JOIN course c ON c.id = e.courseId
+          WHERE c.teacherId = ?
+            AND e.enrolledAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          `,
+          [teacherId]
+        );
+        const [messageRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM admin_teacher_message m
+          JOIN admin_teacher_thread t ON t.id = m.threadId
+          WHERE t.teacherId = ?
+            AND m.senderRole = 'admin'
+            AND m.readAt IS NULL
+          `,
+          [teacherId]
+        );
+
+        const enrollmentCount = Number(countRows[0]?.total || 0);
+        const messageCount = Number(messageRows[0]?.total || 0);
+        return NextResponse.json({ total: enrollmentCount + messageCount });
+      }
+
+      const limit = notifications === 'all' ? 100 : 5;
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          e.id,
+          e.enrolledAt,
+          s.fullName AS studentName,
+          c.title AS courseTitle
+        FROM enrollment e
+        JOIN course c ON c.id = e.courseId
+        JOIN user s ON s.id = e.studentId
+        WHERE c.teacherId = ?
+        ORDER BY e.enrolledAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+
+      const [adminMessageRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          m.id,
+          m.body,
+          m.createdAt,
+          m.readAt,
+          u.fullName AS adminName
+        FROM admin_teacher_message m
+        JOIN admin_teacher_thread t ON t.id = m.threadId
+        JOIN user u ON u.id = t.adminId
+        WHERE t.teacherId = ?
+          AND m.senderRole = 'admin'
+        ORDER BY m.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+
+      const enrollmentItems = rows.map((row) => ({
+        id: row.id,
+        type: 'course_enroll',
+        title: 'New enrollment',
+        message: `${row.studentName} enrolled in ${row.courseTitle}`,
+        createdAt: row.enrolledAt,
+        read: false,
+      }));
+
+      const messageItems = adminMessageRows.map((row) => ({
+        id: row.id,
+        type: 'admin_message',
+        title: `Message from ${row.adminName || 'Admin'}`,
+        message: row.body,
+        createdAt: row.createdAt,
+        read: Boolean(row.readAt),
+      }));
+
+      const items = [...enrollmentItems, ...messageItems]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, limit);
+
+      return NextResponse.json({ notifications: items });
+    }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
       `

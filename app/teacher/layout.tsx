@@ -8,15 +8,16 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { Bell } from 'lucide-react';
 import {
   HomeIcon,
   BookOpenIcon,
   UsersIcon,
   VideoCameraIcon,
   BellIcon,
+  ChatBubbleLeftRightIcon,
   Bars3Icon,
   XMarkIcon,
-  AcademicCapIcon,
   ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
@@ -29,11 +30,18 @@ const menuItems = [
   { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
   { href: '/teacher/students', name: 'Students', icon: UsersIcon },
   { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
+  { href: '/teacher/messages', name: 'Messages', icon: ChatBubbleLeftRightIcon },
+  { href: '/teacher/notifications', name: 'Notifications', icon: BellIcon },
 ];
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationItems, setNotificationItems] = useState<
+    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+  >([]);
   const { theme, setTheme } = useTheme();
 
   // لتجنب مشكلة hydration مع الثيم
@@ -44,6 +52,47 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadCount = async () => {
+      try {
+        const res = await fetch('/api/teacher/dashboard?notifications=count', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        if (mounted) setNotificationCount(Number(data.total || 0));
+      } catch (error) {
+        console.error('Failed to load teacher notification count', error);
+      }
+    };
+
+    loadCount();
+    const id = setInterval(loadCount, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      const res = await fetch('/api/teacher/dashboard?notifications=1', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) return;
+      const items = (data.notifications || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        createdAt: n.createdAt,
+        read: Boolean(n.read),
+      }));
+      setNotificationItems(items);
+    } catch (error) {
+      console.error('Failed to load teacher notifications', error);
+    }
   };
 const router = useRouter();
 
@@ -102,10 +151,68 @@ const handleLogout = async () => {
           </button>
 
           {/* Notifications */}
-          <button className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
-            <BellIcon className="w-5 h-5 text-white" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                const next = !notificationOpen;
+                setNotificationOpen(next);
+                if (next) loadNotifications();
+              }}
+              className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Bell className="w-5 h-5 text-white" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+
+            {notificationOpen && (
+              <div className="absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Notifications
+                  </p>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {notificationItems.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    notificationItems.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {n.message}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                  <Link
+                    href="/teacher/notifications"
+                    onClick={() => setNotificationOpen(false)}
+                    className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                  >
+                    View all notifications
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Logout */}
           <button
@@ -123,7 +230,7 @@ const handleLogout = async () => {
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-xl
+            fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             w-64
@@ -131,38 +238,43 @@ const handleLogout = async () => {
         >
           <div className="h-full flex flex-col">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950">
               <div className="flex items-center">
-                <AcademicCapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Aivora</span>
+                <Image
+                  src="/alaa.png"
+                  alt="Aivora Logo"
+                  width={100}
+                  height={30}
+                  className="object-contain"
+                />
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="p-1 rounded-lg hover:bg-blue-900/50"
               >
-                <XMarkIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                <XMarkIcon className="w-6 h-6 text-white" />
               </button>
             </div>
 
             {/* Navigation */}
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href;
+                const active = isActive(item.href);
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
+                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                      active
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
                     <Icon
                       className={`w-5 h-5 mr-3 flex-shrink-0 ${
-                        isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                        active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
                       }`}
                     />
                     <span>{item.name}</span>
@@ -172,7 +284,7 @@ const handleLogout = async () => {
             </nav>
 
             {/* Teacher Info */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
                   S

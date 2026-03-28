@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   AcademicCapIcon,
@@ -65,7 +66,7 @@ type TeacherTransaction = {
   id: string;
   date: string;
   dateTime: string;
-  type: 'enrollment' | 'refund' | 'payout';
+  type: 'enrollment' | 'refund';
   status: 'success' | 'failed' | 'pending';
   amount: number;
   currency: string;
@@ -191,6 +192,12 @@ export default function TeacherProfilePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/teachers"
+              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+            >
+              Back to all teachers
+            </Link>
             <span
               className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
                 data?.teacher.status === 'inactive'
@@ -356,56 +363,64 @@ export default function TeacherProfilePage() {
 
           {tab === 'students' && (
             <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
-                    <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Student</th>
-                      <th className="px-4 py-3 font-medium">Course</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Progress</th>
-                      <th className="px-4 py-3 font-medium">Enrolled</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {data.students.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
-                          No students enrolled yet.
-                        </td>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Students List{' '}
+                    <span className="text-gray-400 font-normal">({data.students.length})</span>
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
+                      <tr className="text-left">
+                        <th className="px-4 py-3 font-medium">Student</th>
+                        <th className="px-4 py-3 font-medium">Course</th>
+                        <th className="px-4 py-3 font-medium">Status</th>
+                        <th className="px-4 py-3 font-medium">Progress</th>
+                        <th className="px-4 py-3 font-medium">Enrolled</th>
                       </tr>
-                    ) : (
-                      data.students.map((student) => (
-                        <tr key={student.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-gray-900 dark:text-white">{student.fullName}</div>
-                            <div className="text-xs text-gray-500">{student.email}</div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{student.courseTitle}</td>
-                          <td className="px-4 py-3">
-                            <EnrollmentStatus status={student.status} />
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="h-2 w-20 rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div
-                                  className="h-2 rounded-full bg-blue-600"
-                                  style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-300">
-                                {Number(student.progressPercentage || 0).toFixed(0)}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
-                            {formatDate(student.enrolledAt)}
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {data.students.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                            No students enrolled yet.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        data.students.map((student) => (
+                          <tr key={student.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-gray-900 dark:text-white">{student.fullName}</div>
+                              <div className="text-xs text-gray-500">{student.email}</div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{student.courseTitle}</td>
+                            <td className="px-4 py-3">
+                              <EnrollmentStatus status={student.status} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-20 rounded-full bg-gray-200 dark:bg-gray-700">
+                                  <div
+                                    className="h-2 rounded-full bg-blue-600"
+                                    style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500 dark:text-gray-300">
+                                  {Number(student.progressPercentage || 0).toFixed(0)}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
+                              {formatDate(student.enrolledAt)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -517,13 +532,7 @@ function StatusPill({ status }: { status: 'draft' | 'published' | 'archived' }) 
 
 function EnrollmentStatus({ status }: { status: 'enrolled' | 'in_progress' | 'completed' | 'dropped' }) {
   const style =
-    status === 'completed'
-      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-      : status === 'in_progress'
-      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
-      : status === 'dropped'
-      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-      : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800';
+    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
 
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>

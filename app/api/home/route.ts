@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
+import { getRequestUser } from "@/lib/request-auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(`
+    const user = await getRequestUser(req);
+    const includeEnrollment = user?.role === 'student';
+
+    const enrollmentSelect = includeEnrollment
+      ? `, EXISTS(
+          SELECT 1
+          FROM enrollment e2
+          WHERE e2.courseId = c.id AND e2.studentId = ?
+        ) AS enrolled`
+      : `, 0 AS enrolled`;
+
+    const sql = `
       SELECT
         c.id,
         c.title,
@@ -14,6 +26,7 @@ export async function GET() {
         c.durationWeeks,
         u.fullName AS instructor,
         COUNT(e.id) AS studentsCount
+        ${enrollmentSelect}
       FROM course c
       JOIN user u ON c.teacherId = u.id
       LEFT JOIN enrollment e ON e.courseId = c.id
@@ -28,7 +41,12 @@ export async function GET() {
         u.fullName
       ORDER BY c.createdAt DESC
       LIMIT 4
-    `);
+    `;
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      sql,
+      includeEnrollment ? [user?.id] : []
+    );
 
     const courses = rows.map((course) => ({
       id: course.id,
@@ -39,6 +57,7 @@ export async function GET() {
       instructor: course.instructor,
       duration: `${Number(course.durationWeeks || 0)} Weeks`,
       students: String(Number(course.studentsCount || 0)),
+      enrolled: Boolean(course.enrolled),
     }));
 
     return NextResponse.json({

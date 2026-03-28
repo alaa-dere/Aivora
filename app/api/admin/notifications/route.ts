@@ -5,7 +5,7 @@ import { getRequestRole } from '@/lib/request-auth';
 
 type NotificationRow = RowDataPacket & {
   id: string;
-  type: 'student_signup' | 'course_enroll';
+  type: 'student_signup' | 'course_enroll' | 'teacher_message';
   title: string;
   message: string;
   createdAt: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   AcademicCapIcon,
@@ -48,7 +49,7 @@ type StudentTransaction = {
   id: string;
   date: string;
   dateTime: string;
-  type: 'enrollment' | 'refund' | 'payout';
+  type: 'enrollment' | 'refund';
   status: 'success' | 'failed' | 'pending';
   amount: number;
   currency: string;
@@ -170,6 +171,12 @@ export default function StudentProfilePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/students"
+              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+            >
+              Back to all students
+            </Link>
             <span
               className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
                 data?.student.status === 'inactive'
@@ -427,13 +434,7 @@ function Pill({ label }: { label: string }) {
 
 function EnrollmentStatus({ status }: { status: 'enrolled' | 'in_progress' | 'completed' | 'dropped' }) {
   const style =
-    status === 'completed'
-      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-      : status === 'in_progress'
-      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
-      : status === 'dropped'
-      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-      : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-800';
+    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
 
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>

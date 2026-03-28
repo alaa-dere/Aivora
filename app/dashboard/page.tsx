@@ -208,6 +208,9 @@ export default function AdminDashboard() {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard
         </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Overview of key metrics, revenue, and recent activity.
+        </p>
       </div>
 
       {/* بطاقات الإحصائيات مع تأثير hover */}

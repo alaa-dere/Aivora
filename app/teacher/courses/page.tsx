@@ -80,16 +80,19 @@ export default function CoursesPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
             My Courses
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage your courses, content, and student progress.
+          </p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Courses", value: displayStats.totalCourses.toString(), trend: "+0", icon: Squares2X2Icon },
-          { label: "Active Courses", value: displayStats.activeCourses.toString(), trend: "+0", icon: BookOpenIcon },
-          { label: "Total Students", value: displayStats.totalStudents.toString(), trend: "+0", icon: UsersIcon },
-          { label: "Total Lessons", value: displayStats.totalLessons.toString(), trend: "+0", icon: AcademicCapIcon },
+          { label: "Total Courses", value: displayStats.totalCourses.toString(), icon: Squares2X2Icon },
+          { label: "Active Courses", value: displayStats.activeCourses.toString(), icon: BookOpenIcon },
+          { label: "Total Students", value: displayStats.totalStudents.toString(), icon: UsersIcon },
+          { label: "Total Lessons", value: displayStats.totalLessons.toString(), icon: AcademicCapIcon },
         ].map((card) => (
           <div
             key={card.label}
@@ -107,9 +110,6 @@ export default function CoursesPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                {card.trend}
-              </span>
             </div>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
@@ -189,7 +189,6 @@ export default function CoursesPage() {
                   >
                     {course.name}
                   </Link>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Code: {course.code}</p>
                 </div>
               </div>
 

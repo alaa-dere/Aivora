@@ -52,15 +52,6 @@ const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", d
           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <Icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
           </div>
-          <span
-            className={`text-xs font-medium px-2 py-1 rounded-full ${
-              changeType === 'increase'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-            }`}
-          >
-            {change}
-          </span>
         </div>
         <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{title}</p>
@@ -91,7 +82,6 @@ const CourseCard = ({ course, index }: any) => {
           </div>
           <div>
             <h4 className="font-semibold text-gray-800 dark:text-white text-lg">{course.name}</h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{course.code}</p>
           </div>
         </div>
         
@@ -238,22 +228,23 @@ export default function TeacherDashboard() {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Overview of your courses, students, and progress.
+        </p>
       </div>
 
       {/* بطاقات الإحصائيات - نفس الستايل والأيقونات اللي في Admin */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { title: 'Total Students', value: stats.totalStudents.toLocaleString(), change: '+0%', changeType: 'increase', icon:UserGroupIcon, delay: 0 },
-          { title: 'Active Courses', value: stats.activeCourses.toString(), change: '+0%', changeType: 'increase', icon: BookOpenIcon, delay: 100 },
-          { title: 'Avg Score', value: `${stats.avgScore}%`, change: '+0%', changeType: 'increase', icon: AcademicCapIcon, delay: 200 },
-          { title: 'Completion', value: `${stats.completion}%`, change: '+0%', changeType: 'increase', icon: ChartBarIcon, delay: 300 },
+          { title: 'Total Students', value: stats.totalStudents.toLocaleString(), icon:UserGroupIcon, delay: 0 },
+          { title: 'Active Courses', value: stats.activeCourses.toString(), icon: BookOpenIcon, delay: 100 },
+          { title: 'Avg Score', value: `${stats.avgScore}%`, icon: AcademicCapIcon, delay: 200 },
+          { title: 'Completion', value: `${stats.completion}%`, icon: ChartBarIcon, delay: 300 },
         ].map((stat) => (
           <StatCard
             key={stat.title}
             title={stat.title}
             value={stat.value}
-            change={stat.change}
-            changeType={stat.changeType}
             icon={stat.icon}
             delay={stat.delay}
           />

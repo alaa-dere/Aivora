@@ -107,12 +107,52 @@ CREATE TABLE `enrollment` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `enrollment_payment`
+--
+
+DROP TABLE IF EXISTS `enrollment_payment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `enrollment_payment` (
+  `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `enrollmentId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `studentId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `courseId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fullName` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `country` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cardLast4` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `paypalEmail` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `paypalTxnId` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `method` enum('card','paypal') COLLATE utf8mb4_general_ci DEFAULT 'card',
+  `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_enrollment_payment` (`enrollmentId`),
+  KEY `idx_studentId` (`studentId`),
+  KEY `idx_courseId` (`courseId`),
+  KEY `idx_createdAt` (`createdAt`),
+  CONSTRAINT `enrollment_payment_ibfk_1` FOREIGN KEY (`enrollmentId`) REFERENCES `enrollment` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `enrollment_payment_ibfk_2` FOREIGN KEY (`studentId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `enrollment_payment_ibfk_3` FOREIGN KEY (`courseId`) REFERENCES `course` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Dumping data for table `enrollment`
 --
 
 LOCK TABLES `enrollment` WRITE;
 /*!40000 ALTER TABLE `enrollment` DISABLE KEYS */;
 /*!40000 ALTER TABLE `enrollment` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `enrollment_payment`
+--
+
+LOCK TABLES `enrollment_payment` WRITE;
+/*!40000 ALTER TABLE `enrollment_payment` DISABLE KEYS */;
+/*!40000 ALTER TABLE `enrollment_payment` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -125,7 +165,7 @@ DROP TABLE IF EXISTS `finance_transaction`;
 CREATE TABLE `finance_transaction` (
   `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `transactionDate` datetime DEFAULT CURRENT_TIMESTAMP,
-  `type` enum('enrollment','refund','payout') COLLATE utf8mb4_general_ci DEFAULT 'enrollment',
+  `type` enum('enrollment','refund') COLLATE utf8mb4_general_ci DEFAULT 'enrollment',
   `status` enum('success','failed','pending') COLLATE utf8mb4_general_ci DEFAULT 'success',
   `amount` decimal(10,2) NOT NULL,
   `currency` char(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'USD',
@@ -134,7 +174,7 @@ CREATE TABLE `finance_transaction` (
   `courseId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `teacherShare` decimal(10,2) DEFAULT '0.00',
   `platformShare` decimal(10,2) DEFAULT '0.00',
-  `method` enum('wallet','card','cash') COLLATE utf8mb4_general_ci DEFAULT 'card',
+  `method` enum('wallet','card','cash','paypal') COLLATE utf8mb4_general_ci DEFAULT 'card',
   `notes` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -160,39 +200,6 @@ LOCK TABLES `finance_transaction` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `finance_payout`
---
-
-DROP TABLE IF EXISTS `finance_payout`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `finance_payout` (
-  `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payoutDate` datetime DEFAULT CURRENT_TIMESTAMP,
-  `teacherId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `amount` decimal(10,2) NOT NULL,
-  `status` enum('success','failed','pending') COLLATE utf8mb4_general_ci DEFAULT 'pending',
-  `method` enum('wallet','card','cash') COLLATE utf8mb4_general_ci DEFAULT 'wallet',
-  `reference` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_payoutDate` (`payoutDate`),
-  KEY `idx_teacherId` (`teacherId`),
-  KEY `idx_status` (`status`),
-  CONSTRAINT `finance_payout_ibfk_1` FOREIGN KEY (`teacherId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `finance_payout`
---
-
-LOCK TABLES `finance_payout` WRITE;
-/*!40000 ALTER TABLE `finance_payout` DISABLE KEYS */;
-/*!40000 ALTER TABLE `finance_payout` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `admin_notification`
 --
 
@@ -201,7 +208,7 @@ DROP TABLE IF EXISTS `admin_notification`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_notification` (
   `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` enum('student_signup','course_enroll') COLLATE utf8mb4_general_ci DEFAULT 'student_signup',
+  `type` enum('student_signup','course_enroll','teacher_message') COLLATE utf8mb4_general_ci DEFAULT 'student_signup',
   `title` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `studentId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -224,6 +231,72 @@ CREATE TABLE `admin_notification` (
 LOCK TABLES `admin_notification` WRITE;
 /*!40000 ALTER TABLE `admin_notification` DISABLE KEYS */;
 /*!40000 ALTER TABLE `admin_notification` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `admin_teacher_thread`
+--
+
+DROP TABLE IF EXISTS `admin_teacher_thread`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `admin_teacher_thread` (
+  `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `adminId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `teacherId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `lastMessageAt` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_thread` (`adminId`,`teacherId`),
+  KEY `idx_adminId` (`adminId`),
+  KEY `idx_teacherId` (`teacherId`),
+  KEY `idx_lastMessageAt` (`lastMessageAt`),
+  CONSTRAINT `admin_teacher_thread_ibfk_1` FOREIGN KEY (`adminId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `admin_teacher_thread_ibfk_2` FOREIGN KEY (`teacherId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `admin_teacher_thread`
+--
+
+LOCK TABLES `admin_teacher_thread` WRITE;
+/*!40000 ALTER TABLE `admin_teacher_thread` DISABLE KEYS */;
+/*!40000 ALTER TABLE `admin_teacher_thread` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `admin_teacher_message`
+--
+
+DROP TABLE IF EXISTS `admin_teacher_message`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `admin_teacher_message` (
+  `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `threadId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `senderId` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `senderRole` enum('admin','teacher') COLLATE utf8mb4_general_ci NOT NULL,
+  `body` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `readAt` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_threadId` (`threadId`),
+  KEY `idx_senderId` (`senderId`),
+  KEY `idx_createdAt` (`createdAt`),
+  KEY `idx_readAt` (`readAt`),
+  CONSTRAINT `admin_teacher_message_ibfk_1` FOREIGN KEY (`threadId`) REFERENCES `admin_teacher_thread` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `admin_teacher_message_ibfk_2` FOREIGN KEY (`senderId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `admin_teacher_message`
+--
+
+LOCK TABLES `admin_teacher_message` WRITE;
+/*!40000 ALTER TABLE `admin_teacher_message` DISABLE KEYS */;
+/*!40000 ALTER TABLE `admin_teacher_message` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

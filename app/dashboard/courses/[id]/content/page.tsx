@@ -1,9 +1,10 @@
 // app/dashboard/courses/[id]/content/page.tsx
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircle, MoreVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircle, MoreVertical, X } from 'lucide-react';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
@@ -577,24 +578,35 @@ export default function CourseContentPage() {
           </div>
           <button 
             onClick={() => openCreateLesson()}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
             Add New Content
           </button>
         </div>
 
         {/* Lesson Modal */}
         {showLessonModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full mx-4 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-800 overflow-hidden">
+              <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+                <h2 className="text-xl font-bold">
+                  {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
+                </h2>
+                <button
+                  onClick={() => setShowLessonModal(false)}
+                  className="text-white hover:text-gray-200 transition"
+                  type="button"
+                  aria-label="Close"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
               <form
                 onSubmit={handleSaveLesson}
                 className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
               >
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
-                </h2>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -760,7 +772,7 @@ export default function CourseContentPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-blue-950 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
                     {editingLessonId ? 'Save Changes' : 'Add Lesson'}
                   </button>

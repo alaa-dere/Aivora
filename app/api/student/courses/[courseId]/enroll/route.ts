@@ -18,9 +18,32 @@ export async function POST(req: Request, { params }: Params) {
     const id = decodeURIComponent(courseId).trim();
     const body = await req.json().catch(() => ({}));
     const paymentConfirmed = Boolean(body?.paymentConfirmed);
+    const fullName =
+      typeof body?.fullName === 'string' ? body.fullName.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    const country =
+      typeof body?.country === 'string' ? body.country.trim() : null;
+    const rawCardLast4 =
+      typeof body?.cardLast4 === 'string' ? body.cardLast4 : '';
+    const cardLast4 = rawCardLast4.replace(/\D/g, '').slice(-4) || null;
+    const paypalEmail =
+      typeof body?.paypalEmail === 'string' ? body.paypalEmail.trim() : '';
+    const paypalTxnId =
+      typeof body?.paypalTxnId === 'string' ? body.paypalTxnId.trim() : '';
+    const rawMethod = typeof body?.method === 'string' ? body.method : '';
+    const paymentMethod = rawMethod === 'paypal' ? 'paypal' : 'card';
 
     if (!paymentConfirmed) {
       return NextResponse.json({ message: 'Payment required' }, { status: 400 });
+    }
+    if (!fullName || !email) {
+      return NextResponse.json({ message: 'Missing payment details' }, { status: 400 });
+    }
+    if (paymentMethod === 'card' && !cardLast4) {
+      return NextResponse.json({ message: 'Card details required' }, { status: 400 });
+    }
+    if (paymentMethod === 'paypal' && (!paypalEmail || !paypalTxnId)) {
+      return NextResponse.json({ message: 'PayPal details required' }, { status: 400 });
     }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
@@ -42,7 +65,31 @@ export async function POST(req: Request, { params }: Params) {
     );
 
     if (existingRows.length > 0) {
-      return NextResponse.json({ success: true, enrollmentId: existingRows[0].id });
+      const existingEnrollmentId = existingRows[0].id as string;
+      const [paymentIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+      const paymentId = paymentIdRows[0].id as string;
+      await pool.query<ResultSetHeader>(
+        `
+        INSERT IGNORE INTO enrollment_payment
+          (id, enrollmentId, studentId, courseId, fullName, email, country, cardLast4, paypalEmail, paypalTxnId, method, createdAt)
+        VALUES
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `,
+        [
+          paymentId,
+          existingEnrollmentId,
+          user.id,
+          id,
+          fullName,
+          email,
+          country,
+          cardLast4,
+          paypalEmail || null,
+          paypalTxnId || null,
+          paymentMethod,
+        ]
+      );
+      return NextResponse.json({ success: true, enrollmentId: existingEnrollmentId });
     }
 
     const [idRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
@@ -63,7 +110,9 @@ export async function POST(req: Request, { params }: Params) {
     const pct = Number(course.teacherSharePct ?? 70);
     const teacherShare = Number(((price * pct) / 100).toFixed(2));
     const platformShare = Number((price - teacherShare).toFixed(2));
-    const method = ['wallet', 'card', 'cash'].includes(body?.method) ? body.method : 'card';
+    const method = ['wallet', 'card', 'cash', 'paypal'].includes(rawMethod)
+      ? rawMethod
+      : paymentMethod;
 
     const [txIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
     const txId = txIdRows[0].id as string;
@@ -85,6 +134,30 @@ export async function POST(req: Request, { params }: Params) {
         platformShare,
         method,
         'Enrollment payment',
+      ]
+    );
+
+    const [paymentIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+    const paymentId = paymentIdRows[0].id as string;
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT INTO enrollment_payment
+        (id, enrollmentId, studentId, courseId, fullName, email, country, cardLast4, paypalEmail, paypalTxnId, method, createdAt)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `,
+      [
+        paymentId,
+        enrollmentId,
+        user.id,
+        id,
+        fullName,
+        email,
+        country,
+        cardLast4,
+        paypalEmail || null,
+        paypalTxnId || null,
+        paymentMethod,
       ]
     );
 

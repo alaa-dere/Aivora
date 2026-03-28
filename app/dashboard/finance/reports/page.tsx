@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BanknotesIcon,
   CurrencyDollarIcon,
   Squares2X2Icon,
   CalendarDaysIcon,
@@ -20,7 +19,6 @@ export default function AdminFinanceReportsPage() {
     income: 0,
     teacherProfit: 0,
     platformProfit: 0,
-    payouts: 0,
     byType: {} as Record<string, number>,
     count: 0,
   });
@@ -44,7 +42,6 @@ export default function AdminFinanceReportsPage() {
           income: Number(data.income || 0),
           teacherProfit: Number(data.teacherProfit || 0),
           platformProfit: Number(data.platformProfit || 0),
-          payouts: Number(data.payouts || 0),
           byType: data.byType || {},
           count: Number(data.count || 0),
         });
@@ -66,10 +63,8 @@ export default function AdminFinanceReportsPage() {
       ['income', stats.income],
       ['teacher_profit', stats.teacherProfit],
       ['platform_profit', stats.platformProfit],
-      ['payouts', stats.payouts],
       ['enrollment_count', stats.byType.enrollment ?? 0],
       ['refund_count', stats.byType.refund ?? 0],
-      ['payout_count', stats.byType.payout ?? 0],
       ['total_count', stats.count],
     ].map((r) => r.join(','));
 
@@ -88,8 +83,11 @@ export default function AdminFinanceReportsPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            Finance - Reports
+            Reports
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Monthly finance summary with exportable metrics.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -133,7 +131,6 @@ export default function AdminFinanceReportsPage() {
           { label: 'Income', value: money(stats.income), icon: CurrencyDollarIcon },
           { label: 'Teacher profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
           { label: 'Platform profit', value: money(stats.platformProfit), icon: Squares2X2Icon },
-          { label: 'Payouts', value: money(stats.payouts), icon: BanknotesIcon },
         ].map((card) => (
           <div
             key={card.label}
@@ -171,10 +168,6 @@ export default function AdminFinanceReportsPage() {
               <span className="font-semibold text-gray-900 dark:text-white">{stats.byType.refund ?? 0}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600 dark:text-gray-300">Payouts</span>
-              <span className="font-semibold text-gray-900 dark:text-white">{stats.byType.payout ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
               <span className="text-gray-600 dark:text-gray-300">Total</span>
               <span className="font-semibold text-gray-900 dark:text-white">{stats.count}</span>
             </div>
@@ -194,7 +187,7 @@ export default function AdminFinanceReportsPage() {
             </div>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-            Connect this to real payments and payouts when finance tables are ready.
+            Connect this to real payments when finance tables are ready.
           </p>
         </div>
       </div>

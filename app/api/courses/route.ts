@@ -3,11 +3,22 @@ import pool from '@/lib/db';
 import { RowDataPacket, OkPacket } from 'mysql2';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { requirePermission } from '@/lib/request-auth';
+import { getRequestUser, requirePermission } from '@/lib/request-auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(`
+    const user = await getRequestUser(req);
+    const includeEnrollment = user?.role === 'student';
+
+    const enrollmentSelect = includeEnrollment
+      ? `, EXISTS(
+          SELECT 1
+          FROM enrollment e
+          WHERE e.courseId = c.id AND e.studentId = ?
+        ) AS enrolled`
+      : `, 0 AS enrolled`;
+
+    const sql = `
       SELECT 
         c.id,
         c.title,
@@ -25,10 +36,16 @@ export async function GET() {
           FROM enrollment 
           WHERE courseId = c.id
         ) AS students
+        ${enrollmentSelect}
       FROM course c
       JOIN user u ON c.teacherId = u.id
       ORDER BY c.createdAt DESC
-    `);
+    `;
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      sql,
+      includeEnrollment ? [user?.id] : []
+    );
 
     const courses = rows.map((row) => ({
       id: row.id,
@@ -43,6 +60,7 @@ export async function GET() {
       status: row.status,
       createdAt: row.createdAt,
       students: Number(row.students || 0),
+      enrolled: Boolean(row.enrolled),
     }));
 
     return NextResponse.json({ courses });
