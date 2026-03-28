@@ -35,7 +35,7 @@ const navigation = [
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
   { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
   { name: 'Certificate Quizzes', href: '/student/certificate-quizzes', icon: ClipboardDocumentCheckIcon },
-  { name: 'Chat', href: '/student/chat', icon: MessageSquare },
+  { name: 'Messages', href: '/student/chat', icon: MessageSquare },
   { name: 'Leaderboard', href: '/student/leaderboard', icon: TrophyIcon },
   { name: 'Profile', href: '/student/profile', icon: UserCircleIcon },
 ];

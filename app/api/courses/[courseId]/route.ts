@@ -4,15 +4,17 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import fs from 'fs';
-import { requirePermission } from '@/lib/request-auth';
+import { getRequestUser, requirePermission } from '@/lib/request-auth';
 
 interface Params {
   params: Promise<{ courseId: string }>;
 }
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   try {
     const { courseId } = await params;
     const normalizedCourseId = decodeURIComponent(courseId).trim();
+    const user = await getRequestUser(req);
+    const includeEnrollment = user?.role === 'student';
 
     console.log('Route param courseId:', courseId);
     console.log('Normalized courseId:', normalizedCourseId);
@@ -31,8 +33,15 @@ export async function GET(_req: Request, { params }: Params) {
       );
     }
 
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `
+    const enrollmentSelect = includeEnrollment
+      ? `, EXISTS(
+          SELECT 1
+          FROM enrollment e2
+          WHERE e2.courseId = c.id AND e2.studentId = ?
+        ) AS enrolled`
+      : `, 0 AS enrolled`;
+
+    const sql = `
       SELECT 
         c.id,
         c.title,
@@ -50,12 +59,15 @@ export async function GET(_req: Request, { params }: Params) {
           FROM enrollment 
           WHERE courseId = c.id
         ) AS students
+        ${enrollmentSelect}
       FROM course c
       LEFT JOIN user u ON c.teacherId = u.id
       WHERE c.id = ?
       LIMIT 1
-      `,
-      [normalizedCourseId]
+    `;
+    const [rows] = await pool.query<RowDataPacket[]>(
+      sql,
+      includeEnrollment ? [user?.id, normalizedCourseId] : [normalizedCourseId]
     );
 
     console.log('Full query result:', rows);
@@ -82,6 +94,7 @@ export async function GET(_req: Request, { params }: Params) {
       status: row.status,
       createdAt: row.createdAt,
       students: Number(row.students || 0),
+      enrolled: Boolean(row.enrolled),
     };
 
     return NextResponse.json({ course });

@@ -4,13 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import HomeUserMenu from '@/components/home-user-menu';
 import {
   SunIcon,
   MoonIcon,
   MagnifyingGlassIcon,
-  ArrowLeftIcon,
   ClockIcon,
   UserGroupIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 
 type Course = {
@@ -26,12 +28,15 @@ type Course = {
   status: 'draft' | 'published' | 'archived';
   createdAt: string;
   students: number;
+  enrolled?: boolean;
 };
 
 export default function AllCoursesPage() {
   const { theme, setTheme } = useTheme();
+  const { status } = useSession();
 
   const [mounted, setMounted] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'ar'>('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -77,7 +82,12 @@ export default function AllCoursesPage() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  const toggleLanguage = () => {
+    setLanguage((prev) => (prev === 'en' ? 'ar' : 'en'));
+  };
+
   const isDark = mounted && theme === 'dark';
+  const isArabic = language === 'ar';
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -94,7 +104,7 @@ export default function AllCoursesPage() {
   }, [courses, searchQuery]);
 
   return (
-    <div className="min-h-screen relative text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen relative text-slate-900 dark:text-slate-100" dir={isArabic ? 'rtl' : 'ltr'}>
       {/* Background */}
       <div
         className="fixed inset-0 -z-10 bg-cover bg-no-repeat transition-[filter] duration-500"
@@ -116,7 +126,7 @@ export default function AllCoursesPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 px-4 pt-4">
         <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center shrink-0">
               <Image
                 src="/alaa.png"
@@ -126,19 +136,6 @@ export default function AllCoursesPage() {
                 className="h-7 w-auto dark:brightness-100 brightness-25"
               />
             </Link>
-
-            <div className="flex-1 min-w-[200px] max-w-md mx-4 order-3 md:order-none w-full md:w-auto mt-3 md:mt-0">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search courses..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                />
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
-              </div>
-            </div>
 
             <div className="flex items-center gap-3 shrink-0">
               <button
@@ -153,12 +150,27 @@ export default function AllCoursesPage() {
                 )}
               </button>
 
-              <Link href="/Home">
-                <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                  <ArrowLeftIcon className="w-5 h-5" />
-                  <span className="hidden sm:inline">Back to Home</span>
-                </button>
-              </Link>
+              <button
+                onClick={toggleLanguage}
+                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Toggle language"
+                title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
+              >
+                <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+              </button>
+
+              {status === 'authenticated' ? (
+                <HomeUserMenu isArabic={isArabic} />
+              ) : (
+                <Link href="/login">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <span className="hidden sm:inline">
+                      {isArabic ? 'تسجيل الدخول' : 'Login'}
+                    </span>
+                  </button>
+                </Link>
+              )}
+
             </div>
           </div>
         </div>
@@ -167,15 +179,31 @@ export default function AllCoursesPage() {
       {/* Main Content */}
       <main className="relative z-10 pt-8 pb-16 px-5 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-8 flex justify-center">
+            <div className="w-full max-w-2xl">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={isArabic ? 'ابحث عن الدورات...' : 'Search courses...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
           <div className="mb-12 text-center">
             <p className="mt-4 text-slate-300 text-lg max-w-2xl mx-auto">
-              Explore our complete collection of courses in programming, AI, design, marketing, and more.
+              {isArabic
+                ? 'استكشف مجموعتنا الكاملة من الدورات في البرمجة والذكاء الاصطناعي والتصميم والتسويق وغيرها.'
+                : 'Explore our complete collection of courses in programming, AI, design, marketing, and more.'}
             </p>
           </div>
 
           {loadingCourses ? (
             <div className="text-center py-20 text-slate-300 text-xl">
-              Loading courses...
+              {isArabic ? 'جاري تحميل الدورات...' : 'Loading courses...'}
             </div>
           ) : errorMsg ? (
             <div className="text-center py-20 text-red-300 text-xl">
@@ -183,7 +211,7 @@ export default function AllCoursesPage() {
             </div>
           ) : filteredCourses.length === 0 ? (
             <div className="text-center py-20 text-slate-300 text-xl">
-              No courses found matching your search.
+              {isArabic ? 'لا توجد دورات تطابق بحثك.' : 'No courses found matching your search.'}
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -202,7 +230,7 @@ export default function AllCoursesPage() {
 
                   <div className="p-4">
                     <p className="text-sm text-blue-200 mb-2 font-medium">
-                      By {course.teacherName}
+                      {isArabic ? 'بواسطة' : 'By'} {course.teacherName}
                     </p>
 
                     <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
@@ -216,12 +244,12 @@ export default function AllCoursesPage() {
                     <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
                       <div className="flex items-center gap-1">
                         <ClockIcon className="w-4 h-4 text-blue-300" />
-                        {course.durationWeeks} Weeks
+                        {course.durationWeeks} {isArabic ? 'أسابيع' : 'Weeks'}
                       </div>
 
                       <div className="flex items-center gap-1">
                         <UserGroupIcon className="w-4 h-4 text-blue-300" />
-                        {course.students}
+                        {course.students} {isArabic ? 'طلاب' : 'Students'}
                       </div>
                     </div>
 
@@ -230,12 +258,21 @@ export default function AllCoursesPage() {
                         ${course.price}
                       </span>
 
-                      <Link
-                        href={`/Home/courses/${course.id}`}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
-                      >
-                        View Course
-                      </Link>
+                      {course.enrolled ? (
+                        <Link
+                          href={`/student/my-courses/${course.id}`}
+                          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                        >
+                          {isArabic ? 'ØªÙ… Ø§Ù„ØªØ³Ø¬ÙŠÙ„' : 'Enrolled'}
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/Home/courses/${course.id}`}
+                          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                        >
+                          View Course
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const conversationId = String(searchParams.get('conversationId') || '').trim();
+  const markRead = searchParams.get('markRead') === '1';
   if (!conversationId) {
     return NextResponse.json({ message: 'conversationId required' }, { status: 400 });
   }
@@ -39,6 +40,19 @@ export async function GET(req: Request) {
     const conv = convRows[0] as any;
     if (user.id !== conv.studentId && user.id !== conv.teacherId) {
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    }
+
+    if (markRead && user.role === 'teacher') {
+      await pool.query(
+        `
+        UPDATE chat_message
+        SET readAt = NOW()
+        WHERE conversationId = ?
+          AND senderRole = 'student'
+          AND readAt IS NULL
+        `,
+        [conversationId]
+      );
     }
 
     const [rows] = await pool.query<MessageRow[]>(

@@ -1,306 +1,206 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { 
-  Bell,
-  CheckCircle,
-  AlertCircle,
-  Award,
-  Calendar,
-  Video,
-  FileText,
-  MessageSquare,
-  Users,
-  BrainCircuit,
-  Clock,
-  CheckCheck,
-  Filter,
-  Trash2,
-  Settings
-} from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { Bell, CheckCircle, Filter, MessageSquare } from 'lucide-react';
 
-export default function NotificationsPage() {
-  const [filter, setFilter] = useState("all");
+type NotificationType = 'course_enroll' | 'admin_message';
 
-  const notifications = [
-    {
-      id: 1,
-      type: "quiz_submission",
-      title: "New Quiz Submission",
-      message: "Ahmed Mohamed submitted 'Python OOP Quiz'",
-      course: "Advanced Python",
-      time: "5 minutes ago",
-      read: false,
-      icon: <CheckCircle className="w-5 h-5 text-emerald-600" />,
-      bgColor: "bg-emerald-50"
-    },
-    {
-      id: 2,
-      type: "achievement",
-      title: "Student Achievement",
-      message: "Sara Khaled completed 100% of 'Web Development' course",
-      course: "Web Development",
-      time: "1 hour ago",
-      read: false,
-      icon: <Award className="w-5 h-5 text-purple-600" />,
-      bgColor: "bg-purple-50"
-    },
-    {
-      id: 3,
-      type: "live_session",
-      title: "Live Session in 30 minutes",
-      message: "Your session 'Python OOP Review' starts soon",
-      course: "Advanced Python",
-      time: "30 minutes from now",
-      read: true,
-      icon: <Video className="w-5 h-5 text-blue-600" />,
-      bgColor: "bg-blue-50"
-    },
-    {
-      id: 4,
-      type: "alert",
-      title: "At-Risk Students Alert",
-      message: "5 students are struggling in 'Data Structures'",
-      course: "Data Structures",
-      time: "2 hours ago",
-      read: false,
-      icon: <AlertCircle className="w-5 h-5 text-red-600" />,
-      bgColor: "bg-red-50"
-    },
-    {
-      id: 5,
-      type: "ai_suggestion",
-      title: "AI Teaching Suggestion",
-      message: "Generate practice exercises for OOP concepts",
-      course: "Advanced Python",
-      time: "3 hours ago",
-      read: true,
-      icon: <BrainCircuit className="w-5 h-5 text-indigo-600" />,
-      bgColor: "bg-indigo-50"
-    },
-    {
-      id: 6,
-      type: "assignment",
-      title: "Assignment Grading Needed",
-      message: "12 assignments pending for review",
-      course: "AI Fundamentals",
-      time: "5 hours ago",
-      read: false,
-      icon: <FileText className="w-5 h-5 text-orange-600" />,
-      bgColor: "bg-orange-50"
+type NotificationItem = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+};
+
+function getTypeIcon(type: NotificationType) {
+  if (type === 'admin_message') {
+    return <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+  }
+  return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+}
+
+function getTypeBg(type: NotificationType) {
+  if (type === 'admin_message') {
+    return 'bg-blue-100 dark:bg-blue-900/30';
+  }
+  return 'bg-emerald-100 dark:bg-emerald-900/30';
+}
+
+export default function TeacherNotificationsPage() {
+  const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load notifications');
+        }
+        const readSet = new Set<string>(
+          JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+        );
+        const mapped = (data.notifications || []).map((n: any) => ({
+          id: n.id,
+          type: (n.type || 'course_enroll') as NotificationType,
+          title: n.title,
+          message: n.message,
+          time: new Date(n.createdAt).toLocaleString(),
+          read: readSet.has(n.id) || Boolean(n.read),
+        }));
+        setItems(mapped);
+      } catch (error: any) {
+        setErrorMsg(error.message || 'Failed to load notifications');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const markAsRead = async (id: string, type: NotificationType) => {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+
+    if (type === 'admin_message') {
+      try {
+        await fetch('/api/teacher/messages', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageIds: [id] }),
+        });
+      } catch (error) {
+        console.error('Failed to mark message as read', error);
+      }
+      return;
     }
-  ];
 
-  const getNotificationIcon = (type: string) => {
-    switch(type) {
-      case "quiz_submission":
-        return <CheckCircle className="w-5 h-5 text-emerald-600" />;
-      case "achievement":
-        return <Award className="w-5 h-5 text-purple-600" />;
-      case "live_session":
-        return <Video className="w-5 h-5 text-blue-600" />;
-      case "alert":
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
-      case "ai_suggestion":
-        return <BrainCircuit className="w-5 h-5 text-indigo-600" />;
-      case "assignment":
-        return <FileText className="w-5 h-5 text-orange-600" />;
-      default:
-        return <Bell className="w-5 h-5 text-slate-600" />;
-    }
+    const existing = new Set<string>(
+      JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+    );
+    existing.add(id);
+    localStorage.setItem('teacher_read_notifications', JSON.stringify(Array.from(existing)));
   };
 
-  const getNotificationColor = (type: string) => {
-    switch(type) {
-      case "quiz_submission": return "bg-emerald-50";
-      case "achievement": return "bg-purple-50";
-      case "live_session": return "bg-blue-50";
-      case "alert": return "bg-red-50";
-      case "ai_suggestion": return "bg-indigo-50";
-      case "assignment": return "bg-orange-50";
-      default: return "bg-slate-50";
+  const filteredNotifications = useMemo(() => {
+    if (filter === 'unread') {
+      return items.filter((n) => !n.read);
     }
-  };
+    if (filter === 'important') {
+      return items;
+    }
+    return items;
+  }, [filter, items]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Notifications</h1>
-          <p className="text-slate-500 mt-1">Stay updated with your courses and students</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2">
-            <CheckCheck className="w-5 h-5 text-slate-600" />
-            Mark all as read
-          </button>
-          <button className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2">
-            <Settings className="w-5 h-5 text-slate-600" />
-            Settings
-          </button>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
-        <div className="flex gap-2 bg-white p-1 rounded-xl border border-slate-100">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === "all"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            All
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+            <Filter className="w-4 h-4" />
+            Filter by course
           </button>
-          <button
-            onClick={() => setFilter("unread")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === "unread"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Unread
-          </button>
-          <button
-            onClick={() => setFilter("important")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === "important"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Important
-          </button>
-        </div>
-        <button className="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2">
-          <Filter className="w-5 h-5 text-slate-600" />
-          Filter by course
-        </button>
-      </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Bell className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">24</p>
-              <p className="text-sm text-slate-500">Total</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">8</p>
-              <p className="text-sm text-slate-500">Unread</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Award className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">6</p>
-              <p className="text-sm text-slate-500">Achievements</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">3</p>
-              <p className="text-sm text-slate-500">Upcoming</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as 'all' | 'unread' | 'important')}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            >
+              <option value="all">All</option>
+              <option value="unread">Unread</option>
+              <option value="important">Important</option>
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Notifications List */}
-      <div className="bg-white rounded-xl border border-slate-100 divide-y">
-        {notifications.map((notification) => (
-          <div 
-            key={notification.id} 
-            className={`p-6 hover:bg-slate-50 transition-colors ${!notification.read ? 'bg-blue-50/30' : ''}`}
-          >
-            <div className="flex gap-4">
-              <div className={`w-12 h-12 ${getNotificationColor(notification.type)} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                {getNotificationIcon(notification.type)}
-              </div>
-              
-              <div className="flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <div>
-                    <h3 className="font-semibold text-slate-900">{notification.title}</h3>
-                    <p className="text-slate-600">{notification.message}</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            Notifications List{' '}
+            <span className="text-gray-400 font-normal">({filteredNotifications.length})</span>
+          </p>
+        </div>
+
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          {loading && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+          )}
+          {!loading && errorMsg && (
+            <div className="p-5 text-sm text-red-600 dark:text-red-300">{errorMsg}</div>
+          )}
+          {!loading && !errorMsg && filteredNotifications.length === 0 && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
+              No notifications yet.
+            </div>
+          )}
+          {filteredNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`p-4 md:p-5 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
+                !notification.read ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''
+              }`}
+            >
+              <div className="flex gap-4">
+                <div
+                  className={`w-11 h-11 rounded-lg ${getTypeBg(notification.type)} flex items-center justify-center shrink-0`}
+                >
+                  {getTypeIcon(notification.type)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                        {notification.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        {notification.message}
+                      </p>
+                    </div>
+
+                    {!notification.read && (
+                      <span className="mt-1 w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                    )}
                   </div>
-                  {!notification.read && (
-                    <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-4 mt-2 text-sm">
-                  <span className="text-slate-500 flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {notification.course}
-                  </span>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-slate-400">{notification.time}</span>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 mt-3">
-                  <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    View Details
-                  </button>
-                  {notification.type === "quiz_submission" && (
-                    <button className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-                      Grade Now
-                    </button>
-                  )}
-                  {notification.type === "live_session" && (
-                    <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                      Join Session
-                    </button>
-                  )}
-                  {notification.type === "alert" && (
-                    <button className="text-sm text-red-600 hover:text-red-700 font-medium">
-                      View Students
-                    </button>
-                  )}
-                  {notification.type === "ai_suggestion" && (
-                    <button className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                      Generate Content
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                    <span>{notification.time}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    {!notification.read && (
+                      <button
+                        onClick={() => markAsRead(notification.id, notification.type)}
+                        className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      >
+                        Mark as read
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <Trash2 className="w-4 h-4 text-slate-400" />
-              </button>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* Load More */}
-      <div className="text-center">
-        <button className="px-6 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-600 font-medium">
+      <div className="mt-6 text-center">
+        <button className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
           Load More Notifications
         </button>
       </div>

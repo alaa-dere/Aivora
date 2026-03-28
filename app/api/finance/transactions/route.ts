@@ -6,12 +6,12 @@ type TransactionRow = RowDataPacket & {
   id: string;
   date: string;
   dateTime: string;
-  type: 'enrollment' | 'refund' | 'payout';
+  type: 'enrollment' | 'refund';
   status: 'success' | 'failed' | 'pending';
   amount: number;
   teacherShare: number | null;
   platformShare: number | null;
-  method: 'wallet' | 'card' | 'cash' | null;
+  method: 'wallet' | 'card' | 'cash' | 'paypal' | null;
   studentName: string | null;
   teacherName: string | null;
   courseTitle: string | null;

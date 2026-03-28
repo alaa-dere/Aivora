@@ -49,16 +49,6 @@ export async function GET(req: Request) {
       params
     );
 
-    const [payoutRows] = await pool.query<SumRow[]>(
-      `
-        SELECT COALESCE(SUM(fp.amount), 0) AS total
-        FROM finance_payout fp
-        WHERE fp.status = 'success'
-          ${month ? "AND DATE_FORMAT(fp.payoutDate, '%Y-%m') = ?" : ''}
-      `,
-      month ? [month] : []
-    );
-
     const [countRows] = await pool.query<CountRow[]>(
       `
         SELECT ft.type, COUNT(*) AS count
@@ -89,7 +79,6 @@ export async function GET(req: Request) {
       income: Number(incomeRows[0]?.total || 0),
       teacherProfit: Number(teacherRows[0]?.total || 0),
       platformProfit: Number(platformRows[0]?.total || 0),
-      payouts: Number(payoutRows[0]?.total || 0),
       byType,
       count: Number(totalRows[0]?.total || 0),
     });

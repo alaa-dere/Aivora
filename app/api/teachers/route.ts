@@ -78,18 +78,6 @@ export async function GET(req: Request) {
         [teacherId]
       );
 
-      const payoutRows = await db.query(
-        `
-          SELECT
-            COALESCE(SUM(CASE WHEN status = 'success' THEN amount ELSE 0 END), 0) AS totalPaid,
-            COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) AS pendingPayout,
-            MAX(payoutDate) AS lastPayoutDate
-          FROM finance_payout
-          WHERE teacherId = ?
-        `,
-        [teacherId]
-      );
-
       const coursesRows = await db.query(
         `
           SELECT
@@ -159,8 +147,6 @@ export async function GET(req: Request) {
       const courseStats = (courseStatsRows[0] as RowDataPacket[])[0] || {};
       const enrollmentStats = (enrollmentStatsRows[0] as RowDataPacket[])[0] || {};
       const revenueStats = (revenueRows[0] as RowDataPacket[])[0] || {};
-      const payoutStats = (payoutRows[0] as RowDataPacket[])[0] || {};
-
       return NextResponse.json({
         teacher,
         stats: {
@@ -175,9 +161,6 @@ export async function GET(req: Request) {
           totalRevenue: Number(revenueStats.totalRevenue || 0),
           monthRevenue: Number(revenueStats.monthRevenue || 0),
           grossSales: Number(revenueStats.grossSales || 0),
-          totalPaid: Number(payoutStats.totalPaid || 0),
-          pendingPayout: Number(payoutStats.pendingPayout || 0),
-          lastPayoutDate: payoutStats.lastPayoutDate || null,
         },
         courses: coursesRows[0] as RowDataPacket[],
         students: studentsRows[0] as RowDataPacket[],
@@ -299,6 +282,21 @@ export async function DELETE(req: Request) {
 
     if (!id) {
       return NextResponse.json({ message: 'Teacher ID is required' }, { status: 400 });
+    }
+
+    const courseCheck = await db.query(
+      'SELECT COUNT(*) AS courseCount FROM course WHERE teacherId = ?',
+      [id]
+    );
+    const courseCount = Number((courseCheck[0] as RowDataPacket[])[0]?.courseCount || 0);
+
+    if (courseCount > 0) {
+      return NextResponse.json(
+        {
+          message: `This teacher is assigned to ${courseCount} course${courseCount === 1 ? '' : 's'}. Please reassign their courses before deleting.`,
+        },
+        { status: 409 }
+      );
     }
 
     const deleteResult = await db.query('DELETE FROM user WHERE id = ?', [id]);

@@ -134,6 +134,9 @@ export default function AdminCoursesPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Courses</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage courses, pricing, and publishing status.
+          </p>
         </div>
 
         <Link
@@ -158,13 +161,12 @@ export default function AdminCoursesPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Courses', value: stats.total.toString(), trend: '+3.1%', icon: Squares2X2Icon },
-          { label: 'Published Courses', value: stats.active.toString(), trend: '+1.4%', icon: BookOpenIcon },
-          { label: 'Total Students', value: stats.totalStudents.toString(), trend: '+6.2%', icon: UsersIcon },
+          { label: 'Total Courses', value: stats.total.toString(), icon: Squares2X2Icon },
+          { label: 'Published Courses', value: stats.active.toString(), icon: BookOpenIcon },
+          { label: 'Total Students', value: stats.totalStudents.toString(), icon: UsersIcon },
           {
             label: 'Estimated Monthly Revenue',
             value: `$${stats.revenueMonthlyMock.toFixed(0)}`,
-            trend: '+9.8%',
             icon: CurrencyDollarIcon,
           },
         ].map((card) => (
@@ -184,14 +186,6 @@ export default function AdminCoursesPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span
-                className="
-                  text-xs font-medium px-2 py-1 rounded-full
-                  bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300
-                "
-              >
-                {card.trend}
-              </span>
             </div>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>

@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
-import { Bell } from "lucide-react";
+import { Bell, MessageSquare } from "lucide-react";
 import {
   HomeIcon,
+  ChartBarIcon,
   PencilSquareIcon,
   UsersIcon,
   BookOpenIcon,
@@ -33,6 +34,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
+  const [messageNotifItems, setMessageNotifItems] = useState<
+    { id: string; teacherId: string; title: string; message: string; createdAt: string }[]
+  >([]);
 
   const { theme, setTheme } = useTheme();
 
@@ -42,15 +46,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/');
+  const isHome = pathname === '/';
 
   useEffect(() => {
     let mounted = true;
     const loadCount = async () => {
       try {
-        const res = await fetch('/api/admin/notifications/count', { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) return;
-        if (mounted) setNotificationCount(Number(data.total || 0));
+        const [notifRes, msgRes] = await Promise.all([
+          fetch('/api/admin/notifications/count', { cache: 'no-store' }),
+          fetch('/api/admin/messages', { cache: 'no-store' }),
+        ]);
+        const notifData = await notifRes.json();
+        const msgData = await msgRes.json();
+        if (!notifRes.ok) return;
+        const unreadFromThreads = Array.isArray(msgData?.threads)
+          ? msgData.threads.reduce((sum: number, t: any) => sum + Number(t.unreadCount || 0), 0)
+          : 0;
+        if (mounted) setNotificationCount(Number(notifData.total || 0) + unreadFromThreads);
       } catch (error) {
         console.error('Failed to load notification count', error);
       }
@@ -66,10 +78,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const loadNotifications = async () => {
     try {
-      const res = await fetch('/api/admin/notifications', { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok) return;
-      const items = (data.notifications || []).slice(0, 5).map((n: any) => ({
+      const [notifRes, msgRes] = await Promise.all([
+        fetch('/api/admin/notifications', { cache: 'no-store' }),
+        fetch('/api/admin/messages', { cache: 'no-store' }),
+      ]);
+      const notifData = await notifRes.json();
+      const msgData = await msgRes.json();
+      if (!notifRes.ok) return;
+      const items = (notifData.notifications || []).slice(0, 5).map((n: any) => ({
         id: n.id,
         title: n.title,
         message: n.message,
@@ -77,6 +93,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         read: Boolean(n.readAt),
       }));
       setNotificationItems(items);
+
+      const messageItems = (msgData.threads || [])
+        .filter((t: any) => Number(t.unreadCount || 0) > 0)
+        .slice(0, 5)
+        .map((t: any) => ({
+          id: t.id,
+          teacherId: t.teacherId,
+          title: `New message from ${t.teacherName || 'Teacher'}`,
+          message: t.lastMessage || 'New message',
+          createdAt: t.lastMessageAt,
+        }));
+      setMessageNotifItems(messageItems);
     } catch (error) {
       console.error('Failed to load notifications', error);
     }
@@ -132,6 +160,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
           </button>
 
+          <Link
+            href="/dashboard/messages"
+            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Messages"
+          >
+            <MessageSquare className="w-5 h-5 text-white" />
+          </Link>
+
           <div className="relative">
             <button
               onClick={() => {
@@ -157,29 +193,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </p>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
-                  {notificationItems.length === 0 ? (
+                  {notificationItems.length === 0 && messageNotifItems.length === 0 ? (
                     <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
                       No notifications yet.
                     </div>
                   ) : (
-                    notificationItems.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                          {n.title}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {n.message}
-                        </p>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
-                          {new Date(n.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    ))
+                    <>
+                      {messageNotifItems.map((n) => (
+                        <Link
+                          key={n.id}
+                          href={`/dashboard/messages?teacherId=${n.teacherId}`}
+                          onClick={() => setNotificationOpen(false)}
+                          className="block px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-blue-50/60 dark:hover:bg-blue-900/20"
+                        >
+                          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                            {n.title}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {n.message}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </Link>
+                      ))}
+                      {notificationItems.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                            n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
+                          }`}
+                        >
+                          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                            {n.title}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {n.message}
+                          </p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
@@ -240,6 +296,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
 
+              {/* Home */}
+              <Link
+                href="/"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isHome
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <HomeIcon className="w-5 h-5 mr-3" />
+                Home
+              </Link>
+
               {/* Dashboard */}
               <Link
                 href="/dashboard"
@@ -250,7 +320,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <HomeIcon className="w-5 h-5 mr-3" />
+                <ChartBarIcon className="w-5 h-5 mr-3" />
                 Dashboard
               </Link>
 
@@ -359,21 +429,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </Link>
 
                   <Link
-                    href="/dashboard/finance/payouts"
-                    onClick={() => {
-                      setFinanceOpen(false);
-                      setSidebarOpen(false);
-                    }}
-                    className={`block px-4 py-2 text-sm rounded-lg ${
-                      isActive('/dashboard/finance/payouts')
-                        ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Payouts
-                  </Link>
-
-                  <Link
                     href="/dashboard/finance/reports"
                     onClick={() => {
                       setFinanceOpen(false);
@@ -402,6 +457,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <Bell className="w-5 h-5 mr-3" />
                 Notifications
+              </Link>
+
+              {/* Messages */}
+              <Link
+                href="/dashboard/messages"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isActive('/dashboard/messages')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <MessageSquare className="w-5 h-5 mr-3" />
+                Messages
               </Link>
 
             </nav>

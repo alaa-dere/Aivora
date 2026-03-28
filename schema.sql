@@ -106,11 +106,38 @@ CREATE TABLE IF NOT EXISTS enrollment (
     INDEX idx_courseId  (courseId)
 ) ENGINE=InnoDB;
 
+-- enrollment_payment
+CREATE TABLE IF NOT EXISTS enrollment_payment (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    enrollmentId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    studentId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    fullName        VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    email           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    country         VARCHAR(191) NULL COLLATE utf8mb4_unicode_ci,
+    cardLast4       VARCHAR(4) NULL COLLATE utf8mb4_unicode_ci,
+    paypalEmail     VARCHAR(191) NULL COLLATE utf8mb4_unicode_ci,
+    paypalTxnId     VARCHAR(191) NULL COLLATE utf8mb4_unicode_ci,
+    method          ENUM('card', 'paypal') DEFAULT 'card',
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (enrollmentId) REFERENCES enrollment(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_enrollment_payment (enrollmentId),
+    INDEX idx_studentId (studentId),
+    INDEX idx_courseId (courseId),
+    INDEX idx_createdAt (createdAt)
+) ENGINE=InnoDB;
+
 -- finance_transaction
 CREATE TABLE IF NOT EXISTS finance_transaction (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     transactionDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    type            ENUM('enrollment', 'refund', 'payout') DEFAULT 'enrollment',
+    type            ENUM('enrollment', 'refund') DEFAULT 'enrollment',
     status          ENUM('success', 'failed', 'pending') DEFAULT 'success',
     amount          DECIMAL(10,2) NOT NULL,
     currency        CHAR(3) DEFAULT 'USD',
@@ -119,7 +146,7 @@ CREATE TABLE IF NOT EXISTS finance_transaction (
     courseId        VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
     teacherShare    DECIMAL(10,2) DEFAULT 0.00,
     platformShare   DECIMAL(10,2) DEFAULT 0.00,
-    method          ENUM('wallet', 'card', 'cash') DEFAULT 'card',
+    method          ENUM('wallet', 'card', 'cash', 'paypal') DEFAULT 'card',
     notes           VARCHAR(255) COLLATE utf8mb4_unicode_ci,
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
 
@@ -137,28 +164,10 @@ CREATE TABLE IF NOT EXISTS finance_transaction (
     INDEX idx_type (type)
 ) ENGINE=InnoDB;
 
--- finance_payout
-CREATE TABLE IF NOT EXISTS finance_payout (
-    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
-    payoutDate  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    teacherId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
-    amount      DECIMAL(10,2) NOT NULL,
-    status      ENUM('success', 'failed', 'pending') DEFAULT 'pending',
-    method      ENUM('wallet', 'card', 'cash') DEFAULT 'wallet',
-    reference   VARCHAR(191) COLLATE utf8mb4_unicode_ci,
-    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (teacherId) REFERENCES user(id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_payoutDate (payoutDate),
-    INDEX idx_teacherId (teacherId),
-    INDEX idx_status (status)
-) ENGINE=InnoDB;
-
 -- admin_notification
 CREATE TABLE IF NOT EXISTS admin_notification (
     id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
-    type        ENUM('student_signup', 'course_enroll') DEFAULT 'student_signup',
+    type        ENUM('student_signup', 'course_enroll', 'teacher_message') DEFAULT 'student_signup',
     title       VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
     message     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
     studentId   VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
@@ -173,6 +182,44 @@ CREATE TABLE IF NOT EXISTS admin_notification (
     INDEX idx_createdAt (createdAt),
     INDEX idx_readAt (readAt),
     INDEX idx_type (type)
+) ENGINE=InnoDB;
+
+-- admin_teacher_thread
+CREATE TABLE IF NOT EXISTS admin_teacher_thread (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    adminId         VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    teacherId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    lastMessageAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (adminId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_thread (adminId, teacherId),
+    INDEX idx_adminId (adminId),
+    INDEX idx_teacherId (teacherId),
+    INDEX idx_lastMessageAt (lastMessageAt)
+) ENGINE=InnoDB;
+
+-- admin_teacher_message
+CREATE TABLE IF NOT EXISTS admin_teacher_message (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    threadId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    senderId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    senderRole  ENUM('admin', 'teacher') NOT NULL,
+    body        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    readAt      DATETIME NULL,
+
+    FOREIGN KEY (threadId) REFERENCES admin_teacher_thread(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (senderId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_threadId (threadId),
+    INDEX idx_senderId (senderId),
+    INDEX idx_createdAt (createdAt),
+    INDEX idx_readAt (readAt)
 ) ENGINE=InnoDB;
 
 -- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ lessonprogress
@@ -243,12 +290,14 @@ CREATE TABLE IF NOT EXISTS chat_message (
     senderRole      ENUM('student', 'teacher') NOT NULL,
     body            TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
     createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    readAt          DATETIME NULL,
 
     FOREIGN KEY (conversationId) REFERENCES chat_conversation(id)
         ON DELETE CASCADE ON UPDATE CASCADE,
     INDEX idx_conversationId (conversationId),
     INDEX idx_createdAt (createdAt),
-    INDEX idx_senderId (senderId)
+    INDEX idx_senderId (senderId),
+    INDEX idx_readAt (readAt)
 ) ENGINE=InnoDB;
 
 -- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ passwordresettoken

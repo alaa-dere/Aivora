@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 
 type Teacher = {
@@ -208,11 +209,27 @@ export default function NewCoursePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-          Add New Course
-        </h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                aria-label="Back to courses"
+                title="Back to courses"
+              >
+                <ArrowLeftIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+              </button>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Add New Course</h1>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Fill in the details below to create a new course.
+            </p>
+          </div>
+        </div>
 
         {errorMsg && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
@@ -220,11 +237,15 @@ export default function NewCoursePage() {
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-        >
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+            <h2 className="text-lg font-semibold text-white">Course Basics</h2>
+            <p className="text-sm text-blue-200 mt-1">
+              Start with the core details that appear on the course card.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Course Title <span className="text-red-500">*</span>
             </label>
@@ -233,12 +254,12 @@ export default function NewCoursePage() {
               value={form.title}
               onChange={(e) => handleChange('title', e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               placeholder="Example: Web Development with Next.js"
             />
           </div>
 
-          <div>
+          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Description <span className="text-red-500">*</span>
             </label>
@@ -247,12 +268,12 @@ export default function NewCoursePage() {
               value={form.description}
               onChange={(e) => handleChange('description', e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               placeholder="Short and attractive description of the course..."
             />
           </div>
 
-          <div>
+          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Teacher <span className="text-red-500">*</span>
             </label>
@@ -264,9 +285,9 @@ export default function NewCoursePage() {
                 value={form.teacherId}
                 onChange={(e) => handleChange('teacherId', e.target.value)}
                 required
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               >
-                <option value="">Select a teacher...</option>
+                <option value="">Not specified</option>
                 {teachers.map((teacher) => (
                   <option key={teacher.id} value={teacher.id}>
                     {teacher.fullName}
@@ -276,8 +297,15 @@ export default function NewCoursePage() {
             )}
           </div>
 
+          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+            <h2 className="text-lg font-semibold text-white">Pricing & Duration</h2>
+            <p className="text-sm text-blue-200 mt-1">
+              Set the amount students will pay and the expected time to complete.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div>
+            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Price (USD)
               </label>
@@ -287,11 +315,11 @@ export default function NewCoursePage() {
                 min="0"
                 value={form.price}
                 onChange={(e) => handleChange('price', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </div>
 
-            <div>
+            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Duration (Weeks)
               </label>
@@ -300,12 +328,12 @@ export default function NewCoursePage() {
                 min="1"
                 value={form.durationWeeks}
                 onChange={(e) => handleChange('durationWeeks', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                 placeholder="Example: 8"
               />
             </div>
 
-            <div>
+            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Teacher Share (%)
               </label>
@@ -316,14 +344,21 @@ export default function NewCoursePage() {
                 max="100"
                 value={form.teacherSharePct}
                 onChange={(e) => handleChange('teacherSharePct', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </div>
           </div>
 
-          <div>
+          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+            <h2 className="text-lg font-semibold text-white">Media</h2>
+            <p className="text-sm text-blue-200 mt-1">
+              Add a cover image to make the course stand out.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Cover Image (optional – recommended 1280×720 or similar aspect ratio)
+              Cover Image (optional - recommended 1280x720 or similar aspect ratio)
             </label>
 
             <input
@@ -349,7 +384,7 @@ export default function NewCoursePage() {
             )}
           </div>
 
-          <div>
+          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Course Status
             </label>
@@ -357,7 +392,7 @@ export default function NewCoursePage() {
             <select
               value={form.status}
               onChange={(e) => handleChange('status', e.target.value as CourseStatus)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-950 dark:text-white"
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               <option value="draft">Draft (not visible)</option>
               <option value="published">Published (available for purchase)</option>
@@ -365,11 +400,11 @@ export default function NewCoursePage() {
             </select>
           </div>
 
-          <div className="flex justify-end gap-4 pt-6">
+          <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={() => router.back()}
-              className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="px-6 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
@@ -377,7 +412,7 @@ export default function NewCoursePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-lg bg-blue-700 px-8 py-3 font-medium text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Saving...' : 'Create Course'}
             </button>

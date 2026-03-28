@@ -4,16 +4,19 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { FaInstagram } from "react-icons/fa";
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from "next-auth/react";
+import HomeUserMenu from "@/components/home-user-menu";
 import {
   SunIcon,
   MoonIcon,
-  ArrowRightOnRectangleIcon,
   StarIcon,
   EnvelopeIcon,
   PhoneIcon,
   ClockIcon,
   UserGroupIcon,
   GlobeAltIcon,
+  UserCircleIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
 const navItemsEn = [
@@ -91,10 +94,12 @@ type Course = {
   instructor: string;
   duration: string;
   students: string;
+  enrolled?: boolean;
 };
 
 export default function HomePage() {
   const { theme, setTheme } = useTheme();
+  const { status } = useSession();
 
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
@@ -259,14 +264,18 @@ export default function HomePage() {
                 <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
               </button>
 
-              <Link href="/login">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                  <span className="hidden sm:inline">
-                    {isArabic ? 'تسجيل الدخول' : 'Login'}
-                  </span>
-                </button>
-              </Link>
+              {status === "authenticated" ? (
+                <HomeUserMenu isArabic={isArabic} />
+              ) : (
+                <Link href="/login">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                    <span className="hidden sm:inline">
+                      {isArabic ? 'تسجيل الدخول' : 'Login'}
+                    </span>
+                  </button>
+                </Link>
+              )}
             </div>
           </div>
 
@@ -452,9 +461,16 @@ export default function HomePage() {
                         {isArabic ? 'بواسطة' : 'By'} {course.instructor}
                       </p>
 
-                      <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
-                        {course.title}
-                      </h3>
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                          {course.title}
+                        </h3>
+                        {course.enrolled && (
+                          <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30">
+                            {isArabic ? 'مسجل' : 'Enrolled'}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
                         <div className="flex items-center gap-1">
@@ -473,12 +489,21 @@ export default function HomePage() {
                           ${course.price}
                         </span>
 
-                        <Link
-                        href={`/Home/courses/${course.id}`}
-                          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
-                        >
-                          {isArabic ? '  عرض الدورة' : 'View Course'}
-                        </Link>
+                        {course.enrolled ? (
+                          <Link
+                            href={`/student/my-courses/${course.id}`}
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                          >
+                            {isArabic ? 'مسجل' : 'Enrolled'}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/Home/courses/${course.id}`}
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                          >
+                            {isArabic ? '  عرض الدورة' : 'View Course'}
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>

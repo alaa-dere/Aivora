@@ -5,11 +5,12 @@ import {
   Bell,
   CheckCircle,
   Filter,
+  MessageSquare,
   Trash2,
   Users,
 } from "lucide-react";
 
-type NotificationType = "student_signup" | "course_enroll";
+type NotificationType = "student_signup" | "course_enroll" | "teacher_message";
 
 type NotificationItem = {
   id: string;
@@ -26,6 +27,8 @@ function getTypeIcon(type: NotificationType) {
       return <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
     case "course_enroll":
       return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+    case "teacher_message":
+      return <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />;
     default:
       return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
   }
@@ -37,6 +40,8 @@ function getTypeBg(type: NotificationType) {
       return "bg-blue-100 dark:bg-blue-900/30";
     case "course_enroll":
       return "bg-emerald-100 dark:bg-emerald-900/30";
+    case "teacher_message":
+      return "bg-indigo-100 dark:bg-indigo-900/30";
     default:
       return "bg-gray-100 dark:bg-gray-700";
   }

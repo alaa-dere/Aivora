@@ -197,6 +197,9 @@ export default function AdminStudentsPage() {
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Students</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage student accounts, enrollments, and status.
+          </p>
         </div>
 
         <button

@@ -17,6 +17,7 @@ export default function EditCoursePage() {
     description: '',
     teacherId: '',
     price: '0.00',
+    durationWeeks: '4',
     teacherSharePct: '70.00',
     status: 'draft' as 'draft' | 'published' | 'archived',
   });
@@ -48,6 +49,7 @@ export default function EditCoursePage() {
             description: c.description || '',
             teacherId: c.teacherId || '',
             price: Number(c.price ?? 0).toFixed(2),
+            durationWeeks: String(Number(c.durationWeeks ?? 4)),
             teacherSharePct: Number(c.teacherSharePct ?? 70).toFixed(2),
             status: c.status || 'draft',
           });
@@ -98,6 +100,7 @@ export default function EditCoursePage() {
     payload.append('teacherId', form.teacherId);
     payload.append('price', form.price);
     payload.append('teacherSharePct', form.teacherSharePct);
+    payload.append('durationWeeks', form.durationWeeks);
     payload.append('status', form.status);
 
     // Only append new image if user selected one
@@ -126,23 +129,44 @@ export default function EditCoursePage() {
   };
 
   if (loading) {
-    return <div className="p-10 text-center text-gray-600 dark:text-gray-400">Loading course data...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+        <div className="p-10 text-center text-gray-600 dark:text-gray-400">
+          Loading course data...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-          Edit Course
-        </h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Edit Course</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Update course details, pricing, and status.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+          >
+            Back to courses
+          </button>
+        </div>
 
         {errorMsg && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 rounded-xl border border-blue-200 bg-white p-6 shadow-sm dark:border-blue-800 dark:bg-gray-800"
+        >
 
           {/* Course Title */}
           <div>
@@ -154,7 +178,7 @@ export default function EditCoursePage() {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               placeholder="Example: Web Development with Next.js"
             />
           </div>
@@ -169,7 +193,7 @@ export default function EditCoursePage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               placeholder="Short and attractive description of the course..."
             />
           </div>
@@ -183,9 +207,9 @@ export default function EditCoursePage() {
               value={form.teacherId}
               onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
               required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
-              <option value="">Select a teacher...</option>
+              <option value="">Not specified</option>
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.fullName}
@@ -194,8 +218,8 @@ export default function EditCoursePage() {
             </select>
           </div>
 
-          {/* Price + Teacher Share */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Price + Duration + Teacher Share */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Price (USD)
@@ -206,7 +230,20 @@ export default function EditCoursePage() {
                 min="0"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Duration (Weeks)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={form.durationWeeks}
+                onChange={(e) => setForm({ ...form, durationWeeks: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                placeholder="Example: 8"
               />
             </div>
             <div>
@@ -220,7 +257,7 @@ export default function EditCoursePage() {
                 max="100"
                 value={form.teacherSharePct}
                 onChange={(e) => setForm({ ...form, teacherSharePct: e.target.value })}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </div>
           </div>
@@ -262,7 +299,7 @@ export default function EditCoursePage() {
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               <option value="draft">Draft (not visible)</option>
               <option value="published">Published (available for purchase)</option>
@@ -271,18 +308,18 @@ export default function EditCoursePage() {
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-4 pt-6">
+          <div className="flex justify-end gap-3 pt-6">
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="px-6 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-8 py-3 bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>
