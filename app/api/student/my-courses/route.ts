@@ -16,6 +16,7 @@ export async function GET(req: Request) {
         c.id,
         c.title,
         c.description,
+        c.imageUrl,
         e.progressPercentage AS progress
       FROM enrollment e
       JOIN course c ON c.id = e.courseId
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       id: row.id,
       title: row.title,
       description: row.description,
+      imageUrl: row.imageUrl || '/default-course.jpg',
       progress: Math.round(Number(row.progress || 0)),
     }));
 

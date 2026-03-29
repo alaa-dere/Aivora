@@ -32,7 +32,7 @@ export async function GET(req: Request, { params }: Params) {
     const enrollment = enrollRows[0];
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, title FROM course WHERE id = ? LIMIT 1`,
+      `SELECT id, title, imageUrl FROM course WHERE id = ? LIMIT 1`,
       [id]
     );
     if (courseRows.length === 0) {
@@ -123,6 +123,20 @@ export async function GET(req: Request, { params }: Params) {
       })),
     }));
 
+    const [lastActiveRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT lp.lessonId
+      FROM lessonprogress lp
+      JOIN lesson l ON l.id = lp.lessonId
+      JOIN module m ON m.id = l.moduleId
+      WHERE lp.enrollmentId = ? AND m.courseId = ?
+      ORDER BY COALESCE(lp.completedAt, lp.startedAt) DESC, lp.id DESC
+      LIMIT 1
+      `,
+      [enrollment.id, id]
+    );
+    const lastActiveLessonId = (lastActiveRows[0]?.lessonId as string | undefined) || null;
+
     const [certRows] = await pool.query<RowDataPacket[]>(
       `SELECT id FROM certificate WHERE studentId = ? AND courseId = ? LIMIT 1`,
       [user.id, id]
@@ -133,8 +147,10 @@ export async function GET(req: Request, { params }: Params) {
       course: {
         id: courseRows[0].id,
         title: courseRows[0].title,
+        imageUrl: courseRows[0].imageUrl || '/default-course.jpg',
         progressPercentage: Number(enrollment.progressPercentage || 0),
         status: enrollment.status,
+        lastActiveLessonId,
         certificateId: certificateId || null,
       },
       modules,

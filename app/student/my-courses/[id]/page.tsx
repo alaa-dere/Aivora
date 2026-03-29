@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { LockClosedIcon, PlayCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, LockClosedIcon, PlayCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 
 type Lesson = {
   id: string;
@@ -22,11 +22,12 @@ type Module = {
 
 export default function StudentCourseOverviewPage() {
   const params = useParams<{ id: string }>();
+  const lessonStorageKey = `aivora:last-lesson:${params.id}`;
   const [modules, setModules] = useState<Module[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
   const [courseProgress, setCourseProgress] = useState(0);
   const [courseStatus, setCourseStatus] = useState<string>('');
-  const [certificateId, setCertificateId] = useState<string | null>(null);
+  const [lastActiveLessonId, setLastActiveLessonId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +44,7 @@ export default function StudentCourseOverviewPage() {
         setCourseTitle(data.course?.title || '');
         setCourseProgress(Number(data.course?.progressPercentage || 0));
         setCourseStatus(String(data.course?.status || ''));
-        setCertificateId(data.course?.certificateId || null);
+        setLastActiveLessonId(String(data.course?.lastActiveLessonId || ''));
       } catch (err: any) {
         setError(err.message || 'Failed to load course content');
       } finally {
@@ -61,6 +62,79 @@ export default function StudentCourseOverviewPage() {
     }
     return null;
   }, [modules]);
+  const allLessons = useMemo(() => modules.flatMap((m) => m.lessons), [modules]);
+  const [selectedModuleId, setSelectedModuleId] = useState<string>('');
+  const selectedModule = useMemo(
+    () => modules.find((m) => m.id === selectedModuleId) || modules[0] || null,
+    [modules, selectedModuleId]
+  );
+  const lessonsInSelectedModule = selectedModule?.lessons || [];
+  const [selectedLessonId, setSelectedLessonId] = useState<string>('');
+  const continueLesson = useMemo(() => {
+    const nextRequiredLesson =
+      allLessons.find((lesson) => lesson.unlocked && !lesson.completed) || null;
+    return nextRequiredLesson || firstUnlocked;
+  }, [allLessons, firstUnlocked]);
+
+  useEffect(() => {
+    if (!modules.length) return;
+    const initialModule = modules[0];
+    let localRememberedId = '';
+    try {
+      localRememberedId = localStorage.getItem(lessonStorageKey) || '';
+    } catch {
+      // ignore storage errors
+    }
+    const localRememberedLesson =
+      allLessons.find((l) => l.id === localRememberedId && l.unlocked) || null;
+    const rememberedLesson =
+      allLessons.find((l) => l.id === lastActiveLessonId && l.unlocked) || null;
+    const firstUnlockedLesson = allLessons.find((l) => l.unlocked) || allLessons[0];
+    const nextRequiredLesson =
+      allLessons.find((lesson) => lesson.unlocked && !lesson.completed) || null;
+    const initialLesson =
+      nextRequiredLesson || localRememberedLesson || rememberedLesson || firstUnlockedLesson || null;
+    setSelectedModuleId(initialModule.id);
+    if (initialLesson) {
+      setSelectedLessonId(initialLesson.id);
+      const moduleOfLesson = modules.find((m) => m.lessons.some((l) => l.id === initialLesson.id));
+      if (moduleOfLesson) setSelectedModuleId(moduleOfLesson.id);
+    }
+  }, [modules, allLessons, lastActiveLessonId, lessonStorageKey]);
+
+  useEffect(() => {
+    if (!selectedModule || !selectedLessonId) return;
+    const inModule = selectedModule.lessons.some((l) => l.id === selectedLessonId);
+    if (!inModule) {
+      const fallback = selectedModule.lessons.find((l) => l.unlocked) || selectedModule.lessons[0];
+      setSelectedLessonId(fallback?.id || '');
+    }
+  }, [selectedModule, selectedLessonId]);
+
+  useEffect(() => {
+    if (!selectedLessonId) return;
+    try {
+      localStorage.setItem(lessonStorageKey, selectedLessonId);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedLessonId, lessonStorageKey]);
+
+  useEffect(() => {
+    if (!params.id || !selectedLessonId) return;
+    const saveViewedLesson = async () => {
+      try {
+        await fetch(`/api/student/my-courses/${params.id}/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId: selectedLessonId, event: 'start' }),
+        });
+      } catch {
+        // best-effort tracking; ignore
+      }
+    };
+    saveViewedLesson();
+  }, [params.id, selectedLessonId]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -71,19 +145,140 @@ export default function StudentCourseOverviewPage() {
           100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-          {courseTitle || 'Course Overview'}
-        </h1>
-      </div>
-
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading course...</p>
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+        <>
+          <div className="mb-4">
+            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-3 sm:px-4 py-2 overflow-visible">
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:gap-4 min-h-[58px]">
+              <div>
+                <Link
+                  href="/student/my-courses"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ArrowLeftIcon className="w-4 h-4" /> Back to My Courses
+                </Link>
+              </div>
+
+              <div className="min-w-0 flex items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
+              <div className="relative flex items-center gap-2 md:gap-2.5 px-2">
+              {allLessons.slice(0, 14).map((lesson, idx) => {
+                const done = lesson.completed;
+                const active = lesson.id === selectedLessonId;
+                return (
+                  <button
+                    key={`overview-dot-${lesson.id}`}
+                    type="button"
+                    onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
+                    disabled={!lesson.unlocked}
+                    className={`relative z-10 h-3 w-3 rounded-full shrink-0 transition-all duration-300 ${
+                      active
+                        ? 'scale-110 shadow-[0_0_14px_rgba(96,165,250,0.85)]'
+                        : done
+                        ? 'shadow-[0_0_8px_rgba(96,165,250,0.3)]'
+                        : ''
+                    } ${lesson.unlocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                    title={`Lesson ${idx + 1}: ${lesson.title}`}
+                  >
+                    <span
+                      className={`absolute inset-0 rounded-full ring-1 ${
+                        active
+                          ? 'ring-blue-300 bg-blue-100/90 dark:bg-blue-900/90'
+                          : done
+                          ? 'ring-blue-300/80 bg-blue-50/90 dark:bg-blue-900/70'
+                          : 'ring-blue-300/60 bg-white/90 dark:bg-blue-950/60'
+                      }`}
+                    />
+                    <span
+                      className={`absolute inset-[1px] rounded-full ${
+                        active
+                          ? 'bg-blue-500'
+                          : done
+                          ? 'bg-blue-400/90'
+                          : 'bg-blue-200/80 dark:bg-blue-800/80'
+                      }`}
+                    />
+                    <span
+                      className={`absolute inset-[3px] rounded-full ${
+                        active ? 'bg-white/90' : 'bg-white/70 dark:bg-blue-100/60'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+              </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                <select
+                  value={selectedModule?.id || ''}
+                  onChange={(e) => {
+                    const module = modules.find((m) => m.id === e.target.value);
+                    if (!module) return;
+                    setSelectedModuleId(module.id);
+                    const firstUnlockedLesson = module.lessons.find((l) => l.unlocked) || module.lessons[0];
+                    setSelectedLessonId(firstUnlockedLesson?.id || '');
+                  }}
+                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {modules.map((m, idx) => (
+                    <option key={m.id} value={m.id}>
+                      {`CH${idx + 1}: ${m.title}`}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedLessonId}
+                  onChange={(e) => setSelectedLessonId(e.target.value)}
+                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {lessonsInSelectedModule.map((lesson, idx) => (
+                    <option key={lesson.id} value={lesson.id} disabled={!lesson.unlocked}>
+                      {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
+                    </option>
+                  ))}
+                </select>
+
+              </div>
+            </div>
+            </div>
+          </div>
+          <div className="mb-6 overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800">
+            <div className="relative h-52 md:h-60">
+              <img
+                src="/code.jpg"
+                alt="Course cover"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-blue-950/55" />
+              <div className="absolute inset-0 p-5 pb-8 flex flex-col justify-end">
+                <p className="text-3xl font-bold text-white drop-shadow mt-0">
+                  {courseTitle || 'Start Your Learning Journey'}
+                </p>
+                <p className="text-sm text-blue-100 mt-1">
+                  Continue where you left off and complete each lesson with confidence.
+                </p>
+                {continueLesson && (
+                  <div className="mt-16">
+                    <Link
+                      href={`/student/my-courses/${params.id}/player?lesson=${continueLesson.id}`}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                    >
+                      <PlayCircleIcon className="w-4 h-4" />
+                      Continue Learning
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-4">
             {(courseProgress >= 100 || courseStatus === 'completed') && (
               <div
                 className="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 shadow-sm"
@@ -100,7 +295,10 @@ export default function StudentCourseOverviewPage() {
               </div>
             )}
             {modules.map((module) => (
-              <div key={module.id} className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+              <div
+                key={module.id}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 shadow-sm hover:shadow-md transition-shadow"
+              >
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{module.title}</h2>
                 {module.description && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-line">
@@ -112,9 +310,9 @@ export default function StudentCourseOverviewPage() {
                   {module.lessons.map((lesson) => (
                     <div
                       key={lesson.id}
-                      className={`flex items-center justify-between rounded-lg border p-3 ${
+                      className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
                         lesson.unlocked
-                          ? 'border-blue-200 dark:border-blue-800'
+                          ? 'border-blue-200 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
                           : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
                       }`}
                     >
@@ -144,49 +342,12 @@ export default function StudentCourseOverviewPage() {
               </div>
             ))}
           </div>
-
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Continue</h3>
-              {firstUnlocked ? (
-                <Link
-                  href={`/student/my-courses/${params.id}/player?lesson=${firstUnlocked.id}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
-                >
-                  <PlayCircleIcon className="w-4 h-4" />
-                  Resume Lesson
-                </Link>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No unlocked lessons yet.</p>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                Certificate
-              </h3>
-              {courseProgress >= 100 || courseStatus === 'completed' ? (
-                certificateId ? (
-                  <Link
-                    href={`/student/certificates/${certificateId}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-                  >
-                    Get Certificate
-                  </Link>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Your certificate is being prepared. Please check back soon.
-                  </p>
-                )
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Complete the course to unlock your certificate.
-                </p>
-              )}
-            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
+
+
+

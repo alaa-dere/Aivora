@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   ArrowLeftIcon,
@@ -74,8 +74,20 @@ export default function QuizResultPage() {
   const params = useParams<{ id: string; quizId: string }>();
   const courseId = params.id;
   const quizId = params.quizId;
+  const [playerHref, setPlayerHref] = useState(`/student/my-courses/${courseId}/player`);
 
   const result = useMemo(() => mockResults[quizId], [quizId]);
+
+  useEffect(() => {
+    try {
+      const savedLessonId = localStorage.getItem(`aivora:last-lesson:${courseId}`) || '';
+      if (savedLessonId) {
+        setPlayerHref(`/student/my-courses/${courseId}/player?lesson=${savedLessonId}`);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [courseId]);
 
   if (!result) {
     return (
@@ -100,7 +112,7 @@ export default function QuizResultPage() {
         </Link>
 
         <Link
-          href={`/student/my-courses/${courseId}/player`}
+          href={playerHref}
           className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
         >
           Back to player

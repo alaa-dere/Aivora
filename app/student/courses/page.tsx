@@ -91,6 +91,27 @@ export default function StudentCoursesPage() {
             key={c.id}
             className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
           >
+            <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-950 mb-4">
+              <img
+                src={c.imageUrl || '/default-course.jpg'}
+                alt={c.title}
+                className="h-28 w-full object-cover opacity-80"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-blue-950/85 via-blue-950/45 to-transparent" />
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {Array.from({ length: 10 }).map((_, idx) => (
+                  <span
+                    key={`${c.id}-decor-dot-${idx}`}
+                    className={`block h-3.5 w-3.5 rounded-full border ${
+                      idx < 3
+                        ? 'border-blue-300 bg-blue-300 shadow-[0_0_12px_rgba(147,197,253,0.8)]'
+                        : 'border-blue-400/50 bg-blue-900/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">

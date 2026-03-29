@@ -16,6 +16,7 @@ import {
   VideoCameraIcon,
   BellIcon,
   ChatBubbleLeftRightIcon,
+  UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
@@ -31,6 +32,7 @@ const menuItems = [
   { href: '/teacher/students', name: 'Students', icon: UsersIcon },
   { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
   { href: '/teacher/messages', name: 'Messages', icon: ChatBubbleLeftRightIcon },
+  { href: '/teacher/profile', name: 'Profile', icon: UserCircleIcon },
   { href: '/teacher/notifications', name: 'Notifications', icon: BellIcon },
 ];
 
@@ -43,6 +45,11 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
+  const [profile, setProfile] = useState<{
+    fullName: string;
+    email: string;
+    imageUrl?: string | null;
+  } | null>(null);
   const { theme, setTheme } = useTheme();
 
   // لتجنب مشكلة hydration مع الثيم
@@ -86,6 +93,38 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     return () => {
       mounted = false;
       clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const res = await fetch('/api/teacher/profile', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && mounted) {
+          setProfile({
+            fullName: data?.teacher?.fullName || 'Teacher User',
+            email: data?.teacher?.email || 'teacher@aivora.com',
+            imageUrl: data?.teacher?.imageUrl || null,
+          });
+        }
+      } catch {
+        if (mounted) {
+          setProfile({
+            fullName: 'Teacher User',
+            email: 'teacher@aivora.com',
+            imageUrl: null,
+          });
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      mounted = false;
     };
   }, []);
 
@@ -311,15 +350,31 @@ const handleLogout = async () => {
 
             {/* Teacher Info */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
-                  S
+              <Link
+                href="/teacher/profile"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center">
+                  {profile?.imageUrl ? (
+                    <img
+                      src={profile.imageUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  )}
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dr. Sarah Ahmed</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Computer Science</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {profile?.fullName || 'Teacher User'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {profile?.email || 'teacher@aivora.com'}
+                  </p>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </aside>

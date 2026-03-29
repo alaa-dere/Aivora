@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ArrowLeftIcon, ChartBarIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 type QuizItem = {
@@ -41,6 +42,18 @@ const mockQuizzes: QuizItem[] = [
 export default function CourseQuizzesPage() {
   const params = useParams<{ id: string }>();
   const courseId = params.id;
+  const [playerHref, setPlayerHref] = useState(`/student/my-courses/${courseId}/player`);
+
+  useEffect(() => {
+    try {
+      const savedLessonId = localStorage.getItem(`aivora:last-lesson:${courseId}`) || '';
+      if (savedLessonId) {
+        setPlayerHref(`/student/my-courses/${courseId}/player?lesson=${savedLessonId}`);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [courseId]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -114,7 +127,7 @@ export default function CourseQuizzesPage() {
                 )}
 
                 <Link
-                  href={`/student/my-courses/${courseId}/player`}
+                  href={playerHref}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
                 >
                   Back to player
