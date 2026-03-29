@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { Bell } from 'lucide-react';
+import { Bell, MessageSquare } from 'lucide-react';
 import {
   HomeIcon,
   BookOpenIcon,
@@ -38,6 +38,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
@@ -60,10 +61,21 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     const loadCount = async () => {
       try {
-        const res = await fetch('/api/teacher/dashboard?notifications=count', { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) return;
-        if (mounted) setNotificationCount(Number(data.total || 0));
+        const [notifRes, adminMsgRes, studentMsgRes] = await Promise.all([
+          fetch('/api/teacher/dashboard?notifications=count', { cache: 'no-store' }),
+          fetch('/api/teacher/messages?unreadCount=1', { cache: 'no-store' }),
+          fetch('/api/teacher/chat/students?unreadCount=1', { cache: 'no-store' }),
+        ]);
+        const notifData = await notifRes.json();
+        const adminMsgData = await adminMsgRes.json();
+        const studentMsgData = await studentMsgRes.json();
+        if (!notifRes.ok) return;
+        const totalMessages =
+          Number(adminMsgData?.total || 0) + Number(studentMsgData?.total || 0);
+        if (mounted) {
+          setNotificationCount(Number(notifData.total || 0));
+          setMessageCount(totalMessages);
+        }
       } catch (error) {
         console.error('Failed to load teacher notification count', error);
       }
@@ -76,6 +88,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       clearInterval(id);
     };
   }, []);
+
 
   const loadNotifications = async () => {
     try {
@@ -149,6 +162,19 @@ const handleLogout = async () => {
               <MoonIcon className="w-5 h-5 text-white" />
             )}
           </button>
+
+          <Link
+            href="/teacher/messages"
+            className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Messages"
+          >
+            <MessageSquare className="w-5 h-5 text-white" />
+            {messageCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {messageCount > 99 ? '99+' : messageCount}
+              </span>
+            )}
+          </Link>
 
           {/* Notifications */}
           <div className="relative">

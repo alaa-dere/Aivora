@@ -43,6 +43,7 @@ const navigation = [
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [profile, setProfile] = useState<{ fullName: string; email: string; imageUrl?: string | null } | null>(null);
@@ -90,6 +91,30 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadMessageCount = async () => {
+      try {
+        const res = await fetch('/api/student/chat/teachers?unreadCount=1', {
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (!res.ok || !mounted) return;
+        setMessageCount(Number(data.total || 0));
+      } catch (error) {
+        console.error('Failed to load student message count', error);
+      }
+    };
+
+    loadMessageCount();
+    const id = setInterval(loadMessageCount, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header - نفس ستايل الأدمن */}
@@ -134,10 +159,15 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
           <Link
             href="/student/chat"
-            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Messages"
           >
             <MessageSquare className="w-5 h-5 text-white" />
+            {messageCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {messageCount > 99 ? '99+' : messageCount}
+              </span>
+            )}
           </Link>
           
           <button

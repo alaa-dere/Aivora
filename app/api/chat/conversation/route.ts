@@ -5,7 +5,7 @@ import { getRequestUser } from '@/lib/request-auth';
 
 export async function POST(req: Request) {
   const user = await getRequestUser(req);
-  if (!user || user.role !== 'student') {
+  if (!user || (user.role !== 'student' && user.role !== 'teacher')) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
   }
 
@@ -13,14 +13,44 @@ export async function POST(req: Request) {
     const body = await req.json();
     const courseId = String(body?.courseId || '').trim();
     const teacherId = String(body?.teacherId || '').trim();
+    const studentId = String(body?.studentId || '').trim();
 
-    if (!courseId || !teacherId) {
-      return NextResponse.json({ message: 'courseId and teacherId required' }, { status: 400 });
+    if (!courseId) {
+      return NextResponse.json({ message: 'courseId required' }, { status: 400 });
+    }
+
+    let resolvedTeacherId = '';
+    let resolvedStudentId = '';
+
+    if (user.role === 'student') {
+      resolvedTeacherId = teacherId;
+      resolvedStudentId = user.id;
+      if (!resolvedTeacherId) {
+        return NextResponse.json({ message: 'teacherId required' }, { status: 400 });
+      }
+    } else {
+      resolvedTeacherId = user.id;
+      resolvedStudentId = studentId;
+      if (!resolvedStudentId) {
+        return NextResponse.json({ message: 'studentId required' }, { status: 400 });
+      }
+    }
+
+    const [courseRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, teacherId FROM course WHERE id = ? LIMIT 1`,
+      [courseId]
+    );
+    if (courseRows.length === 0) {
+      return NextResponse.json({ message: 'Course not found' }, { status: 404 });
+    }
+    const course = courseRows[0] as { id: string; teacherId: string };
+    if (course.teacherId !== resolvedTeacherId) {
+      return NextResponse.json({ message: 'Teacher does not match course' }, { status: 403 });
     }
 
     const [enrollRows] = await pool.query<RowDataPacket[]>(
       `SELECT id FROM enrollment WHERE courseId = ? AND studentId = ? LIMIT 1`,
-      [courseId, user.id]
+      [courseId, resolvedStudentId]
     );
     if (enrollRows.length === 0) {
       return NextResponse.json({ message: 'Enrollment required' }, { status: 403 });
@@ -32,7 +62,7 @@ export async function POST(req: Request) {
       WHERE courseId = ? AND studentId = ? AND teacherId = ?
       LIMIT 1
       `,
-      [courseId, user.id, teacherId]
+      [courseId, resolvedStudentId, resolvedTeacherId]
     );
 
     if (existing.length > 0) {
@@ -49,20 +79,21 @@ export async function POST(req: Request) {
       VALUES
         (?, ?, ?, ?, NOW(), NOW())
       `,
-      [conversationId, courseId, user.id, teacherId]
+      [conversationId, courseId, resolvedStudentId, resolvedTeacherId]
     );
 
     return NextResponse.json({ conversationId });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
     console.error('Chat conversation error:', error);
-    if (error?.code === 'ER_NO_SUCH_TABLE') {
+    if (err.code === 'ER_NO_SUCH_TABLE') {
       return NextResponse.json(
         { message: 'Chat tables not ready. Run the chat migration.' },
         { status: 503 }
       );
     }
     return NextResponse.json(
-      { message: 'Failed to create conversation', error: error.message },
+      { message: 'Failed to create conversation', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

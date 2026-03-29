@@ -1,6 +1,6 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
@@ -24,6 +24,98 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [success, setSuccess] = useState("");
+  const LEGACY_SAVED_ACCOUNTS_KEY = "aivora_saved_accounts";
+  const SAVED_CREDENTIALS_KEY = "aivora_saved_credentials";
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
+  const [savedCredentials, setSavedCredentials] = useState<Record<string, string>>({});
+  const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const saveBrowserCredential = async (emailValue: string, passwordValue: string) => {
+    try {
+      if (
+        typeof window === "undefined" ||
+        !("PasswordCredential" in window) ||
+        !("credentials" in navigator)
+      ) {
+        return;
+      }
+
+      const PasswordCredentialCtor = (window as Window & {
+        PasswordCredential?: new (data: {
+          id: string;
+          password: string;
+          name?: string;
+        }) => Credential;
+      }).PasswordCredential;
+
+      if (!PasswordCredentialCtor) return;
+
+      const credential = new PasswordCredentialCtor({
+        id: emailValue.trim(),
+        password: passwordValue,
+        name: fullName.trim() || undefined,
+      });
+
+      await navigator.credentials.store(credential);
+    } catch {
+      // ignore if browser blocks credential saving
+    }
+  };
+
+  useEffect(() => {
+    try {
+      // Cleanup legacy custom-saved accounts from older implementation.
+      localStorage.removeItem(LEGACY_SAVED_ACCOUNTS_KEY);
+      const raw = localStorage.getItem(SAVED_CREDENTIALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const normalized =
+        parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+      setSavedCredentials(normalized);
+      setSavedEmails(Object.keys(normalized).sort());
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const saveLocalCredential = (emailValue: string, passwordValue: string) => {
+    if (!emailValue || !passwordValue) return;
+    try {
+      const normalizedEmail = emailValue.trim().toLowerCase();
+      const raw = localStorage.getItem(SAVED_CREDENTIALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const map =
+        parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+      map[normalizedEmail] = passwordValue;
+      localStorage.setItem(SAVED_CREDENTIALS_KEY, JSON.stringify(map));
+      setSavedCredentials(map);
+      setSavedEmails(Object.keys(map).sort());
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!isLogin) return;
+    const normalized = value.trim().toLowerCase();
+    if (normalized && savedCredentials[normalized]) {
+      setPassword(savedCredentials[normalized]);
+    }
+  };
+
+  const filteredEmailSuggestions = useMemo(() => {
+    if (!isLogin) return [];
+    const term = email.trim().toLowerCase();
+    if (!term) return savedEmails.slice(0, 8);
+    return savedEmails.filter((item) => item.includes(term)).slice(0, 8);
+  }, [email, isLogin, savedEmails]);
+
+  useEffect(() => {
+    if (!isLogin) return;
+    const normalized = email.trim().toLowerCase();
+    if (normalized && savedCredentials[normalized]) {
+      setPassword(savedCredentials[normalized]);
+    }
+  }, [email, isLogin, savedCredentials]);
 
   const getRedirectTarget = (role?: string) => {
     if (safeNext) return safeNext;
@@ -204,6 +296,8 @@ useEffect(() => {
       const sessionRes = await fetch("/api/auth/session");
       const currentSession = await sessionRes.json();
       const role = currentSession?.user?.role?.toLowerCase() || "student";
+      saveLocalCredential(email.trim(), password.trim());
+      await saveBrowserCredential(email.trim(), password.trim());
       setSuccess("Account created successfully. Redirecting...");
       window.setTimeout(() => {
         router.push(getRedirectTarget(role));
@@ -244,6 +338,8 @@ useEffect(() => {
     const sessionRes = await fetch("/api/auth/session");
     const currentSession = await sessionRes.json();
     const role = currentSession?.user?.role?.toLowerCase() || "student";
+    saveLocalCredential(email.trim(), password.trim());
+    await saveBrowserCredential(email.trim(), password.trim());
     setSuccess("Login successful. Redirecting...");
     window.setTimeout(() => {
       router.push(getRedirectTarget(role));
@@ -387,7 +483,7 @@ useEffect(() => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5 sm:space-y-6">
                 {!isLogin && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -415,14 +511,46 @@ useEffect(() => {
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#003153]" size={18} />
                     <input
+                      id="login-email"
+                      name="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onInput={(e) =>
+                        handleEmailChange((e.target as HTMLInputElement).value)
+                      }
+                      onFocus={() => setShowEmailSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowEmailSuggestions(false), 120);
+                      }}
                       type="email"
                       placeholder="name@example.com"
-                      autoComplete="email"
+                      autoComplete="off"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-300 focus:border-[#003153] focus:ring-2 focus:ring-[#003153]/30 outline-none transition text-base"
                       required
                     />
+                    {showEmailSuggestions && filteredEmailSuggestions.length > 0 && (
+                      <div className="absolute z-40 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg max-h-52 overflow-auto">
+                        {filteredEmailSuggestions.map((savedEmail) => (
+                          <button
+                            key={savedEmail}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setEmail(savedEmail);
+                              setPassword(savedCredentials[savedEmail] || "");
+                              setShowEmailSuggestions(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            {savedEmail}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -433,11 +561,13 @@ useEffect(() => {
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#003153]" size={18} />
                     <input
+                      id="login-password"
+                      name="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      autoComplete={isLogin ? "current-password" : "new-password"}
+                      autoComplete="off"
                       className="w-full pl-11 pr-11 py-3 rounded-2xl border border-slate-300 focus:border-[#003153] focus:ring-2 focus:ring-[#003153]/30 outline-none transition text-base"
                       required
                       minLength={6}

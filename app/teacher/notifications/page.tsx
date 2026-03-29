@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCircle, Filter, MessageSquare } from 'lucide-react';
+import { CheckCircle, Filter, MessageSquare } from 'lucide-react';
 
-type NotificationType = 'course_enroll' | 'admin_message';
+type NotificationType = 'course_enroll' | 'admin_message' | 'student_message';
 
 type NotificationItem = {
   id: string;
@@ -12,17 +12,28 @@ type NotificationItem = {
   message: string;
   time: string;
   read: boolean;
+  conversationId?: string;
+};
+
+type DashboardNotification = {
+  id: string;
+  type?: NotificationType;
+  title: string;
+  message: string;
+  createdAt: string;
+  read?: boolean;
+  conversationId?: string;
 };
 
 function getTypeIcon(type: NotificationType) {
-  if (type === 'admin_message') {
+  if (type === 'admin_message' || type === 'student_message') {
     return <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
   }
   return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
 }
 
 function getTypeBg(type: NotificationType) {
-  if (type === 'admin_message') {
+  if (type === 'admin_message' || type === 'student_message') {
     return 'bg-blue-100 dark:bg-blue-900/30';
   }
   return 'bg-emerald-100 dark:bg-emerald-900/30';
@@ -46,17 +57,19 @@ export default function TeacherNotificationsPage() {
         const readSet = new Set<string>(
           JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
         );
-        const mapped = (data.notifications || []).map((n: any) => ({
+        const mapped = ((data.notifications || []) as DashboardNotification[]).map((n) => ({
           id: n.id,
           type: (n.type || 'course_enroll') as NotificationType,
           title: n.title,
           message: n.message,
           time: new Date(n.createdAt).toLocaleString(),
           read: readSet.has(n.id) || Boolean(n.read),
+          conversationId: n.conversationId || undefined,
         }));
         setItems(mapped);
-      } catch (error: any) {
-        setErrorMsg(error.message || 'Failed to load notifications');
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        setErrorMsg(err.message || 'Failed to load notifications');
       } finally {
         setLoading(false);
       }
@@ -65,7 +78,11 @@ export default function TeacherNotificationsPage() {
     load();
   }, []);
 
-  const markAsRead = async (id: string, type: NotificationType) => {
+  const markAsRead = async (
+    id: string,
+    type: NotificationType,
+    conversationId?: string
+  ) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
 
     if (type === 'admin_message') {
@@ -77,6 +94,18 @@ export default function TeacherNotificationsPage() {
         });
       } catch (error) {
         console.error('Failed to mark message as read', error);
+      }
+      return;
+    }
+
+    if (type === 'student_message') {
+      if (!conversationId) return;
+      try {
+        await fetch(`/api/chat/messages?conversationId=${conversationId}&markRead=1`, {
+          cache: 'no-store',
+        });
+      } catch (error) {
+        console.error('Failed to mark student messages as read', error);
       }
       return;
     }
@@ -185,7 +214,13 @@ export default function TeacherNotificationsPage() {
                   <div className="flex flex-wrap gap-3 mt-3">
                     {!notification.read && (
                       <button
-                        onClick={() => markAsRead(notification.id, notification.type)}
+                        onClick={() =>
+                          markAsRead(
+                            notification.id,
+                            notification.type,
+                            notification.conversationId
+                          )
+                        }
                         className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                       >
                         Mark as read

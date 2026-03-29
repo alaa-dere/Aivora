@@ -3,6 +3,63 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 
+async function hasColumn(tableName: string, columnName: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    LIMIT 1
+    `,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
+async function ensureAdminTeacherDeleteColumns() {
+  const exists = await hasColumn('admin_teacher_message', 'deletedForEveryoneAt');
+  if (exists) return;
+  try {
+    await pool.query(`
+      ALTER TABLE admin_teacher_message
+      ADD COLUMN deletedForAdminAt DATETIME NULL,
+      ADD COLUMN deletedForTeacherAt DATETIME NULL,
+      ADD COLUMN deletedForEveryoneAt DATETIME NULL,
+      ADD INDEX idx_admin_teacher_deleted_everyone (deletedForEveryoneAt),
+      ADD INDEX idx_admin_teacher_deleted_admin (deletedForAdminAt),
+      ADD INDEX idx_admin_teacher_deleted_teacher (deletedForTeacherAt)
+    `);
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'ER_DUP_FIELDNAME' && code !== 'ER_DUP_KEYNAME') {
+      throw error;
+    }
+  }
+}
+
+async function ensureChatDeleteColumns() {
+  const exists = await hasColumn('chat_message', 'deletedForEveryoneAt');
+  if (exists) return;
+  try {
+    await pool.query(`
+      ALTER TABLE chat_message
+      ADD COLUMN deletedForStudentAt DATETIME NULL,
+      ADD COLUMN deletedForTeacherAt DATETIME NULL,
+      ADD COLUMN deletedForEveryoneAt DATETIME NULL,
+      ADD INDEX idx_chat_deleted_everyone (deletedForEveryoneAt),
+      ADD INDEX idx_chat_deleted_student (deletedForStudentAt),
+      ADD INDEX idx_chat_deleted_teacher (deletedForTeacherAt)
+    `);
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'ER_DUP_FIELDNAME' && code !== 'ER_DUP_KEYNAME') {
+      throw error;
+    }
+  }
+}
+
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'teacher') {
@@ -10,9 +67,16 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureAdminTeacherDeleteColumns();
+    await ensureChatDeleteColumns();
     const teacherId = user.id;
     const { searchParams } = new URL(req.url);
     const notifications = searchParams.get('notifications');
+    const hasAdminDeleteVisibility = await hasColumn(
+      'admin_teacher_message',
+      'deletedForEveryoneAt'
+    );
+    const hasChatDeleteVisibility = await hasColumn('chat_message', 'deletedForEveryoneAt');
 
     if (notifications) {
       if (notifications === 'count') {
@@ -34,6 +98,7 @@ export async function GET(req: Request) {
           WHERE t.teacherId = ?
             AND m.senderRole = 'admin'
             AND m.readAt IS NULL
+            ${hasAdminDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
           `,
           [teacherId]
         );
@@ -45,6 +110,7 @@ export async function GET(req: Request) {
           WHERE c.teacherId = ?
             AND m.senderRole = 'student'
             AND m.readAt IS NULL
+            ${hasChatDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
           `,
           [teacherId]
         );
@@ -86,6 +152,7 @@ export async function GET(req: Request) {
         JOIN user u ON u.id = t.adminId
         WHERE t.teacherId = ?
           AND m.senderRole = 'admin'
+          ${hasAdminDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
         ORDER BY m.createdAt DESC
         LIMIT ${limit}
         `,
@@ -98,6 +165,7 @@ export async function GET(req: Request) {
           m.body,
           m.createdAt,
           m.readAt,
+          conv.id AS conversationId,
           s.fullName AS studentName,
           c.title AS courseTitle
         FROM chat_message m
@@ -106,6 +174,7 @@ export async function GET(req: Request) {
         JOIN course c ON c.id = conv.courseId
         WHERE conv.teacherId = ?
           AND m.senderRole = 'student'
+          ${hasChatDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
         ORDER BY m.createdAt DESC
         LIMIT ${limit}
         `,
@@ -136,6 +205,7 @@ export async function GET(req: Request) {
         message: row.body,
         createdAt: row.createdAt,
         read: Boolean(row.readAt),
+        conversationId: row.conversationId,
       }));
 
       const items = [...enrollmentItems, ...messageItems, ...studentMessageItems]
@@ -279,10 +349,11 @@ export async function GET(req: Request) {
       students,
       recentActivities,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher dashboard error:', error);
     return NextResponse.json(
-      { message: 'Failed to load teacher dashboard', error: error.message },
+      { message: 'Failed to load teacher dashboard', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Send, Trash2 } from 'lucide-react';
 
 type TeacherItem = {
   courseId: string;
@@ -30,6 +30,7 @@ export default function StudentChatPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const [inputSearch, setInputSearch] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -127,6 +128,13 @@ export default function StudentChatPage() {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
+          setTeachers((prev) =>
+            prev.map((t) =>
+              t.conversationId === convId
+                ? { ...t, lastMessage: msg.body, lastMessageAt: msg.createdAt }
+                : t
+            )
+          );
           setTimeout(scrollToBottom, 50);
         } catch {
           // ignore
@@ -148,20 +156,50 @@ export default function StudentChatPage() {
     if (!input.trim() || !selectedConversationId || sending) return;
     setSending(true);
     try {
+      const messageBody = input.trim();
       const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: selectedConversationId, body: input.trim() }),
+        body: JSON.stringify({ conversationId: selectedConversationId, body: messageBody }),
       });
       if (!res.ok) return;
+      setTeachers((prev) =>
+        prev.map((t) =>
+          t.conversationId === selectedConversationId
+            ? { ...t, lastMessage: messageBody, lastMessageAt: new Date().toISOString() }
+            : t
+        )
+      );
       setInput('');
     } finally {
       setSending(false);
     }
   };
 
+  const deleteMessage = async (messageId: string, scope: 'self' | 'both') => {
+    try {
+      const res = await fetch('/api/chat/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, scope }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      setDeleteTargetId(null);
+    } catch {
+      // no-op
+    }
+  };
+
   const sortedTeachers = useMemo(() => {
-    return [...teachers].sort((a, b) => a.courseTitle.localeCompare(b.courseTitle));
+    return [...teachers].sort((a, b) => {
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      if (bTime !== aTime) return bTime - aTime;
+      const byTeacher = a.teacherName.localeCompare(b.teacherName);
+      if (byTeacher !== 0) return byTeacher;
+      return a.courseTitle.localeCompare(b.courseTitle);
+    });
   }, [teachers]);
 
   const filteredTeachers = useMemo(() => {
@@ -171,6 +209,12 @@ export default function StudentChatPage() {
       `${t.teacherName} ${t.courseTitle}`.toLowerCase().includes(term)
     );
   }, [sortedTeachers, inputSearch]);
+
+  const orderedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [messages]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -274,7 +318,7 @@ export default function StudentChatPage() {
                 No messages yet. Start the conversation.
               </div>
             )}
-            {messages.map((msg) => (
+            {orderedMessages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${
@@ -282,12 +326,21 @@ export default function StudentChatPage() {
                 }`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                     msg.senderRole === 'student'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
                   }`}
                 >
+                  {msg.senderRole === 'student' && (
+                    <button
+                      onClick={() => setDeleteTargetId(msg.id)}
+                      className="absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      title="Delete message"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <p>{msg.body}</p>
                   <p className="text-[10px] opacity-70 mt-2">
                     {new Date(msg.createdAt).toLocaleString()}
@@ -321,6 +374,39 @@ export default function StudentChatPage() {
           </div>
         </div>
       </div>
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-4">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+              Delete message
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Choose how you want to delete this message.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => deleteMessage(deleteTargetId, 'self')}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Delete for me
+              </button>
+              <button
+                onClick={() => deleteMessage(deleteTargetId, 'both')}
+                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
+              >
+                Delete for everyone
+              </button>
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                className="px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

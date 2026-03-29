@@ -28,8 +28,8 @@ async function getDefaultAdmin() {
   return adminRows[0] as { id: string; fullName: string } | undefined;
 }
 
-function mapSqlError(error: any) {
-  const code = error?.code;
+function mapSqlError(error: unknown) {
+  const code = (error as { code?: string })?.code;
   if (code === 'ER_NO_SUCH_TABLE') {
     return 'Chat tables are missing. Please apply the latest database schema.';
   }
@@ -37,6 +37,42 @@ function mapSqlError(error: any) {
     return 'Database enum values are outdated. Please apply the latest schema updates.';
   }
   return null;
+}
+
+async function hasColumn(tableName: string, columnName: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    LIMIT 1
+    `,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
+async function ensureAdminTeacherDeleteColumns() {
+  const exists = await hasColumn('admin_teacher_message', 'deletedForEveryoneAt');
+  if (exists) return;
+  try {
+    await pool.query(`
+      ALTER TABLE admin_teacher_message
+      ADD COLUMN deletedForAdminAt DATETIME NULL,
+      ADD COLUMN deletedForTeacherAt DATETIME NULL,
+      ADD COLUMN deletedForEveryoneAt DATETIME NULL,
+      ADD INDEX idx_admin_teacher_deleted_everyone (deletedForEveryoneAt),
+      ADD INDEX idx_admin_teacher_deleted_admin (deletedForAdminAt),
+      ADD INDEX idx_admin_teacher_deleted_teacher (deletedForTeacherAt)
+    `);
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'ER_DUP_FIELDNAME' && code !== 'ER_DUP_KEYNAME') {
+      throw error;
+    }
+  }
 }
 
 async function getOrCreateThread(adminId: string, teacherId: string) {
@@ -76,9 +112,15 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureAdminTeacherDeleteColumns();
+    const supportsDeleteVisibility = await hasColumn(
+      'admin_teacher_message',
+      'deletedForEveryoneAt'
+    );
     const { searchParams } = new URL(req.url);
     const adminId = searchParams.get('adminId');
     const markRead = searchParams.get('markRead') === '1';
+    const unreadCountOnly = searchParams.get('unreadCount') === '1';
 
     const adminFallback = await getDefaultAdmin();
     const resolvedAdminId = adminId || adminFallback?.id || '';
@@ -97,6 +139,9 @@ export async function GET(req: Request) {
     );
 
     if (threadRows.length === 0) {
+      if (unreadCountOnly) {
+        return NextResponse.json({ total: 0 });
+      }
       if (!adminFallback) {
         return NextResponse.json(
           { message: 'Admin account not found. Create an admin user first.' },
@@ -111,6 +156,21 @@ export async function GET(req: Request) {
     }
 
     const thread = threadRows[0];
+
+    if (unreadCountOnly) {
+      const [countRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT COUNT(*) AS total
+        FROM admin_teacher_message
+        WHERE threadId = ?
+          AND senderRole = 'admin'
+          AND readAt IS NULL
+          ${supportsDeleteVisibility ? 'AND deletedForEveryoneAt IS NULL AND deletedForTeacherAt IS NULL' : ''}
+        `,
+        [thread.id]
+      );
+      return NextResponse.json({ total: Number(countRows[0]?.total || 0) });
+    }
 
     if (markRead) {
       await pool.query<ResultSetHeader>(
@@ -137,6 +197,7 @@ export async function GET(req: Request) {
         readAt
       FROM admin_teacher_message
       WHERE threadId = ?
+        ${supportsDeleteVisibility ? 'AND deletedForEveryoneAt IS NULL AND deletedForTeacherAt IS NULL' : ''}
       ORDER BY createdAt ASC
       LIMIT 200
       `,
@@ -151,11 +212,12 @@ export async function GET(req: Request) {
       },
       messages: messageRows,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher messages error:', error);
     const mapped = mapSqlError(error);
     return NextResponse.json(
-      { message: mapped || 'Failed to load messages', error: error.message },
+      { message: mapped || 'Failed to load messages', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -226,7 +288,7 @@ export async function POST(req: Request) {
         `,
         [notifId, `New message from ${teacherName}`, messageBody]
       );
-    } catch (notifError: any) {
+    } catch (notifError: unknown) {
       console.error('Admin notification insert failed:', notifError);
     }
 
@@ -234,11 +296,12 @@ export async function POST(req: Request) {
       { success: true, messageId, threadId },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher send message error:', error);
     const mapped = mapSqlError(error);
     return NextResponse.json(
-      { message: mapped || 'Failed to send message', error: error.message },
+      { message: mapped || 'Failed to send message', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -273,11 +336,12 @@ export async function PATCH(req: Request) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher mark read error:', error);
     const mapped = mapSqlError(error);
     return NextResponse.json(
-      { message: mapped || 'Failed to update messages', error: error.message },
+      { message: mapped || 'Failed to update messages', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -290,34 +354,66 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    await ensureAdminTeacherDeleteColumns();
+    const supportsDeleteVisibility = await hasColumn(
+      'admin_teacher_message',
+      'deletedForEveryoneAt'
+    );
     const payload = await req.json();
     const messageId = typeof payload.messageId === 'string' ? payload.messageId : '';
+    const scope = payload.scope === 'both' ? 'both' : 'self';
 
     if (!messageId) {
       return NextResponse.json({ message: 'messageId is required' }, { status: 400 });
     }
 
-    const [result] = await pool.query<ResultSetHeader>(
-      `
-      DELETE m
-      FROM admin_teacher_message m
-      JOIN admin_teacher_thread t ON t.id = m.threadId
-      WHERE m.id = ?
-        AND t.teacherId = ?
-      `,
-      [messageId, user.id]
-    );
+    const [result] = !supportsDeleteVisibility
+      ? await pool.query<ResultSetHeader>(
+          `
+          DELETE m
+          FROM admin_teacher_message m
+          JOIN admin_teacher_thread t ON t.id = m.threadId
+          WHERE m.id = ?
+            AND t.teacherId = ?
+          `,
+          [messageId, user.id]
+        )
+      : scope === 'both'
+        ? await pool.query<ResultSetHeader>(
+            `
+            UPDATE admin_teacher_message m
+            JOIN admin_teacher_thread t ON t.id = m.threadId
+            SET m.deletedForEveryoneAt = NOW()
+            WHERE m.id = ?
+              AND t.teacherId = ?
+              AND m.deletedForEveryoneAt IS NULL
+            `,
+            [messageId, user.id]
+          )
+        : await pool.query<ResultSetHeader>(
+            `
+            UPDATE admin_teacher_message m
+            JOIN admin_teacher_thread t ON t.id = m.threadId
+            SET m.deletedForTeacherAt = NOW()
+            WHERE m.id = ?
+              AND t.teacherId = ?
+              AND m.deletedForTeacherAt IS NULL
+              AND m.deletedForEveryoneAt IS NULL
+            `,
+            [messageId, user.id]
+          );
 
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Message not found' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher delete message error:', error);
     const mapped = mapSqlError(error);
     return NextResponse.json(
-      { message: mapped || 'Failed to delete message', error: error.message },
+      { message: mapped || 'Failed to delete message', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

@@ -30,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [usersOpen, setUsersOpen] = useState(false);
   const [financeOpen, setFinanceOpen] = useState(() => pathname.startsWith('/dashboard/finance'));
   const [notificationCount, setNotificationCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
@@ -54,14 +55,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       try {
         const [notifRes, msgRes] = await Promise.all([
           fetch('/api/admin/notifications/count', { cache: 'no-store' }),
-          fetch('/api/admin/messages', { cache: 'no-store' }),
+          fetch('/api/admin/messages?unreadCount=1', { cache: 'no-store' }),
         ]);
         const notifData = await notifRes.json();
         const msgData = await msgRes.json();
         if (!notifRes.ok) return;
-        const unreadFromThreads = Array.isArray(msgData?.threads)
-          ? msgData.threads.reduce((sum: number, t: any) => sum + Number(t.unreadCount || 0), 0)
-          : 0;
+        const unreadFromThreads = Number(msgData?.total || 0);
+        if (mounted) setMessageCount(unreadFromThreads);
         if (mounted) setNotificationCount(Number(notifData.total || 0) + unreadFromThreads);
       } catch (error) {
         console.error('Failed to load notification count', error);
@@ -75,6 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       clearInterval(id);
     };
   }, []);
+
 
   const loadNotifications = async () => {
     try {
@@ -162,10 +163,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <Link
             href="/dashboard/messages"
-            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Messages"
           >
             <MessageSquare className="w-5 h-5 text-white" />
+            {messageCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {messageCount > 99 ? '99+' : messageCount}
+              </span>
+            )}
           </Link>
 
           <div className="relative">

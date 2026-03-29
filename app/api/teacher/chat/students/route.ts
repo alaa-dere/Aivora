@@ -3,12 +3,12 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 
-type TeacherRow = RowDataPacket & {
+type StudentRow = RowDataPacket & {
   courseId: string;
   courseTitle: string;
-  teacherId: string;
-  teacherName: string;
-  teacherEmail: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
   conversationId: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
@@ -53,7 +53,7 @@ async function ensureChatDeleteColumns() {
 
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
-  if (!user || user.role !== 'student') {
+  if (!user || user.role !== 'teacher') {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
   }
 
@@ -63,49 +63,48 @@ export async function GET(req: Request) {
     const unreadCountOnly = searchParams.get('unreadCount') === '1';
     const supportsDeleteVisibility = await hasColumn('chat_message', 'deletedForEveryoneAt');
 
-    const [rows] = await pool.query<TeacherRow[]>(
+    const [rows] = await pool.query<StudentRow[]>(
       `
       SELECT
         c.id AS courseId,
         c.title AS courseTitle,
-        t.id AS teacherId,
-        t.fullName AS teacherName,
-        t.email AS teacherEmail,
+        s.id AS studentId,
+        s.fullName AS studentName,
+        s.email AS studentEmail,
         conv.id AS conversationId,
         lm.body AS lastMessage,
         lm.createdAt AS lastMessageAt,
         COALESCE(unread.unreadCount, 0) AS unreadCount
       FROM enrollment e
       JOIN course c ON c.id = e.courseId
-      JOIN user t ON t.id = c.teacherId
+      JOIN user s ON s.id = e.studentId
       LEFT JOIN chat_conversation conv
         ON conv.courseId = c.id
        AND conv.studentId = e.studentId
-       AND conv.teacherId = t.id
+       AND conv.teacherId = c.teacherId
       LEFT JOIN (
         SELECT m.conversationId, m.body, m.createdAt
         FROM chat_message m
         JOIN (
           SELECT conversationId, MAX(createdAt) AS maxCreated
           FROM chat_message
-          ${supportsDeleteVisibility ? 'WHERE deletedForEveryoneAt IS NULL AND deletedForStudentAt IS NULL' : ''}
+          ${supportsDeleteVisibility ? 'WHERE deletedForEveryoneAt IS NULL AND deletedForTeacherAt IS NULL' : ''}
           GROUP BY conversationId
         ) x
           ON x.conversationId = m.conversationId AND x.maxCreated = m.createdAt
-        ${supportsDeleteVisibility ? 'WHERE m.deletedForEveryoneAt IS NULL AND m.deletedForStudentAt IS NULL' : ''}
+        ${supportsDeleteVisibility ? 'WHERE m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
       ) lm
         ON lm.conversationId = conv.id
       LEFT JOIN (
         SELECT m.conversationId, COUNT(*) AS unreadCount
         FROM chat_message m
-        WHERE m.senderRole = 'teacher'
-          AND m.readAt IS NULL
-          ${supportsDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForStudentAt IS NULL' : ''}
+        WHERE m.senderRole = 'student' AND m.readAt IS NULL
+          ${supportsDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
         GROUP BY m.conversationId
       ) unread
         ON unread.conversationId = conv.id
-      WHERE e.studentId = ?
-      ORDER BY c.title ASC
+      WHERE c.teacherId = ?
+      ORDER BY c.title ASC, s.fullName ASC
       `,
       [user.id]
     );
@@ -116,12 +115,12 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({
-      teachers: rows.map((row) => ({
+      students: rows.map((row) => ({
         courseId: row.courseId,
         courseTitle: row.courseTitle,
-        teacherId: row.teacherId,
-        teacherName: row.teacherName,
-        teacherEmail: row.teacherEmail,
+        studentId: row.studentId,
+        studentName: row.studentName,
+        studentEmail: row.studentEmail,
         conversationId: row.conversationId,
         lastMessage: row.lastMessage,
         lastMessageAt: row.lastMessageAt,
@@ -130,12 +129,12 @@ export async function GET(req: Request) {
     });
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
-    console.error('Student chat teachers error:', error);
+    console.error('Teacher chat students error:', error);
     if (err.code === 'ER_NO_SUCH_TABLE') {
-      return NextResponse.json({ teachers: [], needsMigration: true });
+      return NextResponse.json({ students: [], needsMigration: true });
     }
     return NextResponse.json(
-      { message: 'Failed to load teachers', error: err.message || 'Unknown error' },
+      { message: 'Failed to load students', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
