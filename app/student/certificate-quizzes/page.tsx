@@ -36,7 +36,7 @@ export default function CertificateQuizzesPage() {
           Certificate Quizzes
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Complete these quizzes to unlock your certificate.
+          Pass the final quiz with at least 60% to unlock your certificate.
         </p>
       </div>
 

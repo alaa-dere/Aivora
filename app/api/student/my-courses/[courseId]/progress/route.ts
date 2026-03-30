@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 
 interface Params {
   params: Promise<{ courseId: string }>;
 }
+
+const PASSING_SCORE_PERCENTAGE = 60;
 
 export async function POST(req: Request, { params }: Params) {
   const user = await getRequestUser(req);
@@ -66,6 +69,8 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     if (event === 'issue_certificate') {
+      await ensureCourseQuizSchema();
+
       const [totalRows] = await pool.query<RowDataPacket[]>(
         `
         SELECT COUNT(*) AS totalLessons
@@ -92,6 +97,26 @@ export async function POST(req: Request, { params }: Params) {
       if (totalLessons === 0 || completedLessons < totalLessons) {
         return NextResponse.json(
           { message: 'Complete all lessons before receiving the certificate' },
+          { status: 400 }
+        );
+      }
+
+      const [quizRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT MAX(scorePercentage) AS bestScore
+        FROM course_quiz_attempt
+        WHERE courseId = ? AND studentId = ?
+        `,
+        [id, user.id]
+      );
+      const bestScore = Number(quizRows[0]?.bestScore || 0);
+      if (bestScore < PASSING_SCORE_PERCENTAGE) {
+        return NextResponse.json(
+          {
+            message: `Score at least ${PASSING_SCORE_PERCENTAGE}% in the course quiz to unlock your certificate`,
+            bestScore,
+            passingScorePercentage: PASSING_SCORE_PERCENTAGE,
+          },
           { status: 400 }
         );
       }
