@@ -69,9 +69,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     loadCount();
+    const onRefresh = () => loadCount();
+    window.addEventListener('notifications:refresh', onRefresh as EventListener);
     const id = setInterval(loadCount, 30000);
     return () => {
       mounted = false;
+      window.removeEventListener('notifications:refresh', onRefresh as EventListener);
       clearInterval(id);
     };
   }, []);

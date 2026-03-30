@@ -11,6 +11,8 @@ export async function GET(req: Request) {
 
   try {
     const teacherId = user.id;
+    const { searchParams } = new URL(req.url);
+    const courseId = (searchParams.get('courseId') || '').trim();
 
     const [rows] = await pool.query<RowDataPacket[]>(
       `
@@ -61,8 +63,41 @@ export async function GET(req: Request) {
       totalStudents: courses.reduce((sum, c) => sum + c.students, 0),
       totalLessons: courses.reduce((sum, c) => sum + c.lessons, 0),
     };
+    if (!courseId) {
+      return NextResponse.json({ courses, stats, students: [] });
+    }
 
-    return NextResponse.json({ courses, stats });
+    const [studentRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT
+        u.id,
+        u.fullName,
+        u.email,
+        u.imageUrl,
+        e.progressPercentage,
+        e.status,
+        e.enrolledAt
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
+      WHERE c.teacherId = ?
+        AND c.id = ?
+      ORDER BY e.enrolledAt DESC
+      `,
+      [teacherId, courseId]
+    );
+
+    const students = studentRows.map((row) => ({
+      id: row.id,
+      name: row.fullName,
+      email: row.email,
+      imageUrl: row.imageUrl || null,
+      progress: Math.round(Number(row.progressPercentage || 0)),
+      status: row.status || 'enrolled',
+      enrolledAt: row.enrolledAt,
+    }));
+
+    return NextResponse.json({ courses, stats, students });
   } catch (error: any) {
     console.error('Teacher courses error:', error);
     return NextResponse.json(

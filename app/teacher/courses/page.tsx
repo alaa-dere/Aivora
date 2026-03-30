@@ -184,7 +184,7 @@ export default function CoursesPage() {
                 </div>
                 <div>
                   <Link
-                    href={`/dashboard/courses/${course.id}/content`}
+                    href={`/teacher/courses/${course.id}/content`}
                     className="font-semibold text-gray-800 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     {course.name}
@@ -224,7 +224,7 @@ export default function CoursesPage() {
 
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
               <Link
-                href={`/dashboard/courses/${course.id}/content`}
+                href={`/teacher/courses/${course.id}/content`}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center gap-1"
               >
                 Manage Content
@@ -241,59 +241,6 @@ export default function CoursesPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
-          Quick Actions
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              icon: BookOpenIcon,
-              title: "Add Module",
-              desc: "Create new course module",
-            },
-            {
-              icon: VideoCameraIcon,
-              title: "Upload Video",
-              desc: "Add new lesson video",
-            },
-            {
-              icon: DocumentTextIcon,
-              title: "Add Material",
-              desc: "Upload PDF or slides",
-            },
-            {
-              icon: LinkIcon,
-              title: "Add Link",
-              desc: "Share external resource",
-            },
-          ].map((action, index) => (
-            <button
-              key={index}
-              className="
-                flex flex-col items-center text-center p-5
-                bg-gray-50 dark:bg-gray-900/50
-                rounded-xl border border-gray-200 dark:border-gray-700
-                hover:bg-gray-100 dark:hover:bg-gray-800
-                hover:border-blue-300 dark:hover:border-blue-700
-                transition-all duration-200
-              "
-            >
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-3">
-                <action.icon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
-              </div>
-              <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
-                {action.title}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {action.desc}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

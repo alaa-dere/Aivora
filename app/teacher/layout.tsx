@@ -26,6 +26,7 @@ import {
 import { BrainCircuit } from 'lucide-react'; // احتفظنا بـ lucide لهذه الأيقونة فقط
 
 const menuItems = [
+  { href: '/', name: 'Home', icon: HomeIcon },
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
   { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
   { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
@@ -69,7 +70,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const loadCount = async () => {
       try {
         const [notifRes, adminMsgRes, studentMsgRes] = await Promise.all([
-          fetch('/api/teacher/dashboard?notifications=count', { cache: 'no-store' }),
+          fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' }),
           fetch('/api/teacher/messages?unreadCount=1', { cache: 'no-store' }),
           fetch('/api/teacher/chat/students?unreadCount=1', { cache: 'no-store' }),
         ]);
@@ -79,8 +80,21 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         if (!notifRes.ok) return;
         const totalMessages =
           Number(adminMsgData?.total || 0) + Number(studentMsgData?.total || 0);
+        const readSet = new Set<string>(
+          JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+        );
+        const deletedSet = new Set<string>(
+          JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
+        );
+        const unreadNotifications = (notifData.notifications || [])
+          .map((n: any) => ({
+            id: n.id,
+            read: readSet.has(n.id) || Boolean(n.read),
+          }))
+          .filter((n: any) => !deletedSet.has(n.id))
+          .filter((n: any) => !n.read).length;
         if (mounted) {
-          setNotificationCount(Number(notifData.total || 0));
+          setNotificationCount(Number(unreadNotifications || 0));
           setMessageCount(totalMessages);
         }
       } catch (error) {
@@ -89,9 +103,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     };
 
     loadCount();
+    const onRefresh = () => loadCount();
+    window.addEventListener('notifications:refresh', onRefresh as EventListener);
     const id = setInterval(loadCount, 30000);
     return () => {
       mounted = false;
+      window.removeEventListener('notifications:refresh', onRefresh as EventListener);
       clearInterval(id);
     };
   }, []);

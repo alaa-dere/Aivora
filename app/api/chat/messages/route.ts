@@ -210,6 +210,63 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  const user = await getRequestUser(req);
+  if (!user) {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await ensureChatDeleteColumns();
+    const supportsDeleteVisibility = await hasColumn('chat_message', 'deletedForEveryoneAt');
+    const payload = await req.json();
+    const messageIds = Array.isArray(payload.messageIds) ? payload.messageIds : [];
+
+    if (messageIds.length === 0) {
+      return NextResponse.json({ message: 'messageIds are required' }, { status: 400 });
+    }
+
+    const placeholders = messageIds.map(() => '?').join(',');
+    const isTeacher = user.role === 'teacher';
+    const joinRoleClause = isTeacher
+      ? 'AND c.teacherId = ? AND m.senderRole = \'student\''
+      : 'AND c.studentId = ? AND m.senderRole = \'teacher\'';
+    const deleteVisibilityClause = supportsDeleteVisibility
+      ? isTeacher
+        ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL'
+        : 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForStudentAt IS NULL'
+      : '';
+
+    await pool.query<ResultSetHeader>(
+      `
+      UPDATE chat_message m
+      JOIN chat_conversation c ON c.id = m.conversationId
+      SET m.readAt = NOW()
+      WHERE m.readAt IS NULL
+        ${joinRoleClause}
+        ${deleteVisibilityClause}
+        AND m.id IN (${placeholders})
+      `,
+      [user.id, ...messageIds]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    console.error('Chat messages mark read error:', error);
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+      return NextResponse.json(
+        { message: 'Chat tables not ready. Run the chat migration.' },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { message: 'Failed to mark messages as read', error: err.message || 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req: Request) {
   const user = await getRequestUser(req);
   if (!user) {

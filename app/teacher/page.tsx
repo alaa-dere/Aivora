@@ -62,55 +62,72 @@ const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", d
 
 /* ================= Course Card ================= */
 const CourseCard = ({ course, index }: any) => {
-  const colors = ["from-blue-600 to-indigo-600", "from-emerald-600 to-teal-600", "from-amber-600 to-orange-600", "from-purple-600 to-pink-600"];
-  const gradient = colors[index % colors.length];
-
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-      <div className="
-        bg-white dark:bg-gray-800 
-        rounded-xl 
-        shadow-sm 
-        border border-blue-200 dark:border-blue-800 
-        p-5 
-        hover:-translate-y-1 hover:shadow-lg 
-        transition-all duration-200
-      ">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <BookOpenIcon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
+      <div
+        className="
+          bg-white dark:bg-gray-800
+          rounded-xl
+          border border-blue-200 dark:border-blue-800
+          shadow-sm
+          p-5
+          hover:-translate-y-1 hover:shadow-lg
+          transition-all duration-200
+        "
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <BookOpenIcon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
+            </div>
+            <div>
+              <Link
+                href={`/teacher/courses/${course.id}/content`}
+                className="font-semibold text-gray-800 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
+              >
+                {course.name}
+              </Link>
+            </div>
+          </div>
+
+          <span
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+              course.status === "active"
+                ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800"
+                : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800"
+            }`}
+          >
+            {course.status === "active" ? "Active" : "Draft"}
+          </span>
+        </div>
+
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+          {course.description}
+        </p>
+
+        <div className="grid grid-cols-3 gap-3 text-center text-sm">
+          <div>
+            <p className="font-semibold text-gray-800 dark:text-gray-100">{course.students}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Students</p>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-800 dark:text-white text-lg">{course.name}</h4>
+            <p className="font-semibold text-gray-800 dark:text-gray-100">{course.completion}%</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Progress</p>
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800 dark:text-gray-100">{course.averageScore}%</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Avg Score</p>
           </div>
         </div>
-        
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center">
-            <p className="text-lg font-bold text-gray-800 dark:text-white">{course.students}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Students</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-gray-800 dark:text-white">{course.averageScore}%</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Avg Score</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-gray-800 dark:text-white">{course.completion}%</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Complete</p>
-          </div>
-        </div>
-        
-        <div className="w-full h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden mb-4">
-          <div 
-            className={`h-full bg-gradient-to-r ${gradient} rounded-full`} 
-            style={{ width: `${course.completion}%` }} 
-          />
-        </div>
-        
-        <div className="flex justify-end">
-          <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium px-4 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-            Manage
-          </button>
+
+        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+          <Link
+            href={`/teacher/courses/${course.id}/content`}
+            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium flex items-center gap-1"
+          >
+            Manage Content
+            <ChevronRightIcon className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </div>
@@ -118,26 +135,45 @@ const CourseCard = ({ course, index }: any) => {
 };
 
 /* ================= Student Row ================= */
-const StudentRow = ({ student }: any) => (
-  <div className="flex items-center justify-between py-4 px-2 border-b border-blue-100 dark:border-blue-800 last:border-0">
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-sm font-bold">
-        {student.avatar}
+const StudentRow = ({ student }: any) => {
+  const status = (student.status || 'in_progress').toString();
+  const isCompleted = status === 'completed';
+  const isDropped = status === 'dropped';
+  const badgeClass = isCompleted
+    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+    : isDropped
+      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300';
+  const badgeLabel = isCompleted ? 'completed' : isDropped ? 'dropped' : 'continue';
+
+  return (
+    <div className="flex items-center justify-between py-4 px-2 border-b border-blue-100 dark:border-blue-800 last:border-0">
+      <div className="flex items-center gap-4">
+        {student.imageUrl ? (
+          <img
+            src={student.imageUrl}
+            alt={`${student.name} profile`}
+            className="w-10 h-10 rounded-full object-cover border border-blue-100 dark:border-blue-800"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-sm font-bold">
+            {student.avatar}
+          </div>
+        )}
+        <div>
+          <p className="font-medium text-gray-800 dark:text-gray-200">{student.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Course: {student.courseName || 'Unknown course'}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Progress: {student.progress}%</p>
+        </div>
       </div>
-      <div>
-        <p className="font-medium text-gray-800 dark:text-gray-200">{student.name}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Progress: {student.progress}%</p>
-      </div>
+      <span className={`text-xs px-3 py-1.5 rounded-full ${badgeClass}`}>
+        {badgeLabel}
+      </span>
     </div>
-    <span className={`text-xs px-3 py-1.5 rounded-full ${
-      student.status === 'passed' 
-        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' 
-        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-    }`}>
-      {student.status === 'passed' ? 'passed' : 'failed'}
-    </span>
-  </div>
-);
+  );
+};
 
 /* ================= AI Insight Item ================= */
 const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 dark:text-blue-400" }: any) => (

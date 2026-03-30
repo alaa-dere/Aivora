@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, Save, X, Plus, Trash2, BrainCircuit,
@@ -10,9 +10,11 @@ import {
 
 export default function CreateQuizPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     title: "",
-    course: "",
+    courseId: "",
+    moduleId: "",
     description: "",
     type: "quiz",
     timeLimit: 30,
@@ -30,12 +32,63 @@ export default function CreateQuizPage() {
     points: 1
   });
 
-  const courses = [
-    "Advanced Python Programming",
-    "Web Development with React",
-    "Data Structures & Algorithms",
-    "AI Fundamentals"
-  ];
+  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
+  const [modules, setModules] = useState<{ id: string; title: string }[]>([]);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const res = await fetch("/api/teacher/courses", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok) return;
+        const list = (data.courses || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+        }));
+        setCourses(list);
+      } catch (error) {
+        console.error("Failed to load courses", error);
+      }
+    };
+
+    loadCourses();
+  }, []);
+
+  useEffect(() => {
+    const courseId = searchParams.get("courseId") || "";
+    const moduleId = searchParams.get("moduleId") || "";
+    if (courseId) {
+      setFormData((prev) => ({ ...prev, courseId }));
+    }
+    if (moduleId) {
+      setFormData((prev) => ({ ...prev, moduleId }));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const loadModules = async () => {
+      if (!formData.courseId) {
+        setModules([]);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/courses/${formData.courseId}/content`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+        const list = (data.modules || []).map((m: any) => ({
+          id: m.id,
+          title: m.title,
+        }));
+        setModules(list);
+      } catch (error) {
+        console.error("Failed to load modules", error);
+      }
+    };
+
+    loadModules();
+  }, [formData.courseId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,10 +120,10 @@ export default function CreateQuizPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      <div className="max-w-5xl mx-auto">
         {/* Header مع زر الرجوع */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-6">
           <Link
             href="/teacher/quizzes"
             className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -82,35 +135,70 @@ export default function CreateQuizPage() {
               Create New Quiz
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Fill in the details to create a new quiz with AI assistance
+              Fill in the details below to create a new quiz.
             </p>
           </div>
         </div>
 
-        {/* AI Generate Button - مميز للكويزات */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-6 text-white mb-8 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-xl">
-                <BrainCircuit className="w-8 h-8" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Generate with AI</h2>
-                <p className="text-blue-100">Let AI create questions based on your course content</p>
-              </div>
-            </div>
-            <button className="bg-white text-blue-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors">
-              Try AI Generator
-            </button>
+        {/* Quick Actions (same style as course content) */}
+        <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950 mb-6">
+          <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
+          <p className="text-sm text-blue-200 mt-1">Shortcuts to build quizzes faster.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            {[
+              {
+                icon: Plus,
+                title: "Create Quiz",
+                desc: "Start a new quiz",
+                onClick: () => {},
+              },
+              {
+                icon: BrainCircuit,
+                title: "AI Generator",
+                desc: "Generate questions",
+                onClick: () => router.push("/teacher/quizzes/create?ai=1"),
+              },
+              {
+                icon: FileText,
+                title: "Question Bank",
+                desc: "Build & reuse",
+                onClick: () => router.push("/teacher/quizzes/create?bank=1"),
+              },
+              {
+                icon: Award,
+                title: "Results",
+                desc: "View performance",
+                onClick: () => router.push("/teacher/quizzes"),
+              },
+            ].map((action, index) => (
+              <button
+                key={index}
+                onClick={action.onClick}
+                className="
+                  flex flex-col items-center text-center p-3
+                  bg-white/5
+                  rounded-lg border border-blue-800/70 dark:border-gray-700
+                  hover:bg-white/10 dark:hover:bg-gray-800
+                  hover:border-blue-700/80 dark:hover:border-gray-600
+                  transition-all duration-200
+                "
+              >
+                <div className="p-2 bg-blue-900/60 dark:bg-gray-800 rounded-md mb-2">
+                  <action.icon className="w-5 h-5 text-white" />
+                </div>
+                <p className="font-medium text-white text-xs">{action.title}</p>
+                <p className="text-[11px] text-blue-100/80 mt-1">{action.desc}</p>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* فورم إنشاء الكويز */}
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             {/* Basic Information */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 space-y-6">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-6">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
                 Basic Information
               </h2>
 
@@ -136,14 +224,39 @@ export default function CreateQuizPage() {
                     Course <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={formData.course}
-                    onChange={(e) => setFormData({...formData, course: e.target.value})}
+                    value={formData.courseId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, courseId: e.target.value, moduleId: "" })
+                    }
                     className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     required
                   >
                     <option value="">Select a course</option>
-                    {courses.map(course => (
-                      <option key={course} value={course}>{course}</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Module Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Module <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.moduleId}
+                    onChange={(e) => setFormData({ ...formData, moduleId: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    required
+                    disabled={!formData.courseId}
+                  >
+                    <option value="">Select a module</option>
+                    {modules.map((module) => (
+                      <option key={module.id} value={module.id}>
+                        {module.title}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -238,9 +351,9 @@ export default function CreateQuizPage() {
             </div>
 
             {/* Questions Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 space-y-6">
+            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-6">
               <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                   Questions
                 </h2>
                 <span className="text-sm text-gray-500 dark:text-gray-400">

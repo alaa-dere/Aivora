@@ -297,6 +297,8 @@ export async function GET(req: Request) {
       `
       SELECT 
         u.fullName AS name,
+        u.imageUrl AS imageUrl,
+        c.title AS courseTitle,
         e.progressPercentage AS progress,
         e.status AS status
       FROM enrollment e
@@ -309,17 +311,26 @@ export async function GET(req: Request) {
       [teacherId]
     );
 
-    const students = studentRows.map((row) => ({
+    const students = studentRows.map((row) => {
+      const progress = Number(row.progress || 0);
+      const status = row.status || (progress >= 100 ? 'completed' : 'in_progress');
+      const normalizedStatus =
+        progress >= 100 || status === 'completed' ? 'completed' : status;
+
+      return ({
       name: row.name,
+      courseName: row.courseTitle || '',
+      imageUrl: row.imageUrl || null,
       avatar: (row.name || '?')
         .split(' ')
         .map((part: string) => part[0])
         .slice(0, 2)
         .join('')
         .toUpperCase(),
-      progress: Math.round(Number(row.progress || 0)),
-      status: Number(row.progress || 0) >= 60 ? 'passed' : 'failed',
-    }));
+      progress: Math.round(progress),
+      status: normalizedStatus,
+      });
+    });
 
     const [activityRows] = await pool.query<RowDataPacket[]>(
       `

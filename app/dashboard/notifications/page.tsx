@@ -51,6 +51,7 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread" | "important">("all");
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(4);
 
   const filteredNotifications = useMemo(() => {
     if (filter === "unread") {
@@ -63,6 +64,10 @@ export default function NotificationsPage() {
 
     return items;
   }, [filter, items]);
+
+  useEffect(() => {
+    setVisibleCount(4);
+  }, [filter]);
 
   useEffect(() => {
     const load = async () => {
@@ -96,6 +101,7 @@ export default function NotificationsPage() {
       setItems((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
+      window.dispatchEvent(new Event('notifications:refresh'));
     } catch (error) {
       console.error("Failed to mark as read", error);
     }
@@ -105,10 +111,27 @@ export default function NotificationsPage() {
     try {
       await fetch(`/api/admin/notifications/${id}`, { method: "DELETE" });
       setItems((prev) => prev.filter((n) => n.id !== id));
+      window.dispatchEvent(new Event('notifications:refresh'));
     } catch (error) {
       console.error("Failed to delete notification", error);
     }
   };
+
+  const markAllAsRead = async () => {
+    const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    try {
+      await Promise.all(
+        unreadIds.map((id) => fetch(`/api/admin/notifications/${id}`, { method: "PATCH" }))
+      );
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      window.dispatchEvent(new Event('notifications:refresh'));
+    } catch (error) {
+      console.error("Failed to mark all as read", error);
+    }
+  };
+
+  const visibleNotifications = filteredNotifications.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -121,10 +144,19 @@ export default function NotificationsPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-            <Filter className="w-4 h-4" />
-            Filter by course
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+              <Filter className="w-4 h-4" />
+              Filter by course
+            </button>
+            <button
+              onClick={markAllAsRead}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Mark all as read
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-400" />
@@ -158,7 +190,7 @@ export default function NotificationsPage() {
               No notifications yet.
             </div>
           )}
-          {filteredNotifications.map((notification) => (
+          {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
               className={`p-4 md:p-5 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
@@ -217,9 +249,14 @@ export default function NotificationsPage() {
       </div>
 
       <div className="mt-6 text-center">
-        <button className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-          Load More Notifications
-        </button>
+        {filteredNotifications.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 4)}
+            className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            Load More Notifications
+          </button>
+        )}
       </div>
     </div>
   );

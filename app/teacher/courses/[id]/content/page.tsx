@@ -1,4 +1,4 @@
-// app/dashboard/courses/[id]/content/page.tsx
+// app/teacher/courses/[id]/content/page.tsx
 'use client';
 
 import Link from 'next/link';

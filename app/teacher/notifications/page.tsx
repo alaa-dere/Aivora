@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, Filter, MessageSquare } from 'lucide-react';
+import { CheckCircle, Filter, MessageSquare, Trash2 } from 'lucide-react';
 
 type NotificationType = 'course_enroll' | 'admin_message' | 'student_message';
 
@@ -44,6 +44,7 @@ export default function TeacherNotificationsPage() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [visibleCount, setVisibleCount] = useState(4);
 
   useEffect(() => {
     const load = async () => {
@@ -57,6 +58,9 @@ export default function TeacherNotificationsPage() {
         const readSet = new Set<string>(
           JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
         );
+        const deletedSet = new Set<string>(
+          JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
+        );
         const mapped = ((data.notifications || []) as DashboardNotification[]).map((n) => ({
           id: n.id,
           type: (n.type || 'course_enroll') as NotificationType,
@@ -66,7 +70,7 @@ export default function TeacherNotificationsPage() {
           read: readSet.has(n.id) || Boolean(n.read),
           conversationId: n.conversationId || undefined,
         }));
-        setItems(mapped);
+        setItems(mapped.filter((n) => !deletedSet.has(n.id)));
       } catch (error: unknown) {
         const err = error as { message?: string };
         setErrorMsg(err.message || 'Failed to load notifications');
@@ -92,6 +96,7 @@ export default function TeacherNotificationsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messageIds: [id] }),
         });
+        window.dispatchEvent(new Event('notifications:refresh'));
       } catch (error) {
         console.error('Failed to mark message as read', error);
       }
@@ -99,11 +104,13 @@ export default function TeacherNotificationsPage() {
     }
 
     if (type === 'student_message') {
-      if (!conversationId) return;
       try {
-        await fetch(`/api/chat/messages?conversationId=${conversationId}&markRead=1`, {
-          cache: 'no-store',
+        await fetch('/api/chat/messages', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageIds: [id] }),
         });
+        window.dispatchEvent(new Event('notifications:refresh'));
       } catch (error) {
         console.error('Failed to mark student messages as read', error);
       }
@@ -115,6 +122,7 @@ export default function TeacherNotificationsPage() {
     );
     existing.add(id);
     localStorage.setItem('teacher_read_notifications', JSON.stringify(Array.from(existing)));
+    window.dispatchEvent(new Event('notifications:refresh'));
   };
 
   const filteredNotifications = useMemo(() => {
@@ -127,6 +135,96 @@ export default function TeacherNotificationsPage() {
     return items;
   }, [filter, items]);
 
+  useEffect(() => {
+    setVisibleCount(4);
+  }, [filter]);
+
+  const markAllAsRead = async () => {
+    const adminIds = items
+      .filter((n) => !n.read && n.type === 'admin_message')
+      .map((n) => n.id);
+    const studentIds = items
+      .filter((n) => !n.read && n.type === 'student_message')
+      .map((n) => n.id);
+
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+
+    if (adminIds.length > 0) {
+      try {
+        await fetch('/api/teacher/messages', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageIds: adminIds }),
+        });
+        window.dispatchEvent(new Event('notifications:refresh'));
+      } catch (error) {
+        console.error('Failed to mark admin messages as read', error);
+      }
+    }
+
+    if (studentIds.length > 0) {
+      try {
+        await fetch('/api/chat/messages', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageIds: studentIds }),
+        });
+        window.dispatchEvent(new Event('notifications:refresh'));
+      } catch (error) {
+        console.error('Failed to mark student messages as read', error);
+      }
+    }
+
+    const existing = new Set<string>(
+      JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+    );
+    items.forEach((n) => existing.add(n.id));
+    localStorage.setItem('teacher_read_notifications', JSON.stringify(Array.from(existing)));
+    window.dispatchEvent(new Event('notifications:refresh'));
+  };
+
+  const deleteNotification = async (notification: NotificationItem) => {
+    if (notification.type === 'admin_message') {
+      try {
+        await fetch('/api/teacher/messages', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageId: notification.id }),
+        });
+        setItems((prev) => prev.filter((n) => n.id !== notification.id));
+        window.dispatchEvent(new Event('notifications:refresh'));
+      } catch (error) {
+        console.error('Failed to delete admin message notification', error);
+      }
+      return;
+    }
+
+    if (notification.type === 'student_message') {
+      try {
+        await fetch('/api/chat/messages', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messageId: notification.id }),
+        });
+        setItems((prev) => prev.filter((n) => n.id !== notification.id));
+        window.dispatchEvent(new Event('notifications:refresh'));
+      } catch (error) {
+        console.error('Failed to delete student message notification', error);
+      }
+      return;
+    }
+
+    const existing = new Set<string>(
+      JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
+    );
+    existing.add(notification.id);
+    localStorage.setItem('teacher_deleted_notifications', JSON.stringify(Array.from(existing)));
+    setItems((prev) => prev.filter((n) => n.id !== notification.id));
+    window.dispatchEvent(new Event('notifications:refresh'));
+  };
+
+  const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -137,10 +235,19 @@ export default function TeacherNotificationsPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-            <Filter className="w-4 h-4" />
-            Filter by course
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+              <Filter className="w-4 h-4" />
+              Filter by course
+            </button>
+            <button
+              onClick={markAllAsRead}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Mark all as read
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-400" />
@@ -177,7 +284,7 @@ export default function TeacherNotificationsPage() {
               No notifications yet.
             </div>
           )}
-          {filteredNotifications.map((notification) => (
+          {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
               className={`p-4 md:p-5 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
@@ -228,6 +335,13 @@ export default function TeacherNotificationsPage() {
                     )}
                   </div>
                 </div>
+
+                <button
+                  onClick={() => deleteNotification(notification)}
+                  className="h-fit p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -235,9 +349,14 @@ export default function TeacherNotificationsPage() {
       </div>
 
       <div className="mt-6 text-center">
-        <button className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-          Load More Notifications
-        </button>
+        {filteredNotifications.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 4)}
+            className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            Load More Notifications
+          </button>
+        )}
       </div>
     </div>
   );
