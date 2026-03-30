@@ -11,7 +11,7 @@ import {
 type QuestionItem = {
   id: string;
   order: number;
-  questionType: 'multiple_choice' | 'written';
+  questionType: 'multiple_choice' | 'written' | 'true_false';
   questionText: string;
   options: string[];
 };
@@ -39,6 +39,18 @@ export default function CourseQuizzesPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
+  const readJsonResponse = async (res: Response) => {
+    const raw = await res.text();
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status}). The server returned a non-JSON response.`);
+      }
+      throw new Error('Server returned an invalid response format.');
+    }
+  };
+
   const currentQuestion =
     activeQuestions.length > 0 ? activeQuestions[currentQuestionIndex] || null : null;
   const isLastQuestion =
@@ -58,7 +70,7 @@ export default function CourseQuizzesPage() {
       const res = await fetch(`/api/student/my-courses/${courseId}/quiz`, {
         cache: 'no-store',
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.message || 'Failed to load course quiz');
       }
@@ -93,7 +105,7 @@ export default function CourseQuizzesPage() {
       const res = await fetch(`/api/student/my-courses/${courseId}/quiz?mode=start`, {
         cache: 'no-store',
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.message || 'Failed to start quiz');
       }
@@ -140,7 +152,7 @@ export default function CourseQuizzesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.message || 'Failed to submit quiz');
       }

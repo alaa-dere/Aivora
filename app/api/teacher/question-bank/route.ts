@@ -6,9 +6,9 @@ import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 
 type QuestionRow = RowDataPacket & {
   id: string;
-  questionType: 'multiple_choice' | 'written';
+  questionType: 'multiple_choice' | 'written' | 'true_false';
   questionText: string;
-  optionsJson: string;
+  optionsJson: unknown;
   correctOptionIndex: number;
   createdAt: string;
 };
@@ -54,13 +54,17 @@ export async function GET(req: Request) {
 
     const questions = rows.map((row) => {
       let options: string[] = [];
-      try {
-        const parsed = JSON.parse(row.optionsJson);
-        if (Array.isArray(parsed)) {
-          options = parsed.map((item) => String(item || ''));
+      if (Array.isArray(row.optionsJson)) {
+        options = row.optionsJson.map((item) => String(item || ''));
+      } else {
+        try {
+          const parsed = JSON.parse(String(row.optionsJson || '[]'));
+          if (Array.isArray(parsed)) {
+            options = parsed.map((item) => String(item || ''));
+          }
+        } catch {
+          options = [];
         }
-      } catch {
-        options = [];
       }
 
       return {
@@ -105,8 +109,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const courseId = String(body?.courseId || '').trim();
     const questionTypeRaw = String(body?.questionType || 'multiple_choice').trim();
-    const questionType: 'multiple_choice' | 'written' =
-      questionTypeRaw === 'written' ? 'written' : 'multiple_choice';
+    const questionType: 'multiple_choice' | 'written' | 'true_false' =
+      questionTypeRaw === 'written'
+        ? 'written'
+        : questionTypeRaw === 'true_false'
+          ? 'true_false'
+          : 'multiple_choice';
     const questionText = String(body?.questionText || '').trim();
     const optionsRaw = Array.isArray(body?.options) ? body.options : [];
     const options = optionsRaw.map((item: unknown) => String(item || '').trim()).filter(Boolean);
@@ -126,6 +134,16 @@ export async function POST(req: Request) {
       }
       finalOptions = [writtenAnswer];
       finalCorrectOptionIndex = 0;
+    } else if (questionType === 'true_false') {
+      const correctOptionIndex = Number(body?.correctOptionIndex);
+      if (!Number.isInteger(correctOptionIndex) || (correctOptionIndex !== 0 && correctOptionIndex !== 1)) {
+        return NextResponse.json(
+          { message: 'For true/false questions, correctOptionIndex must be 0 (True) or 1 (False)' },
+          { status: 400 }
+        );
+      }
+      finalOptions = ['True', 'False'];
+      finalCorrectOptionIndex = correctOptionIndex;
     } else {
       const correctOptionIndex = Number(body?.correctOptionIndex);
       if (options.length < 2) {

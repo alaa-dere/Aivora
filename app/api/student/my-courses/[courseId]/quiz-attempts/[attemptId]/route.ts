@@ -8,11 +8,16 @@ interface Params {
   params: Promise<{ courseId: string; attemptId: string }>;
 }
 
-function parseOptions(value: string) {
+function parseOptions(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || ''));
+  }
   try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      return parsed.map((item) => String(item || ''));
+    if (typeof value === 'string') {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || ''));
+      }
     }
   } catch {
     // ignore parse errors
@@ -77,7 +82,7 @@ export async function GET(req: Request, { params }: Params) {
     );
 
     const answers = answerRows.map((row) => {
-      const options = parseOptions(String(row.optionsJson || '[]'));
+      const options = parseOptions(row.optionsJson);
       const selectedIndex =
         row.selectedOptionIndex === null || row.selectedOptionIndex === undefined
           ? null

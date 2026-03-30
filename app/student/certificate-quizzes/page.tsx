@@ -12,12 +12,24 @@ export default function CertificateQuizzesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const readJsonResponse = async (res: Response) => {
+    const raw = await res.text();
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status}). The server returned a non-JSON response.`);
+      }
+      throw new Error('Server returned an invalid response format.');
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         const res = await fetch('/api/student/certificate-quizzes', { cache: 'no-store' });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!res.ok) throw new Error(data.message || 'Failed to load quizzes');
         setCourses(data.courses || []);
       } catch (err: any) {

@@ -8,7 +8,7 @@ import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle } from "lucide-react";
 type CourseOption = { id: string; name: string };
 
 type QuestionDraft = {
-  questionType: "multiple_choice" | "written";
+  questionType: "multiple_choice" | "written" | "true_false";
   text: string;
   options: string[];
   writtenAnswer: string;
@@ -17,7 +17,7 @@ type QuestionDraft = {
 
 type StoredQuestion = {
   id: string;
-  questionType?: "multiple_choice" | "written";
+  questionType?: "multiple_choice" | "written" | "true_false";
   questionText: string;
   options: string[];
   correctOptionIndex: number;
@@ -54,6 +54,18 @@ export default function CreateQuizPage() {
     correctAnswer: null,
   });
 
+  const readJsonResponse = async (res: Response) => {
+    const raw = await res.text();
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status}). The server returned a non-JSON response.`);
+      }
+      throw new Error("Server returned an invalid response format.");
+    }
+  };
+
   useEffect(() => {
     const initialCourseId = searchParams.get("courseId") || "";
     if (initialCourseId) {
@@ -65,7 +77,7 @@ export default function CreateQuizPage() {
     const loadCourses = async () => {
       try {
         const res = await fetch("/api/teacher/courses", { cache: "no-store" });
-        const data = (await res.json()) as TeacherCoursesResponse;
+        const data = (await readJsonResponse(res)) as TeacherCoursesResponse;
         if (!res.ok) {
           throw new Error(data.message || "Failed to load courses");
         }
@@ -94,7 +106,7 @@ export default function CreateQuizPage() {
         const res = await fetch(`/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`, {
           cache: "no-store",
         });
-        const data = (await res.json()) as QuestionBankResponse;
+        const data = (await readJsonResponse(res)) as QuestionBankResponse;
         if (!res.ok) {
           throw new Error(data.message || "Failed to load question bank");
         }
@@ -122,6 +134,11 @@ export default function CreateQuizPage() {
         setError("Please provide the written true answer");
         return;
       }
+    } else if (currentQuestion.questionType === "true_false") {
+      if (currentQuestion.correctAnswer !== 0 && currentQuestion.correctAnswer !== 1) {
+        setError("Please select True or False as the correct answer");
+        return;
+      }
     } else {
       const options = currentQuestion.options.map((item) => item.trim()).filter(Boolean);
       if (options.length < 2) {
@@ -143,9 +160,20 @@ export default function CreateQuizPage() {
       {
         questionType: currentQuestion.questionType,
         text,
-        options: currentQuestion.options.map((item) => item.trim()).filter(Boolean),
-        writtenAnswer: currentQuestion.writtenAnswer.trim(),
-        correctAnswer: currentQuestion.correctAnswer,
+        options:
+          currentQuestion.questionType === "true_false"
+            ? ["True", "False"]
+            : currentQuestion.options.map((item) => item.trim()).filter(Boolean),
+        writtenAnswer:
+          currentQuestion.questionType === "written" ? currentQuestion.writtenAnswer.trim() : "",
+        correctAnswer:
+          currentQuestion.questionType === "written"
+            ? 0
+            : currentQuestion.questionType === "true_false"
+              ? currentQuestion.correctAnswer === 1
+                ? 1
+                : 0
+              : currentQuestion.correctAnswer,
       },
     ]);
 
@@ -169,7 +197,7 @@ export default function CreateQuizPage() {
       const res = await fetch(`/api/teacher/question-bank/${encodeURIComponent(questionId)}`, {
         method: "DELETE",
       });
-      const data = (await res.json()) as { message?: string };
+      const data = (await readJsonResponse(res)) as { message?: string };
       if (!res.ok) {
         throw new Error(data.message || "Failed to delete question");
       }
@@ -212,7 +240,7 @@ export default function CreateQuizPage() {
           }),
         });
 
-        const data = (await res.json()) as { message?: string };
+        const data = (await readJsonResponse(res)) as { message?: string };
         if (!res.ok) {
           throw new Error(data.message || "Failed to save question");
         }
@@ -222,7 +250,7 @@ export default function CreateQuizPage() {
         `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
         { cache: "no-store" }
       );
-      const refreshData = (await refreshRes.json()) as QuestionBankResponse;
+      const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
       if (refreshRes.ok) {
         setSavedQuestions(refreshData.questions || []);
       }
@@ -294,16 +322,24 @@ export default function CreateQuizPage() {
               </label>
               <select
                 value={currentQuestion.questionType}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const selectedType =
+                    e.target.value === "written"
+                      ? "written"
+                      : e.target.value === "true_false"
+                        ? "true_false"
+                        : "multiple_choice";
                   setCurrentQuestion((prev) => ({
                     ...prev,
-                    questionType: e.target.value === "written" ? "written" : "multiple_choice",
-                    correctAnswer: null,
-                  }))
-                }
+                    questionType: selectedType,
+                    options: selectedType === "true_false" ? ["True", "False"] : ["", "", "", ""],
+                    correctAnswer: selectedType === "true_false" ? 0 : null,
+                  }));
+                }}
                 className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               >
                 <option value="multiple_choice">Multiple Choice</option>
+                <option value="true_false">True / False</option>
                 <option value="written">Written Answer</option>
               </select>
             </div>
@@ -331,6 +367,26 @@ export default function CreateQuizPage() {
                   placeholder="Type the exact written answer"
                   className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                 />
+              </div>
+            ) : currentQuestion.questionType === "true_false" ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Correct Answer (True / False) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={currentQuestion.correctAnswer === null ? "" : String(currentQuestion.correctAnswer)}
+                  onChange={(e) =>
+                    setCurrentQuestion((prev) => ({
+                      ...prev,
+                      correctAnswer: e.target.value === "" ? null : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select True or False</option>
+                  <option value="0">True</option>
+                  <option value="1">False</option>
+                </select>
               </div>
             ) : (
               <>

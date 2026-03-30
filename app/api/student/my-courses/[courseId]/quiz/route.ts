@@ -11,7 +11,7 @@ interface Params {
 
 type QuestionRow = RowDataPacket & {
   id: string;
-  questionType: 'multiple_choice' | 'written';
+  questionType: 'multiple_choice' | 'written' | 'true_false';
   questionText: string;
   optionsJson: unknown;
   correctOptionIndex: number;
@@ -158,14 +158,25 @@ export async function GET(req: Request, { params }: Params) {
 
       const questions = questionRows.map((row, index) => {
         const options = parseOptions(row.optionsJson);
-        const questionType = row.questionType || (options.length <= 1 ? 'written' : 'multiple_choice');
+        const lowerOptions = options.map((option) => option.trim().toLowerCase());
+        const looksTrueFalse =
+          options.length === 2 &&
+          ((lowerOptions[0] === 'true' && lowerOptions[1] === 'false') ||
+            (lowerOptions[0] === 'false' && lowerOptions[1] === 'true'));
+        const questionType =
+          row.questionType ||
+          (options.length <= 1
+            ? 'written'
+            : looksTrueFalse
+              ? 'true_false'
+              : 'multiple_choice');
 
         return {
           id: row.id,
           order: index + 1,
           questionType,
           questionText: row.questionText,
-          options: questionType === 'multiple_choice' ? options : [],
+          options: questionType === 'written' ? [] : options,
         };
       });
 
@@ -307,8 +318,18 @@ export async function POST(req: Request, { params }: Params) {
       const question = questionById.get(questionId)!;
       const answer = answerById.get(questionId);
       const options = parseOptions(question.optionsJson);
+      const lowerOptions = options.map((option) => option.trim().toLowerCase());
+      const looksTrueFalse =
+        options.length === 2 &&
+        ((lowerOptions[0] === 'true' && lowerOptions[1] === 'false') ||
+          (lowerOptions[0] === 'false' && lowerOptions[1] === 'true'));
       const questionType =
-        question.questionType || (options.length <= 1 ? 'written' : 'multiple_choice');
+        question.questionType ||
+        (options.length <= 1
+          ? 'written'
+          : looksTrueFalse
+            ? 'true_false'
+            : 'multiple_choice');
       const selectedOptionIndex =
         answer && Number.isInteger(answer.selectedOptionIndex)
           ? Number(answer.selectedOptionIndex)

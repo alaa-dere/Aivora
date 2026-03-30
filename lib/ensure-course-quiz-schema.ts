@@ -30,7 +30,7 @@ export async function ensureCourseQuizSchema() {
           id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
           courseId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
           teacherId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
-          questionType        ENUM('multiple_choice', 'written') NOT NULL DEFAULT 'multiple_choice',
+          questionType        ENUM('multiple_choice', 'written', 'true_false') NOT NULL DEFAULT 'multiple_choice',
           questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
           optionsJson         JSON NOT NULL,
           correctOptionIndex  TINYINT UNSIGNED NOT NULL,
@@ -48,10 +48,15 @@ export async function ensureCourseQuizSchema() {
     if (!(await hasColumn('course_question_bank', 'questionType'))) {
       await pool.query(`
         ALTER TABLE course_question_bank
-        ADD COLUMN questionType ENUM('multiple_choice', 'written')
+        ADD COLUMN questionType ENUM('multiple_choice', 'written', 'true_false')
         NOT NULL DEFAULT 'multiple_choice' AFTER teacherId
       `);
     }
+    await pool.query(`
+      ALTER TABLE course_question_bank
+      MODIFY COLUMN questionType ENUM('multiple_choice', 'written', 'true_false')
+      NOT NULL DEFAULT 'multiple_choice'
+    `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS course_quiz_attempt (
@@ -79,7 +84,7 @@ export async function ensureCourseQuizSchema() {
           id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
           attemptId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
           questionBankId      VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
-          questionType        ENUM('multiple_choice', 'written') NOT NULL DEFAULT 'multiple_choice',
+          questionType        ENUM('multiple_choice', 'written', 'true_false') NOT NULL DEFAULT 'multiple_choice',
           questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
           optionsJson         JSON NOT NULL,
           selectedOptionIndex TINYINT NULL,
@@ -99,10 +104,15 @@ export async function ensureCourseQuizSchema() {
     if (!(await hasColumn('course_quiz_attempt_answer', 'questionType'))) {
       await pool.query(`
         ALTER TABLE course_quiz_attempt_answer
-        ADD COLUMN questionType ENUM('multiple_choice', 'written')
+        ADD COLUMN questionType ENUM('multiple_choice', 'written', 'true_false')
         NOT NULL DEFAULT 'multiple_choice' AFTER questionBankId
       `);
     }
+    await pool.query(`
+      ALTER TABLE course_quiz_attempt_answer
+      MODIFY COLUMN questionType ENUM('multiple_choice', 'written', 'true_false')
+      NOT NULL DEFAULT 'multiple_choice'
+    `);
     if (!(await hasColumn('course_quiz_attempt_answer', 'selectedTextAnswer'))) {
       await pool.query(`
         ALTER TABLE course_quiz_attempt_answer
