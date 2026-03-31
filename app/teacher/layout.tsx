@@ -17,6 +17,7 @@ import {
   BellIcon,
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
+  AcademicCapIcon,
   BanknotesIcon,
   Bars3Icon,
   XMarkIcon,
@@ -35,6 +36,7 @@ const menuItems = [
   { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
   { href: '/teacher/messages', name: 'Messages', icon: ChatBubbleLeftRightIcon },
   { href: '/teacher/earnings', name: 'Earnings', icon: BanknotesIcon },
+  { href: '/teacher/certificates', name: 'Certificates', icon: AcademicCapIcon },
   { href: '/teacher/profile', name: 'Profile', icon: UserCircleIcon },
   { href: '/teacher/notifications', name: 'Notifications', icon: BellIcon },
 ];

@@ -19,6 +19,60 @@ type QuestionRow = RowDataPacket & {
 
 const PASSING_SCORE_PERCENTAGE = 60;
 
+async function ensureTeacherNotificationTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS teacher_notification (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      teacherId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      type VARCHAR(64) NOT NULL COLLATE utf8mb4_unicode_ci DEFAULT 'quiz_result',
+      title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+      message TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      readAt DATETIME NULL,
+      INDEX idx_teacher_notif_teacher (teacherId),
+      INDEX idx_teacher_notif_created (createdAt),
+      INDEX idx_teacher_notif_read (readAt),
+      FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+}
+
+async function ensureStudentNotificationTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS student_notification (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      type ENUM('live_session', 'missed_session', 'course_failed', 'quiz_passed', 'quiz_failed', 'certificate_earned') DEFAULT 'live_session',
+      title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+      message TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      readAt DATETIME NULL,
+      INDEX idx_student_notif_student (studentId),
+      INDEX idx_student_notif_course (courseId),
+      INDEX idx_student_notif_type (type),
+      INDEX idx_student_notif_read (readAt),
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+
+  await pool.query(`
+    ALTER TABLE student_notification
+    MODIFY COLUMN type ENUM('live_session', 'missed_session', 'course_failed', 'quiz_passed', 'quiz_failed', 'certificate_earned')
+    DEFAULT 'live_session'
+  `);
+}
+
 function parseOptions(value: unknown) {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || ''));
@@ -43,7 +97,10 @@ async function issueCertificateIfEligible(studentId: string, courseId: string) {
   );
 
   if (existingCertRows.length > 0) {
-    return existingCertRows[0].id as string;
+    return {
+      certificateId: existingCertRows[0].id as string,
+      newlyIssued: false,
+    };
   }
 
   const [courseRows] = await pool.query<RowDataPacket[]>(
@@ -73,7 +130,122 @@ async function issueCertificateIfEligible(studentId: string, courseId: string) {
     [certId, studentId, courseId, certNo]
   );
 
-  return certId;
+  return { certificateId: certId, newlyIssued: true };
+}
+
+async function createQuizNotifications(input: {
+  teacherId: string;
+  studentId: string;
+  studentName: string;
+  courseId: string;
+  courseTitle: string;
+  scorePercentage: number;
+  passed: boolean;
+  attemptNumber: number;
+  issuedCertificateNow: boolean;
+  issuedCertificateOnRetake: boolean;
+}) {
+  const baseTitle = input.passed ? 'Quiz passed' : 'Quiz failed';
+  const baseMessage = `${input.studentName} ${
+    input.passed ? 'passed' : 'failed'
+  } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}).`;
+
+  const teacherNotifId = randomUUID();
+  await pool.query<ResultSetHeader>(
+    `
+    INSERT INTO teacher_notification
+      (id, teacherId, studentId, courseId, type, title, message, createdAt)
+    VALUES
+      (?, ?, ?, ?, 'quiz_result', ?, ?, NOW())
+    `,
+    [
+      teacherNotifId,
+      input.teacherId,
+      input.studentId,
+      input.courseId,
+      baseTitle,
+      baseMessage,
+    ]
+  );
+
+  const adminNotifId = randomUUID();
+  await pool.query<ResultSetHeader>(
+    `
+    INSERT INTO admin_notification
+      (id, type, title, message, studentId, courseId, createdAt)
+    VALUES
+      (?, 'course_enroll', ?, ?, ?, ?, NOW())
+    `,
+    [adminNotifId, baseTitle, baseMessage, input.studentId, input.courseId]
+  );
+
+  const studentBaseType = input.passed ? 'quiz_passed' : 'quiz_failed';
+  const studentNotifId = randomUUID();
+  await pool.query<ResultSetHeader>(
+    `
+    INSERT INTO student_notification
+      (id, studentId, courseId, type, title, message, createdAt)
+    VALUES
+      (?, ?, ?, ?, ?, ?, NOW())
+    `,
+    [
+      studentNotifId,
+      input.studentId,
+      input.courseId,
+      studentBaseType,
+      baseTitle,
+      baseMessage,
+    ]
+  );
+
+  if (input.issuedCertificateNow) {
+    const certTitle = input.issuedCertificateOnRetake
+      ? 'Certificate unlocked after retake'
+      : 'Certificate unlocked';
+    const certMessage = input.issuedCertificateOnRetake
+      ? `${input.studentName} retook the quiz and unlocked the certificate for ${input.courseTitle}.`
+      : `${input.studentName} unlocked the certificate for ${input.courseTitle}.`;
+
+    const teacherCertNotifId = randomUUID();
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT INTO teacher_notification
+        (id, teacherId, studentId, courseId, type, title, message, createdAt)
+      VALUES
+        (?, ?, ?, ?, 'quiz_certificate', ?, ?, NOW())
+      `,
+      [
+        teacherCertNotifId,
+        input.teacherId,
+        input.studentId,
+        input.courseId,
+        certTitle,
+        certMessage,
+      ]
+    );
+
+    const adminCertNotifId = randomUUID();
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT INTO admin_notification
+        (id, type, title, message, studentId, courseId, createdAt)
+      VALUES
+        (?, 'course_enroll', ?, ?, ?, ?, NOW())
+      `,
+      [adminCertNotifId, certTitle, certMessage, input.studentId, input.courseId]
+    );
+
+    const studentCertNotifId = randomUUID();
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT INTO student_notification
+        (id, studentId, courseId, type, title, message, createdAt)
+      VALUES
+        (?, ?, ?, 'certificate_earned', ?, ?, NOW())
+      `,
+      [studentCertNotifId, input.studentId, input.courseId, certTitle, certMessage]
+    );
+  }
 }
 
 async function getEnrollment(studentId: string, courseId: string) {
@@ -105,6 +277,8 @@ export async function GET(req: Request, { params }: Params) {
 
   try {
     await ensureCourseQuizSchema();
+    await ensureTeacherNotificationTable();
+    await ensureStudentNotificationTable();
 
     const { courseId } = await params;
     const normalizedCourseId = decodeURIComponent(courseId).trim();
@@ -232,6 +406,9 @@ export async function POST(req: Request, { params }: Params) {
 
   try {
     await ensureCourseQuizSchema();
+    await ensureTeacherNotificationTable();
+    await ensureStudentNotificationTable();
+    await ensureTeacherNotificationTable();
 
     const { courseId } = await params;
     const normalizedCourseId = decodeURIComponent(courseId).trim();
@@ -253,6 +430,38 @@ export async function POST(req: Request, { params }: Params) {
         { status: 400 }
       );
     }
+
+    const [courseRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, title, teacherId FROM course WHERE id = ? LIMIT 1`,
+      [normalizedCourseId]
+    );
+    if (courseRows.length === 0) {
+      return NextResponse.json({ message: 'Course not found' }, { status: 404 });
+    }
+    const course = {
+      id: String(courseRows[0].id),
+      title: String(courseRows[0].title || 'Course'),
+      teacherId: String(courseRows[0].teacherId || ''),
+    };
+    if (!course.teacherId) {
+      return NextResponse.json({ message: 'Course teacher not found' }, { status: 400 });
+    }
+
+    const [studentRows] = await pool.query<RowDataPacket[]>(
+      `SELECT fullName FROM user WHERE id = ? LIMIT 1`,
+      [user.id]
+    );
+    const studentName = String(studentRows[0]?.fullName || 'Student');
+
+    const [attemptCountRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT COUNT(*) AS total
+      FROM course_quiz_attempt
+      WHERE courseId = ? AND studentId = ?
+      `,
+      [normalizedCourseId, user.id]
+    );
+    const attemptNumber = Number(attemptCountRows[0]?.total || 0) + 1;
 
     if (answersRaw.length !== 10) {
       return NextResponse.json(
@@ -404,20 +613,39 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
+    const roundedScore = Number(scorePercentage.toFixed(2));
     let certificateIssued = false;
     let certificateId: string | null = null;
-    if (Number(scorePercentage.toFixed(2)) >= PASSING_SCORE_PERCENTAGE) {
-      certificateId = await issueCertificateIfEligible(user.id, normalizedCourseId);
-      certificateIssued = Boolean(certificateId);
+    let issuedCertificateNow = false;
+    let issuedCertificateOnRetake = false;
+    if (roundedScore >= PASSING_SCORE_PERCENTAGE) {
+      const certResult = await issueCertificateIfEligible(user.id, normalizedCourseId);
+      certificateId = certResult.certificateId;
+      certificateIssued = certResult.newlyIssued;
+      issuedCertificateNow = certResult.newlyIssued;
+      issuedCertificateOnRetake = certResult.newlyIssued && attemptNumber > 1;
     }
+
+    await createQuizNotifications({
+      teacherId: course.teacherId,
+      studentId: user.id,
+      studentName,
+      courseId: course.id,
+      courseTitle: course.title,
+      scorePercentage: roundedScore,
+      passed: roundedScore >= PASSING_SCORE_PERCENTAGE,
+      attemptNumber,
+      issuedCertificateNow,
+      issuedCertificateOnRetake,
+    });
 
     return NextResponse.json({
       success: true,
       attemptId,
       totalQuestions,
       correctAnswers,
-      scorePercentage: Number(scorePercentage.toFixed(2)),
-      passed: Number(scorePercentage.toFixed(2)) >= PASSING_SCORE_PERCENTAGE,
+      scorePercentage: roundedScore,
+      passed: roundedScore >= PASSING_SCORE_PERCENTAGE,
       passingScorePercentage: PASSING_SCORE_PERCENTAGE,
       certificateIssued,
       certificateId,

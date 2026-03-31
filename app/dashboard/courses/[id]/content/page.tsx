@@ -739,6 +739,13 @@ export default function CourseContentPage() {
                     >
                       Insert Video
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => appendToLessonContent('{{answer:\n\n}}')}
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Insert Expected Answer
+                    </button>
                   </div>
                   <textarea
                     rows={8}
@@ -749,7 +756,8 @@ export default function CourseContentPage() {
                   />
                   <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                     Tip: Use triple backticks for code blocks, <code className="px-1">{"{{video:URL}}"}</code> for videos,
-                    <code className="px-1">{"{{starter: ... }}"}</code> for the live editor starter code, and regular links like
+                    <code className="px-1">{"{{starter: ... }}"}</code> for the live editor starter code,
+                    <code className="px-1">{"{{answer: ... }}"}</code> for the expected live-editor result, and regular links like
                     <code className="px-1">[Title](https://example.com)</code> or <code className="px-1">https://example.com</code>.
                   </p>
                 </div>

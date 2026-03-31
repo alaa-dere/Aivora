@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 import { getRequestUser } from "@/lib/request-auth";
+import { ensureCourseEvaluationSchema } from "@/lib/ensure-course-evaluation-schema";
 
 export async function GET(req: Request) {
   try {
+    await ensureCourseEvaluationSchema();
+
     const user = await getRequestUser(req);
     const includeEnrollment = user?.role === 'student';
 
@@ -47,6 +50,24 @@ export async function GET(req: Request) {
       sql,
       includeEnrollment ? [user?.id] : []
     );
+    const [feedbackRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT
+        ce.id,
+        ce.rating,
+        ce.feedback,
+        u.fullName AS studentName,
+        c.title AS courseTitle
+      FROM course_evaluation ce
+      JOIN user u ON u.id = ce.studentId
+      JOIN course c ON c.id = ce.courseId
+      WHERE ce.rating IS NOT NULL
+        AND ce.feedback IS NOT NULL
+        AND TRIM(ce.feedback) <> ''
+      ORDER BY RAND()
+      LIMIT 3
+      `
+    );
 
     const courses = rows.map((course) => ({
       id: course.id,
@@ -59,10 +80,21 @@ export async function GET(req: Request) {
       students: String(Number(course.studentsCount || 0)),
       enrolled: Boolean(course.enrolled),
     }));
+    const feedbacks = feedbackRows.map((row) => ({
+      id: String(row.id),
+      name: String(row.studentName || "Student"),
+      role: String(row.courseTitle || "Aivora Student"),
+      content: String(row.feedback || ""),
+      rating:
+        row.rating === null || row.rating === undefined
+          ? 0
+          : Number(row.rating),
+    }));
 
     return NextResponse.json({
       success: true,
       data: courses,
+      feedbacks,
     });
   } catch (error) {
     console.error("Error fetching courses:", error);

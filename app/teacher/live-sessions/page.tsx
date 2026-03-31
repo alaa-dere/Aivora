@@ -137,10 +137,45 @@ export default function LiveSessionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "notify_session", sessionId }),
       });
-      if (!res.ok) throw new Error("Failed to send reminder");
-      toast.success("Notification sent to all students!");
-    } catch (error) {
-      toast.error("Failed to send reminder");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send reminder");
+
+      const notificationsSent = Number(data.notificationsSent || 0);
+      const emailSent = Number(data.emailSent || 0);
+      const emailFailed = Number(data.emailFailed || 0);
+      const skippedReason = String(data.emailSkippedReason || "");
+      const failureMessage = String(data.emailFailureMessage || "");
+
+      if (notificationsSent === 0) {
+        toast("No students found to notify.");
+        return;
+      }
+
+      if (emailSent > 0 && emailFailed === 0) {
+        toast.success(`Notified ${notificationsSent} students and sent ${emailSent} reminder emails.`);
+        return;
+      }
+
+      if (emailSent > 0 && emailFailed > 0) {
+        toast(`Notified ${notificationsSent}. Emails sent: ${emailSent}, failed: ${emailFailed}.`);
+        return;
+      }
+
+      if (emailSent === 0) {
+        const reasonMessage =
+          skippedReason === "missing_sender"
+            ? "EMAIL_FROM or EMAIL_USER is missing."
+            : skippedReason === "missing_smtp"
+              ? "SMTP/EMAIL settings are missing."
+              : skippedReason === "send_failed"
+                ? `Mail server rejected login/sending.${failureMessage ? ` (${failureMessage})` : ""}`
+                : "Email delivery failed.";
+        toast(`Notified ${notificationsSent} students in-app only. No emails sent: ${reasonMessage}`);
+        return;
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to send reminder";
+      toast.error(msg);
     }
   };
 

@@ -1,9 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-export default function LiveHtmlPreview({ initialCode }: { initialCode: string }) {
+type LiveEditorSubmission = {
+  code: string;
+  output: string;
+  hasRun: boolean;
+  error?: string | null;
+};
+
+export default function LiveHtmlPreview({
+  initialCode,
+  onSubmissionChange,
+}: {
+  initialCode: string;
+  onSubmissionChange?: (submission: LiveEditorSubmission) => void;
+}) {
   const [code, setCode] = useState(initialCode);
+  const lastSubmissionSignatureRef = useRef<string>("");
 
   const srcDoc = useMemo(() => {
     return `
@@ -20,6 +34,20 @@ export default function LiveHtmlPreview({ initialCode }: { initialCode: string }
       </html>
     `;
   }, [code]);
+
+  useEffect(() => {
+    const signature = JSON.stringify({
+      code,
+      output: "",
+      hasRun: true,
+      error: null,
+    });
+    if (signature === lastSubmissionSignatureRef.current) {
+      return;
+    }
+    lastSubmissionSignatureRef.current = signature;
+    onSubmissionChange?.({ code, output: "", hasRun: true, error: null });
+  }, [code, onSubmissionChange]);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">

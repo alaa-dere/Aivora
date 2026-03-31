@@ -7,6 +7,17 @@ type PyodideInstance = {
   globals: { set: (name: string, value: unknown) => void };
 };
 
+type LiveEditorSubmission = {
+  code: string;
+  output: string;
+  hasRun: boolean;
+  error?: string | null;
+};
+
+type WindowWithPyodide = Window & {
+  loadPyodide?: (opts: { indexURL: string }) => Promise<PyodideInstance>;
+};
+
 let pyodidePromise: Promise<PyodideInstance> | null = null;
 
 async function loadPyodide(): Promise<PyodideInstance> {
@@ -15,7 +26,12 @@ async function loadPyodide(): Promise<PyodideInstance> {
   pyodidePromise = new Promise<PyodideInstance>((resolve, reject) => {
     const existing = document.getElementById("pyodide-script");
     if (existing) {
-      (window as any)
+      const pyodideWindow = window as WindowWithPyodide;
+      if (!pyodideWindow.loadPyodide) {
+        reject(new Error("Pyodide loader is unavailable"));
+        return;
+      }
+      pyodideWindow
         .loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
         .then(resolve)
         .catch(reject);
@@ -27,7 +43,12 @@ async function loadPyodide(): Promise<PyodideInstance> {
     script.src = "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js";
     script.async = true;
     script.onload = () => {
-      (window as any)
+      const pyodideWindow = window as WindowWithPyodide;
+      if (!pyodideWindow.loadPyodide) {
+        reject(new Error("Pyodide loader is unavailable"));
+        return;
+      }
+      pyodideWindow
         .loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" })
         .then(resolve)
         .catch(reject);
@@ -39,13 +60,21 @@ async function loadPyodide(): Promise<PyodideInstance> {
   return pyodidePromise;
 }
 
-export default function LivePythonEditor({ initialCode }: { initialCode: string }) {
+export default function LivePythonEditor({
+  initialCode,
+  onSubmissionChange,
+}: {
+  initialCode: string;
+  onSubmissionChange?: (submission: LiveEditorSubmission) => void;
+}) {
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [ready, setReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasRun, setHasRun] = useState<boolean>(false);
   const outputRef = useRef<HTMLPreElement | null>(null);
+  const lastSubmissionSignatureRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -67,6 +96,20 @@ export default function LivePythonEditor({ initialCode }: { initialCode: string 
     }
   }, [output]);
 
+  useEffect(() => {
+    const signature = JSON.stringify({
+      code,
+      output,
+      hasRun,
+      error: error || null,
+    });
+    if (signature === lastSubmissionSignatureRef.current) {
+      return;
+    }
+    lastSubmissionSignatureRef.current = signature;
+    onSubmissionChange?.({ code, output, hasRun, error });
+  }, [code, output, hasRun, error, onSubmissionChange]);
+
   const runCode = async () => {
     setError(null);
     setLoading(true);
@@ -78,10 +121,12 @@ export default function LivePythonEditor({ initialCode }: { initialCode: string 
         stdout.push(args.map(String).join(" "));
       });
       await pyodide.runPythonAsync(code);
-      setOutput(stdout.join("\n") || "✅ Done");
-    } catch (err: any) {
+      setOutput(stdout.join("\n") || "Done");
+      setHasRun(true);
+    } catch (err: unknown) {
       setOutput("");
-      setError(err.message || "Failed to run code");
+      setError(err instanceof Error ? err.message : "Failed to run code");
+      setHasRun(true);
     } finally {
       setLoading(false);
     }
@@ -109,7 +154,10 @@ export default function LivePythonEditor({ initialCode }: { initialCode: string 
       <textarea
         rows={6}
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => {
+          setCode(e.target.value);
+          setHasRun(false);
+        }}
         className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-mono text-gray-900 dark:text-gray-100"
       />
       <div>

@@ -15,7 +15,6 @@ import {
   ClockIcon,
   UserGroupIcon,
   GlobeAltIcon,
-  UserCircleIcon,
   ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -97,6 +96,14 @@ type Course = {
   enrolled?: boolean;
 };
 
+type FeedbackItem = {
+  id: string;
+  name: string;
+  role: string;
+  content: string;
+  rating: number;
+};
+
 export default function HomePage() {
   const { theme, setTheme } = useTheme();
   const { status } = useSession();
@@ -108,6 +115,7 @@ export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState('');
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -155,6 +163,7 @@ export default function HomePage() {
         }
 
         setCourses(data.data || []);
+        setFeedbacks(Array.isArray(data.feedbacks) ? data.feedbacks : []);
       } catch (error) {
         console.error('Failed to load courses:', error);
         setCoursesError('Failed to load courses');
@@ -182,7 +191,18 @@ export default function HomePage() {
   const isArabic = language === 'ar';
 
   const navItems = isArabic ? navItemsAr : navItemsEn;
-  const testimonials = isArabic ? testimonialsAr : testimonialsEn;
+  const testimonials =
+    feedbacks.length > 0
+      ? feedbacks.map((item) => ({
+          name: item.name,
+          role: item.role,
+          content: item.content,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=2563eb&color=fff`,
+          rating: Number(item.rating || 0),
+        }))
+      : isArabic
+        ? testimonialsAr
+        : testimonialsEn;
 
   const bgUrl = useMemo(() => {
     return isDark ? "url('/plain2dd.png')" : "url('/plain2.png')";
@@ -560,7 +580,7 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  <p className="text-sm text-slate-200 leading-6 italic">"{t.content}"</p>
+                  <p className="text-sm text-slate-200 leading-6 italic">&quot;{t.content}&quot;</p>
                 </div>
               ))}
             </div>

@@ -45,9 +45,13 @@ export async function GET(req: Request) {
           n.createdAt,
           n.readAt,
           n.courseId,
-          c.title AS courseTitle
+          c.title AS courseTitle,
+          cert.id AS certificateId
         FROM student_notification n
         LEFT JOIN course c ON c.id = n.courseId
+        LEFT JOIN certificate cert
+          ON cert.studentId = n.studentId
+         AND cert.courseId = n.courseId
         WHERE n.studentId = ?
         ORDER BY n.createdAt DESC
         LIMIT ${limit}
@@ -65,6 +69,7 @@ export async function GET(req: Request) {
           readAt: row.readAt,
           courseId: row.courseId,
           courseTitle: row.courseTitle,
+          certificateId: row.certificateId || null,
         })),
       });
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
@@ -25,6 +25,13 @@ type Module = {
   id: string;
   title: string;
   lessons: Lesson[];
+};
+
+type LiveEditorSubmission = {
+  code: string;
+  output: string;
+  hasRun: boolean;
+  error?: string | null;
 };
 
 const inlineMarkdownToNodes = (text: string): ReactNode[] => {
@@ -168,9 +175,36 @@ export default function CoursePlayerPage() {
   const [lastActiveLessonId, setLastActiveLessonId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lessonInlineError, setLessonInlineError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
   const [showCertPrompt, setShowCertPrompt] = useState(false);
+  const [liveSubmissionByLesson, setLiveSubmissionByLesson] = useState<
+    Record<string, LiveEditorSubmission>
+  >({});
+
+  const handleLiveSubmissionChange = useCallback(
+    (submission: LiveEditorSubmission) => {
+      if (!selectedLessonId) return;
+      setLiveSubmissionByLesson((prev) => {
+        const existing = prev[selectedLessonId];
+        if (
+          existing &&
+          existing.code === submission.code &&
+          existing.output === submission.output &&
+          existing.hasRun === submission.hasRun &&
+          (existing.error || null) === (submission.error || null)
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [selectedLessonId]: submission,
+        };
+      });
+    },
+    [selectedLessonId]
+  );
 
   const allLessons = useMemo(
     () => modules.flatMap((m) => m.lessons),
@@ -186,8 +220,8 @@ export default function CoursePlayerPage() {
         if (!res.ok) throw new Error(data.message || 'Failed to load content');
         setModules(data.modules || []);
         setLastActiveLessonId(String(data.course?.lastActiveLessonId || ''));
-      } catch (err: any) {
-        setError(err.message || 'Failed to load content');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load content');
       } finally {
         setLoading(false);
       }
@@ -213,6 +247,7 @@ export default function CoursePlayerPage() {
 
   useEffect(() => {
     if (!selectedLessonId) return;
+    setLessonInlineError(null);
     try {
       localStorage.setItem(lessonStorageKey, selectedLessonId);
     } catch {
@@ -249,8 +284,9 @@ export default function CoursePlayerPage() {
   }, [params.id, selectedLessonId]);
 
   const parseLessonContent = (content: string) => {
-    const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
-    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}/gi;
+    const segments: { type: 'text' | 'code' | 'video' | 'starter' | 'answer'; value: string }[] = [];
+    const regex =
+      /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}|\{\{\s*(?:answer|expected)\s*:\s*([\s\S]*?)\}\}/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
@@ -264,6 +300,8 @@ export default function CoursePlayerPage() {
         segments.push({ type: 'video', value: match[2].trim() });
       } else if (match[3] !== undefined) {
         segments.push({ type: 'starter', value: match[3].trim() });
+      } else if (match[4] !== undefined) {
+        segments.push({ type: 'answer', value: match[4].trim() });
       }
       lastIndex = regex.lastIndex;
     }
@@ -271,7 +309,7 @@ export default function CoursePlayerPage() {
     if (lastIndex < content.length) {
       segments.push({ type: 'text', value: content.slice(lastIndex) });
     }
-    return segments.filter((segment) => segment.value.trim() !== '');
+    return segments.filter((segment) => segment.value.trim() !== '' && segment.type !== 'answer');
   };
 
   const normalizeVideoUrl = (rawUrl: string) => {
@@ -302,11 +340,18 @@ export default function CoursePlayerPage() {
   const markLessonComplete = async () => {
     if (!selectedLesson) return;
     setMarking(true);
+    setLessonInlineError(null);
     try {
+      const liveSubmission = selectedLesson.enableLiveEditor
+        ? liveSubmissionByLesson[selectedLesson.id] || null
+        : null;
       const res = await fetch(`/api/student/my-courses/${params.id}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId: selectedLesson.id }),
+        body: JSON.stringify({
+          lessonId: selectedLesson.id,
+          liveEditorSubmission: liveSubmission,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update progress');
@@ -318,8 +363,18 @@ export default function CoursePlayerPage() {
       if (contentRes.ok) {
         setModules(contentData.modules || []);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to update progress');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update progress';
+      if (
+        message.includes('This live-compiler lesson does not have an expected answer yet') ||
+        message.includes('Ask your teacher to add {{answer:')
+      ) {
+        setLessonInlineError(
+          'This live-compiler lesson is not fully configured yet. Your teacher needs to add an expected answer first.'
+        );
+      } else {
+        setLessonInlineError(message);
+      }
     } finally {
       setMarking(false);
     }
@@ -505,12 +560,30 @@ export default function CoursePlayerPage() {
                         );
                       }
                       if (selectedLesson.liveEditorLanguage === 'javascript') {
-                        return <LiveJsEditor key={idx} initialCode={seg.value} />;
+                        return (
+                          <LiveJsEditor
+                            key={idx}
+                            initialCode={seg.value}
+                            onSubmissionChange={handleLiveSubmissionChange}
+                          />
+                        );
                       }
                       if (selectedLesson.liveEditorLanguage === 'html_css') {
-                        return <LiveHtmlPreview key={idx} initialCode={seg.value} />;
+                        return (
+                          <LiveHtmlPreview
+                            key={idx}
+                            initialCode={seg.value}
+                            onSubmissionChange={handleLiveSubmissionChange}
+                          />
+                        );
                       }
-                      return <LivePythonEditor key={idx} initialCode={seg.value} />;
+                      return (
+                        <LivePythonEditor
+                          key={idx}
+                          initialCode={seg.value}
+                          onSubmissionChange={handleLiveSubmissionChange}
+                        />
+                      );
                     }
                     if (seg.type === 'video') {
                       const url = normalizeVideoUrl(seg.value);
@@ -561,6 +634,11 @@ export default function CoursePlayerPage() {
                 Next
               </button>
             </div>
+            {lessonInlineError && (
+              <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+                {lessonInlineError}
+              </div>
+            )}
           </div>
 
           </div>

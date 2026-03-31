@@ -368,7 +368,7 @@ export default function TeacherProfilePage() {
               <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Students List{' '}
+                    Students Currently Taking Courses{' '}
                     <span className="text-gray-400 font-normal">({data.students.length})</span>
                   </p>
                 </div>
@@ -387,7 +387,7 @@ export default function TeacherProfilePage() {
                       {data.students.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
-                            No students enrolled yet.
+                            No active students currently taking this teacher&apos;s courses.
                           </td>
                         </tr>
                       ) : (

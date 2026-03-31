@@ -1,15 +1,33 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCircle, Filter, Trash2 } from "lucide-react";
 
 type NotificationItem = {
   id: string;
-  type: "live_session" | "missed_session" | "course_failed";
+  type:
+    | "live_session"
+    | "missed_session"
+    | "course_failed"
+    | "quiz_passed"
+    | "quiz_failed"
+    | "certificate_earned";
   title: string;
   message: string;
   time: string;
   read: boolean;
+  certificateId?: string | null;
+};
+
+type NotificationApiItem = {
+  id: string;
+  type: NotificationItem["type"];
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  certificateId?: string | null;
 };
 
 function getTypeIcon(type: NotificationItem["type"]) {
@@ -20,6 +38,12 @@ function getTypeIcon(type: NotificationItem["type"]) {
       return <CheckCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
     case "course_failed":
       return <Bell className="w-5 h-5 text-red-600 dark:text-red-400" />;
+    case "quiz_passed":
+      return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+    case "quiz_failed":
+      return <Bell className="w-5 h-5 text-rose-600 dark:text-rose-400" />;
+    case "certificate_earned":
+      return <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
     default:
       return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
   }
@@ -33,6 +57,12 @@ function getTypeBg(type: NotificationItem["type"]) {
       return "bg-amber-100 dark:bg-amber-900/30";
     case "course_failed":
       return "bg-red-100 dark:bg-red-900/30";
+    case "quiz_passed":
+      return "bg-emerald-100 dark:bg-emerald-900/30";
+    case "quiz_failed":
+      return "bg-rose-100 dark:bg-rose-900/30";
+    case "certificate_earned":
+      return "bg-purple-100 dark:bg-purple-900/30";
     default:
       return "bg-gray-100 dark:bg-gray-700";
   }
@@ -62,13 +92,14 @@ export default function StudentNotificationsPage() {
         const res = await fetch("/api/student/dashboard?notifications=all", { cache: "no-store" });
         const data = await res.json();
         if (!res.ok) return;
-        const mapped = (data.notifications || []).map((n: any) => ({
+        const mapped = ((data.notifications || []) as NotificationApiItem[]).map((n) => ({
           id: n.id,
           type: n.type,
           title: n.title,
           message: n.message,
           time: new Date(n.createdAt).toLocaleString(),
           read: Boolean(n.readAt),
+          certificateId: n.certificateId || null,
         }));
         setItems(mapped);
       } catch (error) {
@@ -126,6 +157,9 @@ export default function StudentNotificationsPage() {
   };
 
   const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+  const isCertificateNotification = (notification: NotificationItem) =>
+    notification.type === "certificate_earned" ||
+    notification.title.toLowerCase().includes("certificate unlocked");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -133,7 +167,7 @@ export default function StudentNotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Updates about live sessions and course status.
+            Updates about live sessions, quiz results, and certificates.
           </p>
         </div>
       </div>
@@ -220,6 +254,18 @@ export default function StudentNotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-3">
+                    {isCertificateNotification(notification) && (
+                      <Link
+                        href={
+                          notification.certificateId
+                            ? `/student/certificates/${notification.certificateId}`
+                            : "/student/certificates"
+                        }
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View certificate
+                      </Link>
+                    )}
                     {!notification.read && (
                       <button
                         onClick={() => markAsRead(notification.id)}

@@ -61,6 +61,11 @@ export async function GET(req: Request, { params }: Params) {
     }
 
     const attempt = attemptRows[0];
+    const [certRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id FROM certificate WHERE studentId = ? AND courseId = ? LIMIT 1`,
+      [user.id, normalizedCourseId]
+    );
+    const certificateId = certRows[0]?.id ? String(certRows[0].id) : null;
 
     const [answerRows] = await pool.query<RowDataPacket[]>(
       `
@@ -120,6 +125,7 @@ export async function GET(req: Request, { params }: Params) {
         correctAnswers: Number(attempt.correctAnswers || 0),
         scorePercentage: Number(attempt.scorePercentage || 0),
         submittedAt: attempt.submittedAt,
+        certificateId,
       },
       answers,
     });

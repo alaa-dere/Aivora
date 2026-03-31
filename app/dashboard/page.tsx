@@ -58,7 +58,7 @@ type RecentTx = {
 
 function formatMoney(value: number) {
   const safe = Number.isFinite(value) ? value : 0;
-  return `$${safe.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Recent activity from DB
@@ -192,10 +192,10 @@ export default function AdminDashboard() {
 
   const formattedStats = useMemo(
     () => ({
-      totalStudents: stats.totalStudents.toLocaleString(),
-      totalTeachers: stats.totalTeachers.toLocaleString(),
-      activeCourses: stats.activeCourses.toLocaleString(),
-      monthlyRevenue: `$${stats.monthlyRevenue.toLocaleString(undefined, {
+      totalStudents: stats.totalStudents.toLocaleString('en-US'),
+      totalTeachers: stats.totalTeachers.toLocaleString('en-US'),
+      activeCourses: stats.activeCourses.toLocaleString('en-US'),
+      monthlyRevenue: `$${stats.monthlyRevenue.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`,

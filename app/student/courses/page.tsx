@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import {
   BookOpenIcon,
+  ClockIcon,
+  StarIcon,
+  UserCircleIcon,
   MagnifyingGlassIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
@@ -15,6 +18,10 @@ type Course = {
   price: number;
   description: string;
   durationWeeks: number;
+  lessonCount: number;
+  studentCount: number;
+  averageRating?: number;
+  evaluationCount?: number;
   imageUrl?: string;
   enrolled: boolean;
 };
@@ -35,8 +42,8 @@ export default function StudentCoursesPage() {
           throw new Error(data.message || 'Failed to load courses');
         }
         setCourses(data.courses || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load courses');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load courses');
       } finally {
         setLoading(false);
       }
@@ -84,78 +91,85 @@ export default function StudentCoursesPage() {
       </div>
 
       {/* Courses */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
         ) : error ? (
           <p className="text-sm text-red-500">{error}</p>
-        ) : filtered.map((c) => (
-          <div
-            key={c.id}
-            className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
-          >
-            <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-950 mb-4">
-              <img
-                src={c.imageUrl || '/default-course.jpg'}
-                alt={c.title}
-                className="h-28 w-full object-cover opacity-80"
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-blue-950/85 via-blue-950/45 to-transparent" />
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {Array.from({ length: 10 }).map((_, idx) => (
-                  <span
-                    key={`${c.id}-decor-dot-${idx}`}
-                    className={`block h-3.5 w-3.5 rounded-full border ${
-                      idx < 3
-                        ? 'border-blue-300 bg-blue-300 shadow-[0_0_12px_rgba(147,197,253,0.8)]'
-                        : 'border-blue-400/50 bg-blue-900/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+        ) : filtered.map((c) => {
+          const rating = Number(c.averageRating || 0);
+          const reviewCount = Number(c.evaluationCount || 0);
+          const filledStars = Math.round(rating);
 
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <BookOpenIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                    {c.title}
-                  </h3>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Teacher: <span className="text-gray-700 dark:text-gray-200">{c.teacherName}</span>
-                </p>
+          return (
+            <div
+              key={c.id}
+              className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+            >
+              <div className="overflow-hidden rounded-xl">
+                <img
+                  src={c.imageUrl || '/default-course.jpg'}
+                  alt={c.title}
+                  className="h-44 w-full object-cover"
+                />
               </div>
 
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                ${c.price}
-              </span>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">{c.description}</p>
-
-            <div className="flex flex-wrap gap-2 mt-4">
-              <span className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
-                {c.durationWeeks} weeks
-              </span>
-              {c.enrolled && (
-                <span className="text-xs px-2 py-1 rounded bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300">
-                  Enrolled
+              <div className="mt-4">
+                <span className="inline-flex items-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2.5 py-1 text-xs font-semibold">
+                  #Skill Building
                 </span>
-              )}
-            </div>
 
-            <div className="mt-5">
-              <Link
-                href={`/student/courses/${c.id}`}
-                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Open details <ArrowRightIcon className="w-4 h-4" />
-              </Link>
+                <h3 className="mt-3 text-xl leading-snug font-semibold text-gray-900 dark:text-white line-clamp-2">
+                  {c.title}
+                </h3>
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-gray-100 dark:bg-gray-700/70 px-2 py-1 text-sm text-gray-600 dark:text-gray-300">
+                  <UserCircleIcon className="w-4 h-4" />
+                  <span className="font-medium">{c.teacherName}</span>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="inline-flex items-center gap-1">
+                    <BookOpenIcon className="w-4 h-4" />
+                    {Math.max(1, c.lessonCount)} Lessons
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ClockIcon className="w-4 h-4" />
+                    {Math.max(1, c.durationWeeks)} Week
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center gap-1 text-amber-500">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <StarIcon
+                      key={`${c.id}-star-${idx}`}
+                      className={`w-4 h-4 ${idx < filledStars ? 'fill-current' : ''}`}
+                    />
+                  ))}
+                  {reviewCount > 0 ? (
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                      {rating.toFixed(1)} ({reviewCount} Reviews)
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">No reviews yet</span>
+                  )}
+                </div>
+
+                <div className="mt-5 flex items-center justify-between gap-3">
+                  <Link
+                    href={`/student/courses/${c.id}`}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-sm font-semibold transition-colors"
+                  >
+                    {c.enrolled ? 'Continue Course' : 'Join Our Class'}
+                    <ArrowRightIcon className="w-4 h-4" />
+                  </Link>
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-lg font-bold text-gray-900 dark:text-white">
+                    ${c.price}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {!loading && !error && filtered.length === 0 && (

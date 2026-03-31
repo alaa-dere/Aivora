@@ -3,21 +3,45 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeftIcon, CreditCardIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  CreditCardIcon,
+  PlayCircleIcon,
+  LockClosedIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
+
+type PaymentMethod = 'card' | 'paypal';
+
+type CourseData = {
+  id: string;
+  title: string;
+  teacherName: string;
+  price: number;
+  description: string;
+  durationWeeks: number;
+  imageUrl?: string | null;
+  enrolled: boolean;
+};
 
 export default function CourseDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [agree, setAgree] = useState(false);
-  const [course, setCourse] = useState<any | null>(null);
+  const [course, setCourse] = useState<CourseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod>('card');
   const [paymentForm, setPaymentForm] = useState({
+    fullName: '',
+    email: '',
+    country: '',
     cardNumber: '',
-    cardName: '',
-    exp: '',
+    expiry: '',
     cvc: '',
+    paypalEmail: '',
+    paypalTxnId: '',
   });
 
   useEffect(() => {
@@ -30,8 +54,8 @@ export default function CourseDetailsPage() {
           throw new Error(data.message || 'Failed to load course');
         }
         setCourse(data.course);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load course');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load course');
       } finally {
         setLoading(false);
       }
@@ -40,23 +64,65 @@ export default function CourseDetailsPage() {
     if (params.id) loadCourse();
   }, [params.id]);
 
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await fetch('/api/profile/me', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        setPaymentForm((prev) => ({
+          ...prev,
+          fullName: prev.fullName || String(data?.user?.fullName || ''),
+          email: prev.email || String(data?.user?.email || ''),
+        }));
+      } catch {
+        // keep form empty if profile is unavailable
+      }
+    };
+
+    loadProfile();
+  }, []);
+
   const handleEnroll = async () => {
     if (!course) return;
+    if (!paymentForm.fullName.trim() || !paymentForm.email.trim() || !paymentForm.country.trim()) {
+      setError('Please fill full name, email, and country.');
+      return;
+    }
+    if (method === 'card' && !paymentForm.cardNumber.replace(/\D/g, '').slice(-4)) {
+      setError('Please enter valid card details.');
+      return;
+    }
+    if (method === 'paypal' && (!paymentForm.paypalEmail.trim() || !paymentForm.paypalTxnId.trim())) {
+      setError('Please enter PayPal details.');
+      return;
+    }
+
     setPaying(true);
     setError(null);
     try {
+      const cardLast4 = paymentForm.cardNumber.replace(/\D/g, '').slice(-4) || null;
       const res = await fetch(`/api/student/courses/${course.id}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentConfirmed: true }),
+        body: JSON.stringify({
+          paymentConfirmed: true,
+          method,
+          fullName: paymentForm.fullName.trim(),
+          email: paymentForm.email.trim(),
+          country: paymentForm.country.trim(),
+          cardLast4: method === 'card' ? cardLast4 : null,
+          paypalEmail: method === 'paypal' ? paymentForm.paypalEmail.trim() : null,
+          paypalTxnId: method === 'paypal' ? paymentForm.paypalTxnId.trim() : null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || 'Payment failed');
       }
       router.push(`/student/my-courses/${course.id}`);
-    } catch (err: any) {
-      setError(err.message || 'Payment failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
       setPaying(false);
     }
@@ -154,36 +220,106 @@ export default function CourseDetailsPage() {
               <div className="rounded-xl border border-blue-100 dark:border-blue-800 p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <CreditCardIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Payment Information (Placeholder)
-                  </p>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Payment Information</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input
-                    value={paymentForm.cardNumber}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, cardNumber: e.target.value })}
-                    placeholder="Card number"
+                    value={paymentForm.fullName}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, fullName: e.target.value })}
+                    placeholder="Full name"
                     className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    required
                   />
                   <input
-                    value={paymentForm.cardName}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, cardName: e.target.value })}
-                    placeholder="Name on card"
+                    value={paymentForm.email}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, email: e.target.value })}
+                    placeholder="Email"
+                    type="email"
                     className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    required
                   />
                   <input
-                    value={paymentForm.exp}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, exp: e.target.value })}
-                    placeholder="MM/YY"
-                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    value={paymentForm.country}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, country: e.target.value })}
+                    placeholder="Country"
+                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
+                    required
                   />
-                  <input
-                    value={paymentForm.cvc}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, cvc: e.target.value })}
-                    placeholder="CVC"
-                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
-                  />
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMethod('card')}
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                      method === 'card'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-blue-200 dark:border-blue-800 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    <CreditCardIcon className="w-4 h-4" /> Card
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod('paypal')}
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                      method === 'paypal'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-blue-200 dark:border-blue-800 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    <CheckCircleIcon className="w-4 h-4" /> PayPal
+                  </button>
+                </div>
+
+                {method === 'card' && (
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      value={paymentForm.cardNumber}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, cardNumber: e.target.value })}
+                      placeholder="Card number"
+                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
+                      required={method === 'card'}
+                    />
+                    <input
+                      value={paymentForm.expiry}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, expiry: e.target.value })}
+                      placeholder="MM/YY"
+                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    />
+                    <input
+                      value={paymentForm.cvc}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, cvc: e.target.value })}
+                      placeholder="CVC"
+                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {method === 'paypal' && (
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      value={paymentForm.paypalEmail}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paypalEmail: e.target.value })}
+                      placeholder="PayPal email"
+                      type="email"
+                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      required={method === 'paypal'}
+                    />
+                    <input
+                      value={paymentForm.paypalTxnId}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paypalTxnId: e.target.value })}
+                      placeholder="PayPal transaction ID"
+                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      required={method === 'paypal'}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <LockClosedIcon className="w-4 h-4" />
+                  Payment details are handled securely.
                 </div>
 
                 <label className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">

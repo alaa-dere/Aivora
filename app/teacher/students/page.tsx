@@ -107,7 +107,9 @@ export default function StudentsPage() {
               Students
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {selectedCourse ? `Students enrolled in ${selectedCourse.name}` : "Choose a course to view its students."}
+              {selectedCourse
+                ? `Students currently taking ${selectedCourse.name}`
+                : "Choose a course to view students currently taking it."}
             </p>
           </div>
         </div>
@@ -321,7 +323,9 @@ export default function StudentsPage() {
               ) : error ? (
                 <div className="p-5 text-sm text-red-500">{error}</div>
               ) : filteredStudents.length === 0 ? (
-                <div className="p-5 text-sm text-gray-500 dark:text-gray-400">No students enrolled.</div>
+                <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
+                  No active students currently taking this course.
+                </div>
               ) : (
                 <div className="divide-y divide-blue-100 dark:divide-blue-800">
                   {filteredStudents.map((student) => (

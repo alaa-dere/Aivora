@@ -8,6 +8,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChartBarIcon,
+  SparklesIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 
 type AnswerRow = {
@@ -26,7 +28,10 @@ type AttemptData = {
   correctAnswers: number;
   scorePercentage: number;
   submittedAt: string;
+  certificateId?: string | null;
 };
+
+const PASSING_SCORE_PERCENTAGE = 60;
 
 export default function QuizResultPage() {
   const params = useParams<{ id: string; quizId: string }>();
@@ -38,6 +43,11 @@ export default function QuizResultPage() {
   const [answers, setAnswers] = useState<AnswerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEvaluationPrompt, setShowEvaluationPrompt] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [savingEvaluation, setSavingEvaluation] = useState(false);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadResult = async () => {
@@ -54,6 +64,25 @@ export default function QuizResultPage() {
 
         setAttempt(data.attempt || null);
         setAnswers(data.answers || []);
+
+        const attemptData = data.attempt || null;
+        if (
+          attemptData &&
+          Number(attemptData.scorePercentage || 0) >= PASSING_SCORE_PERCENTAGE &&
+          attemptData.certificateId
+        ) {
+          try {
+            const evalRes = await fetch(`/api/student/my-courses/${courseId}/evaluation`, {
+              cache: 'no-store',
+            });
+            const evalData = await evalRes.json();
+            if (evalRes.ok && evalData.canEvaluate && !evalData.hasResponse) {
+              setShowEvaluationPrompt(true);
+            }
+          } catch {
+            // non-blocking prompt load
+          }
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load quiz result');
       } finally {
@@ -74,6 +103,52 @@ export default function QuizResultPage() {
       // ignore storage errors
     }
   }, [courseId]);
+
+  const handleSkipEvaluation = async () => {
+    try {
+      setSavingEvaluation(true);
+      setEvaluationError(null);
+      const res = await fetch(`/api/student/my-courses/${courseId}/evaluation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'skip' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to skip evaluation');
+      }
+      setShowEvaluationPrompt(false);
+    } catch (err: unknown) {
+      setEvaluationError(err instanceof Error ? err.message : 'Failed to skip evaluation');
+    } finally {
+      setSavingEvaluation(false);
+    }
+  };
+
+  const handleSubmitEvaluation = async () => {
+    if (!rating) {
+      setEvaluationError('Please choose a star rating first.');
+      return;
+    }
+    try {
+      setSavingEvaluation(true);
+      setEvaluationError(null);
+      const res = await fetch(`/api/student/my-courses/${courseId}/evaluation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'submit', rating, feedback }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to save evaluation');
+      }
+      setShowEvaluationPrompt(false);
+    } catch (err: unknown) {
+      setEvaluationError(err instanceof Error ? err.message : 'Failed to save evaluation');
+    } finally {
+      setSavingEvaluation(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -118,6 +193,88 @@ export default function QuizResultPage() {
           {attempt.correctAnswers}/{attempt.totalQuestions} correct
         </p>
       </div>
+
+      {attempt.scorePercentage >= PASSING_SCORE_PERCENTAGE && (
+        <div className="mb-6 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <SparklesIcon className="w-5 h-5" />
+            <p className="text-sm font-semibold">Congratulations!</p>
+          </div>
+          <p className="text-lg font-bold">You passed the quiz.</p>
+          <p className="text-sm text-emerald-100 mt-1">
+            Great work. You can now view your course certificate.
+          </p>
+          {attempt.certificateId && (
+            <div className="mt-4">
+              <Link
+                href={`/student/certificates/${attempt.certificateId}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium transition-colors"
+              >
+                View Certificate
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showEvaluationPrompt && (
+        <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-5">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Rate This Course</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            You unlocked your certificate. Would you like to rate this course and share feedback?
+          </p>
+
+          <div className="mt-4 flex items-center gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => {
+              const value = idx + 1;
+              return (
+                <button
+                  key={`eval-star-${value}`}
+                  type="button"
+                  onClick={() => setRating(value)}
+                  className="rounded-md p-1 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
+                >
+                  <StarIcon
+                    className={`w-7 h-7 ${value <= rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300 dark:text-gray-600'}`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            rows={4}
+            placeholder="Optional feedback..."
+            className="mt-4 w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white p-3 text-sm"
+          />
+
+          {evaluationError && (
+            <p className="mt-2 text-sm text-red-500">{evaluationError}</p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleSubmitEvaluation}
+              disabled={savingEvaluation}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-60"
+            >
+              {savingEvaluation ? 'Saving...' : 'Submit Evaluation'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipEvaluation}
+              disabled={savingEvaluation}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
         <div className="flex items-center justify-between flex-wrap gap-3">

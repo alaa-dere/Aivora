@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Filter, MessageSquare, Trash2 } from 'lucide-react';
 
@@ -13,6 +14,7 @@ type NotificationItem = {
   time: string;
   read: boolean;
   conversationId?: string;
+  certificateId?: string | null;
 };
 
 type DashboardNotification = {
@@ -23,6 +25,7 @@ type DashboardNotification = {
   createdAt: string;
   read?: boolean;
   conversationId?: string;
+  certificateId?: string | null;
 };
 
 function getTypeIcon(type: NotificationType) {
@@ -69,6 +72,7 @@ export default function TeacherNotificationsPage() {
           time: new Date(n.createdAt).toLocaleString(),
           read: readSet.has(n.id) || Boolean(n.read),
           conversationId: n.conversationId || undefined,
+          certificateId: n.certificateId || null,
         }));
         setItems(mapped.filter((n) => !deletedSet.has(n.id)));
       } catch (error: unknown) {
@@ -84,8 +88,7 @@ export default function TeacherNotificationsPage() {
 
   const markAsRead = async (
     id: string,
-    type: NotificationType,
-    conversationId?: string
+    type: NotificationType
   ) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
 
@@ -224,6 +227,8 @@ export default function TeacherNotificationsPage() {
   };
 
   const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+  const isCertificateNotification = (notification: NotificationItem) =>
+    notification.title.toLowerCase().includes('certificate unlocked');
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -319,13 +324,24 @@ export default function TeacherNotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-3">
+                    {isCertificateNotification(notification) && (
+                      <Link
+                        href={
+                          notification.certificateId
+                            ? `/teacher/certificates/${notification.certificateId}`
+                            : '/teacher/certificates'
+                        }
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View certificate
+                      </Link>
+                    )}
                     {!notification.read && (
                       <button
                         onClick={() =>
                           markAsRead(
                             notification.id,
-                            notification.type,
-                            notification.conversationId
+                            notification.type
                           )
                         }
                         className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"

@@ -17,9 +17,14 @@ export async function GET(req: Request) {
         c.title,
         c.description,
         c.imageUrl,
-        e.progressPercentage AS progress
+        e.progressPercentage AS progress,
+        e.status,
+        cert.id AS certificateId
       FROM enrollment e
       JOIN course c ON c.id = e.courseId
+      LEFT JOIN certificate cert
+        ON cert.studentId = e.studentId
+       AND cert.courseId = e.courseId
       WHERE e.studentId = ?
       ORDER BY e.enrolledAt DESC
       `,
@@ -32,13 +37,18 @@ export async function GET(req: Request) {
       description: row.description,
       imageUrl: row.imageUrl || '/default-course.jpg',
       progress: Math.round(Number(row.progress || 0)),
+      status: String(row.status || 'enrolled'),
+      certificateId: row.certificateId || null,
     }));
 
     return NextResponse.json({ courses });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('My courses error:', error);
     return NextResponse.json(
-      { message: 'Failed to load my courses', error: error.message },
+      {
+        message: 'Failed to load my courses',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

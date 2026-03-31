@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
@@ -19,6 +20,17 @@ type NotificationItem = {
   message: string;
   time: string;
   read: boolean;
+  certificateId?: string | null;
+};
+
+type NotificationApiItem = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  certificateId?: string | null;
 };
 
 function getTypeIcon(type: NotificationType) {
@@ -76,13 +88,14 @@ export default function NotificationsPage() {
         const res = await fetch('/api/admin/notifications', { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) return;
-        const mapped = (data.notifications || []).map((n: any) => ({
+        const mapped = ((data.notifications || []) as NotificationApiItem[]).map((n) => ({
           id: n.id,
           type: n.type,
           title: n.title,
           message: n.message,
           time: new Date(n.createdAt).toLocaleString(),
           read: Boolean(n.readAt),
+          certificateId: n.certificateId || null,
         }));
         setItems(mapped);
       } catch (error) {
@@ -132,6 +145,8 @@ export default function NotificationsPage() {
   };
 
   const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+  const isCertificateNotification = (notification: NotificationItem) =>
+    notification.title.toLowerCase().includes("certificate unlocked");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
@@ -228,6 +243,18 @@ export default function NotificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-3">
+                    {isCertificateNotification(notification) && (
+                      <Link
+                        href={
+                          notification.certificateId
+                            ? `/dashboard/certificates/${notification.certificateId}`
+                            : '/dashboard/certificates'
+                        }
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View certificate
+                      </Link>
+                    )}
                     {!notification.read && (
                       <button
                         onClick={() => markAsRead(notification.id)}

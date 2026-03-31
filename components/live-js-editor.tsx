@@ -1,11 +1,41 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-export default function LiveJsEditor({ initialCode }: { initialCode: string }) {
+type LiveEditorSubmission = {
+  code: string;
+  output: string;
+  hasRun: boolean;
+  error?: string | null;
+};
+
+export default function LiveJsEditor({
+  initialCode,
+  onSubmissionChange,
+}: {
+  initialCode: string;
+  onSubmissionChange?: (submission: LiveEditorSubmission) => void;
+}) {
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState<string>("No output yet.");
+  const [error, setError] = useState<string | null>(null);
+  const [hasRun, setHasRun] = useState<boolean>(false);
   const outputRef = useRef<HTMLPreElement | null>(null);
+  const lastSubmissionSignatureRef = useRef<string>("");
+
+  useEffect(() => {
+    const signature = JSON.stringify({
+      code,
+      output,
+      hasRun,
+      error: error || null,
+    });
+    if (signature === lastSubmissionSignatureRef.current) {
+      return;
+    }
+    lastSubmissionSignatureRef.current = signature;
+    onSubmissionChange?.({ code, output, hasRun, error });
+  }, [code, output, hasRun, error, onSubmissionChange]);
 
   const runCode = () => {
     const logs: string[] = [];
@@ -16,12 +46,16 @@ export default function LiveJsEditor({ initialCode }: { initialCode: string }) {
     };
 
     try {
-      // eslint-disable-next-line no-new-func
+      setError(null);
       const fn = new Function("console", code);
       fn(consoleProxy);
-      setOutput(logs.join("\n") || "✅ Done");
-    } catch (err: any) {
-      setOutput(err.message || "Failed to run code");
+      setOutput(logs.join("\n") || "Done");
+      setHasRun(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to run code";
+      setOutput(message);
+      setError(message);
+      setHasRun(true);
     }
 
     if (outputRef.current) {
@@ -46,7 +80,10 @@ export default function LiveJsEditor({ initialCode }: { initialCode: string }) {
       <textarea
         rows={6}
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => {
+          setCode(e.target.value);
+          setHasRun(false);
+        }}
         className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-mono text-gray-900 dark:text-gray-100"
       />
       <div>

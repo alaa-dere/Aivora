@@ -23,7 +23,15 @@ export async function GET(req: Request) {
         c.status,
         c.updatedAt,
         (
-          SELECT COUNT(*) FROM enrollment e WHERE e.courseId = c.id
+          SELECT COUNT(*)
+          FROM enrollment e
+          WHERE e.courseId = c.id
+            AND NOT EXISTS (
+              SELECT 1
+              FROM certificate cert
+              WHERE cert.studentId = e.studentId
+                AND cert.courseId = e.courseId
+            )
         ) AS students,
         (
           SELECT COUNT(*) FROM module m WHERE m.courseId = c.id
@@ -82,6 +90,12 @@ export async function GET(req: Request) {
       JOIN user u ON u.id = e.studentId
       WHERE c.teacherId = ?
         AND c.id = ?
+        AND NOT EXISTS (
+          SELECT 1
+          FROM certificate cert
+          WHERE cert.studentId = e.studentId
+            AND cert.courseId = e.courseId
+        )
       ORDER BY e.enrolledAt DESC
       `,
       [teacherId, courseId]

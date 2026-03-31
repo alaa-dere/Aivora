@@ -55,7 +55,9 @@ export async function GET(req: Request) {
             AVG(e.progressPercentage) AS avgProgress
           FROM enrollment e
           JOIN course c ON c.id = e.courseId
+          LEFT JOIN certificate cert ON cert.studentId = e.studentId AND cert.courseId = e.courseId
           WHERE c.teacherId = ?
+            AND cert.id IS NULL
         `,
         [teacherId]
       );
@@ -87,10 +89,11 @@ export async function GET(req: Request) {
             c.price,
             c.durationWeeks,
             c.createdAt,
-            COUNT(DISTINCT e.studentId) AS students,
+            COUNT(DISTINCT CASE WHEN cert.id IS NULL THEN e.studentId ELSE NULL END) AS students,
             COALESCE(SUM(CASE WHEN ft.status = 'success' AND ft.type = 'enrollment' THEN ft.teacherShare ELSE 0 END), 0) AS revenue
           FROM course c
           LEFT JOIN enrollment e ON e.courseId = c.id
+          LEFT JOIN certificate cert ON cert.courseId = e.courseId AND cert.studentId = e.studentId
           LEFT JOIN finance_transaction ft ON ft.courseId = c.id AND ft.teacherId = c.teacherId
           WHERE c.teacherId = ?
           GROUP BY c.id
@@ -114,6 +117,12 @@ export async function GET(req: Request) {
           JOIN course c ON c.id = e.courseId
           JOIN user s ON s.id = e.studentId
           WHERE c.teacherId = ?
+            AND NOT EXISTS (
+              SELECT 1
+              FROM certificate cert
+              WHERE cert.studentId = e.studentId
+                AND cert.courseId = e.courseId
+            )
           ORDER BY e.enrolledAt DESC
           LIMIT 50
         `,
