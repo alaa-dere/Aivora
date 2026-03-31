@@ -290,7 +290,7 @@ export default function StudentCourseOverviewPage() {
                 </div>
                 <p className="text-lg font-bold">You completed this course.</p>
                 <p className="text-sm text-blue-100 mt-1">
-                  Your Aivora certificate is ready below.
+                  Pass the final quiz with at least 60% to unlock your Aivora certificate.
                 </p>
               </div>
             )}

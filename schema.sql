@@ -164,6 +164,84 @@ CREATE TABLE IF NOT EXISTS finance_transaction (
     INDEX idx_type (type)
 ) ENGINE=InnoDB;
 
+-- live_session
+CREATE TABLE IF NOT EXISTS live_session (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    teacherId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    title       VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    description TEXT NULL COLLATE utf8mb4_unicode_ci,
+    startAt     DATETIME NOT NULL,
+    endAt       DATETIME NOT NULL,
+    meetingLink VARCHAR(512) NULL COLLATE utf8mb4_unicode_ci,
+    status      ENUM('scheduled', 'completed') DEFAULT 'scheduled',
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_live_teacher (teacherId),
+    INDEX idx_live_course (courseId),
+    INDEX idx_live_start (startAt)
+) ENGINE=InnoDB;
+
+-- live_session_attendance
+CREATE TABLE IF NOT EXISTS live_session_attendance (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    sessionId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    studentId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    attended    TINYINT(1) DEFAULT 0,
+    markedAt    DATETIME NULL,
+
+    FOREIGN KEY (sessionId) REFERENCES live_session(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_session_student (sessionId, studentId),
+    INDEX idx_att_session (sessionId),
+    INDEX idx_att_student (studentId)
+) ENGINE=InnoDB;
+
+-- student_notification
+CREATE TABLE IF NOT EXISTS student_notification (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    studentId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId    VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    type        ENUM('live_session', 'missed_session', 'course_failed') DEFAULT 'live_session',
+    title       VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    message     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    readAt      DATETIME NULL,
+
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_student_notif_student (studentId),
+    INDEX idx_student_notif_course (courseId),
+    INDEX idx_student_notif_type (type),
+    INDEX idx_student_notif_read (readAt)
+) ENGINE=InnoDB;
+
+-- student_live_miss
+CREATE TABLE IF NOT EXISTS student_live_miss (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    studentId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    missedCount INT DEFAULT 0,
+    updatedAt   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_student_course (studentId, courseId),
+    INDEX idx_miss_student (studentId),
+    INDEX idx_miss_course (courseId)
+) ENGINE=InnoDB;
+
 -- admin_notification
 CREATE TABLE IF NOT EXISTS admin_notification (
     id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
@@ -259,6 +337,68 @@ CREATE TABLE IF NOT EXISTS certificate (
     UNIQUE KEY unique_certificate_no (certificateNo),
     INDEX idx_studentId (studentId),
     INDEX idx_courseId  (courseId)
+) ENGINE=InnoDB;
+
+-- course_question_bank
+CREATE TABLE IF NOT EXISTS course_question_bank (
+    id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    courseId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    teacherId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    questionType        ENUM('multiple_choice', 'written') NOT NULL DEFAULT 'multiple_choice',
+    questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    optionsJson         JSON NOT NULL,
+    correctOptionIndex  TINYINT UNSIGNED NOT NULL,
+    createdAt           DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt           DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_courseId (courseId),
+    INDEX idx_teacherId (teacherId)
+) ENGINE=InnoDB;
+
+-- course_quiz_attempt
+CREATE TABLE IF NOT EXISTS course_quiz_attempt (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    courseId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    studentId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    totalQuestions  INT NOT NULL,
+    correctAnswers  INT NOT NULL,
+    scorePercentage DECIMAL(5,2) NOT NULL,
+    submittedAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_courseId (courseId),
+    INDEX idx_studentId (studentId),
+    INDEX idx_submittedAt (submittedAt)
+) ENGINE=InnoDB;
+
+-- course_quiz_attempt_answer
+CREATE TABLE IF NOT EXISTS course_quiz_attempt_answer (
+    id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    attemptId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    questionBankId      VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    questionType        ENUM('multiple_choice', 'written') NOT NULL DEFAULT 'multiple_choice',
+    questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    optionsJson         JSON NOT NULL,
+    selectedOptionIndex TINYINT NULL,
+    selectedTextAnswer  TEXT NULL COLLATE utf8mb4_unicode_ci,
+    correctOptionIndex  TINYINT UNSIGNED NOT NULL,
+    isCorrect           BOOLEAN NOT NULL,
+    createdAt           DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (attemptId) REFERENCES course_quiz_attempt(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (questionBankId) REFERENCES course_question_bank(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_attemptId (attemptId),
+    INDEX idx_questionBankId (questionBankId)
 ) ENGINE=InnoDB;
 
 -- chat_conversation

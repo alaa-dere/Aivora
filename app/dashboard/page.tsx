@@ -51,6 +51,7 @@ type RevenuePoint = { week: string; revenue: number };
 type RecentTx = {
   id: string;
   name: string;
+  courseTitle: string | null;
   amount: number;
   dateTime: string;
 };
@@ -135,9 +136,10 @@ export default function AdminDashboard() {
         const data = await res.json();
         if (!res.ok) return;
 
-        const list = (data.transactions || []).slice(0, 3).map((t: any) => ({
+        const list = (data.transactions || []).slice(0, 4).map((t: any) => ({
           id: t.id,
           name: t.studentName || t.teacherName || t.courseTitle || 'Unknown',
+          courseTitle: t.courseTitle || null,
           amount: Number(t.amount || 0),
           dateTime: t.dateTime || t.date || '',
         }));
@@ -334,6 +336,11 @@ export default function AdminDashboard() {
                     <span className="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                       {tx.name}
                     </span>
+                    {tx.courseTitle && (
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                        Course: {tx.courseTitle}
+                      </p>
+                    )}
                     {tx.dateTime && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {tx.dateTime}

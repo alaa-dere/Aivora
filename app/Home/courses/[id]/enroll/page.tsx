@@ -667,25 +667,25 @@ export default function CourseEnrollPage() {
           </div>
 
           <aside className="space-y-6">
+            <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 shadow-xl overflow-hidden">
+              <div className="w-full aspect-[16/10] rounded-xl overflow-hidden bg-gray-100/20">
+                <img
+                  src={course.imageUrl || '/default-course.jpg'}
+                  alt={course.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-6 shadow-xl">
               <p className="text-sm font-semibold text-slate-200">
                 {isArabic ? 'ملخص الطلب' : 'Order Summary'}
               </p>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900">
-                  <img
-                    src={course.imageUrl || '/default-course.jpg'}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">{course.title}</p>
-                  <p className="text-xs text-slate-300">
-                    {isArabic ? 'بواسطة ' : 'By '}
-                    {course.teacherName}
-                  </p>
-                </div>
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-white">{course.title}</p>
+                <p className="text-xs text-slate-300">
+                  {isArabic ? '\u0628\u0648\u0627\u0633\u0637\u0629 ' : 'By '}
+                  {course.teacherName}
+                </p>
               </div>
 
               <div className="mt-4 space-y-2 text-sm text-slate-200">

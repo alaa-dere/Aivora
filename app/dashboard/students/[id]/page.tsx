@@ -79,14 +79,20 @@ const formatDate = (value?: string | null) => {
   if (!value) return '-';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('en-US');
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 };
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return '-';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 export default function StudentProfilePage() {
@@ -271,7 +277,6 @@ export default function StudentProfilePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
                     <SummaryRow label="This Month" value={money(stats?.monthSpent ?? 0)} />
-                    <SummaryRow label="Refunds" value={money(stats?.refundTotal ?? 0)} />
                     <SummaryRow label="Avg Progress" value={`${Number(stats?.avgProgress || 0).toFixed(1)}%`} />
                   </div>
                 </div>
@@ -310,7 +315,6 @@ export default function StudentProfilePage() {
                         <tr key={course.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
-                            <div className="text-xs text-gray-500">ID: {course.courseId}</div>
                           </td>
                           <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
                             {course.teacherName || '-'}
@@ -348,10 +352,9 @@ export default function StudentProfilePage() {
 
           {tab === 'transactions' && (
             <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <InfoCard title="Total Spent" value={money(stats?.totalSpent ?? 0)} icon={CurrencyDollarIcon} />
                 <InfoCard title="This Month" value={money(stats?.monthSpent ?? 0)} icon={ArrowTrendingUpIcon} />
-                <InfoCard title="Refunds" value={money(stats?.refundTotal ?? 0)} icon={ClipboardDocumentListIcon} />
                 <InfoCard title="Courses" value={stats?.totalCourses ?? 0} icon={AcademicCapIcon} />
               </div>
 

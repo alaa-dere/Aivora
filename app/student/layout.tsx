@@ -25,7 +25,8 @@ import {
   ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -36,6 +37,7 @@ const navigation = [
   { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
   { name: 'Certificate Quizzes', href: '/student/certificate-quizzes', icon: ClipboardDocumentCheckIcon },
   { name: 'Messages', href: '/student/chat', icon: MessageSquare },
+  { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
   { name: 'Leaderboard', href: '/student/leaderboard', icon: TrophyIcon },
   { name: 'Profile', href: '/student/profile', icon: UserCircleIcon },
 ];
@@ -44,6 +46,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationItems, setNotificationItems] = useState<
+    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+  >([]);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [profile, setProfile] = useState<{ fullName: string; email: string; imageUrl?: string | null } | null>(null);
@@ -115,6 +122,48 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadNotificationCount = async () => {
+      try {
+        const res = await fetch('/api/student/dashboard?notifications=count', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !mounted) return;
+        setNotificationCount(Number(data.total || 0));
+      } catch (error) {
+        console.error('Failed to load student notification count', error);
+      }
+    };
+
+    loadNotificationCount();
+    const onRefresh = () => loadNotificationCount();
+    window.addEventListener('student-notifications:refresh', onRefresh as EventListener);
+    const id = setInterval(loadNotificationCount, 30000);
+    return () => {
+      mounted = false;
+      window.removeEventListener('student-notifications:refresh', onRefresh as EventListener);
+      clearInterval(id);
+    };
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      const res = await fetch('/api/student/dashboard?notifications=1', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) return;
+      const items = (data.notifications || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        createdAt: n.createdAt,
+        read: Boolean(n.readAt),
+      }));
+      setNotificationItems(items);
+    } catch (error) {
+      console.error('Failed to load student notifications', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header - نفس ستايل الأدمن */}
@@ -152,10 +201,69 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </button>
           
            {/* Notifications */}
-          <button className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors">
-            <Bell className="w-5 h-5 text-white" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button> 
+          <div className="relative">
+            <button
+              onClick={() => {
+                const next = !notificationOpen;
+                setNotificationOpen(next);
+                if (next) loadNotifications();
+              }}
+              className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5 text-white" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+
+            {notificationOpen && (
+              <div className="absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Notifications
+                  </p>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {notificationItems.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    notificationItems.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {n.message}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                  <Link
+                    href="/student/notifications"
+                    onClick={() => setNotificationOpen(false)}
+                    className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                  >
+                    View all notifications
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           <Link
             href="/student/chat"

@@ -21,14 +21,28 @@ type Transaction = {
   amount: number;
   teacherShare?: number;
   platformShare?: number;
+  teacherSharePct?: number | null;
+  coursePrice?: number | null;
   method?: 'wallet' | 'card' | 'cash' | 'paypal';
 };
 
-function money(value: number) {
-  const safe = Number.isFinite(value) ? value : 0;
+function money(value: number | string | null | undefined) {
+  const numeric = typeof value === 'string' ? Number(value) : Number(value ?? 0);
+  const safe = Number.isFinite(numeric) ? numeric : 0;
   const sign = safe < 0 ? '-' : '';
   const abs = Math.abs(safe);
-  return `${sign}$${abs.toLocaleString()}`;
+  return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function getTeacherProfit(t: Transaction) {
+  const raw = Number(t.teacherShare ?? 0);
+  if (Number.isFinite(raw) && raw !== 0) return raw;
+
+  if (t.type !== 'enrollment') return 0;
+  const pct = Number(t.teacherSharePct ?? NaN);
+  const amt = Number(t.amount ?? 0);
+  if (!Number.isFinite(pct) || !Number.isFinite(amt)) return 0;
+  return (amt * pct) / 100;
 }
 
 function typeBadge(type: TxType) {
@@ -80,13 +94,8 @@ export default function AdminFinanceTransactionsPage() {
       .filter((t) => Number(t.amount) > 0)
       .reduce((a, b) => a + Number(b.amount || 0), 0);
 
-    const teacherProfit = monthTx
-      .filter((t) => t.type === 'enrollment')
-      .reduce((a, b) => a + Number(b.teacherShare || 0), 0);
-
-    const platformProfit = monthTx
-      .filter((t) => t.type === 'enrollment')
-      .reduce((a, b) => a + Number(b.platformShare || 0), 0);
+    const teacherProfit = monthTx.reduce((a, b) => a + getTeacherProfit(b), 0);
+    const platformProfit = monthTx.reduce((a, b) => a + Number(b.platformShare || 0), 0);
 
     return {
       income,
@@ -130,7 +139,7 @@ export default function AdminFinanceTransactionsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Income (month)', value: money(stats.income), icon: CurrencyDollarIcon },
           { label: 'Teacher profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
@@ -143,7 +152,8 @@ export default function AdminFinanceTransactionsPage() {
               rounded-xl
               border border-blue-200 dark:border-blue-800
               shadow-sm
-              p-5
+              p-6
+              min-h-[140px]
               hover:-translate-y-1 hover:shadow-lg
               transition-all duration-200
             "
@@ -217,9 +227,9 @@ export default function AdminFinanceTransactionsPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Type</th>
+                <th className="px-4 py-3 font-medium">Course Price</th>
                 <th className="px-4 py-3 font-medium">Details</th>
-                <th className="px-4 py-3 font-medium">Split</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
+                <th className="px-4 py-3 font-medium">Teacher Profit</th>
               </tr>
             </thead>
 
@@ -250,6 +260,10 @@ export default function AdminFinanceTransactionsPage() {
                     </span>
                   </td>
 
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300 font-semibold">
+                    {money(t.coursePrice ?? 0)}
+                  </td>
+
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className="font-semibold text-gray-800 dark:text-gray-100">
@@ -265,25 +279,15 @@ export default function AdminFinanceTransactionsPage() {
                   </td>
 
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
-                    {t.type === 'enrollment' ? (
-                      <div className="text-xs">
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Teacher</span>
-                          <span className="font-semibold">{money(t.teacherShare ?? 0)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Platform</span>
-                          <span className="font-semibold">{money(t.platformShare ?? 0)}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
+                    <div className="flex flex-col text-xs">
+                      <span className="font-semibold text-sm">{money(getTeacherProfit(t))}</span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {Number.isFinite(t.teacherSharePct) ? `${Number(t.teacherSharePct).toFixed(1)}%` : '-'}
+                      </span>
+                    </div>
                   </td>
 
-                  <td className={`px-4 py-3 text-right font-bold ${t.amount >= 0 ? 'text-gray-900 dark:text-white' : 'text-indigo-700 dark:text-indigo-300'}`}>
-                    {money(t.amount)}
-                  </td>
+                  
                   </tr>
                 ))
               )}

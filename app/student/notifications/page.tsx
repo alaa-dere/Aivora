@@ -1,79 +1,65 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Bell,
-  CheckCircle,
-  Filter,
-  MessageSquare,
-  Trash2,
-  Users,
-} from "lucide-react";
-
-type NotificationType = "student_signup" | "course_enroll" | "teacher_message";
+import { Bell, CheckCircle, Filter, Trash2 } from "lucide-react";
 
 type NotificationItem = {
   id: string;
-  type: NotificationType;
+  type: "live_session" | "missed_session" | "course_failed";
   title: string;
   message: string;
   time: string;
   read: boolean;
 };
 
-function getTypeIcon(type: NotificationType) {
+function getTypeIcon(type: NotificationItem["type"]) {
   switch (type) {
-    case "student_signup":
-      return <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
-    case "course_enroll":
-      return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
-    case "teacher_message":
-      return <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />;
+    case "live_session":
+      return <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    case "missed_session":
+      return <CheckCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
+    case "course_failed":
+      return <Bell className="w-5 h-5 text-red-600 dark:text-red-400" />;
     default:
       return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
   }
 }
 
-function getTypeBg(type: NotificationType) {
+function getTypeBg(type: NotificationItem["type"]) {
   switch (type) {
-    case "student_signup":
+    case "live_session":
       return "bg-blue-100 dark:bg-blue-900/30";
-    case "course_enroll":
-      return "bg-emerald-100 dark:bg-emerald-900/30";
-    case "teacher_message":
-      return "bg-indigo-100 dark:bg-indigo-900/30";
+    case "missed_session":
+      return "bg-amber-100 dark:bg-amber-900/30";
+    case "course_failed":
+      return "bg-red-100 dark:bg-red-900/30";
     default:
       return "bg-gray-100 dark:bg-gray-700";
   }
 }
 
-export default function NotificationsPage() {
-  const [filter, setFilter] = useState<"all" | "unread" | "important">("all");
+export default function StudentNotificationsPage() {
+  const [filter, setFilter] = useState<"all" | "unread">("all");
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(6);
 
   const filteredNotifications = useMemo(() => {
     if (filter === "unread") {
       return items.filter((n) => !n.read);
     }
-
-    if (filter === "important") {
-      return items.filter((n) => n.type === "course_enroll");
-    }
-
     return items;
   }, [filter, items]);
 
   useEffect(() => {
-    setVisibleCount(4);
+    setVisibleCount(6);
   }, [filter]);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/admin/notifications', { cache: 'no-store' });
+        const res = await fetch("/api/student/dashboard?notifications=all", { cache: "no-store" });
         const data = await res.json();
         if (!res.ok) return;
         const mapped = (data.notifications || []).map((n: any) => ({
@@ -86,7 +72,7 @@ export default function NotificationsPage() {
         }));
         setItems(mapped);
       } catch (error) {
-        console.error('Failed to load notifications', error);
+        console.error("Failed to load notifications", error);
       } finally {
         setLoading(false);
       }
@@ -97,11 +83,13 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id: string) => {
     try {
-      await fetch(`/api/admin/notifications/${id}`, { method: "PATCH" });
-      setItems((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-      window.dispatchEvent(new Event('notifications:refresh'));
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_notification_read", id }),
+      });
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
     } catch (error) {
       console.error("Failed to mark as read", error);
     }
@@ -109,9 +97,13 @@ export default function NotificationsPage() {
 
   const deleteNotification = async (id: string) => {
     try {
-      await fetch(`/api/admin/notifications/${id}`, { method: "DELETE" });
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_notification", id }),
+      });
       setItems((prev) => prev.filter((n) => n.id !== id));
-      window.dispatchEvent(new Event('notifications:refresh'));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
     } catch (error) {
       console.error("Failed to delete notification", error);
     }
@@ -121,11 +113,13 @@ export default function NotificationsPage() {
     const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length === 0) return;
     try {
-      await Promise.all(
-        unreadIds.map((id) => fetch(`/api/admin/notifications/${id}`, { method: "PATCH" }))
-      );
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_all_notifications_read" }),
+      });
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-      window.dispatchEvent(new Event('notifications:refresh'));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
     } catch (error) {
       console.error("Failed to mark all as read", error);
     }
@@ -139,10 +133,9 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Stay updated with enrollments, messages, and important alerts.
+            Updates about live sessions and course status.
           </p>
         </div>
-
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
@@ -150,7 +143,7 @@ export default function NotificationsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
               <Filter className="w-4 h-4" />
-              Filter by course
+              All notifications
             </button>
             <button
               onClick={markAllAsRead}
@@ -165,12 +158,11 @@ export default function NotificationsPage() {
             <Filter className="w-5 h-5 text-gray-400" />
             <select
               value={filter}
-              onChange={(e) => setFilter(e.target.value as "all" | "unread" | "important")}
+              onChange={(e) => setFilter(e.target.value as "all" | "unread")}
               className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All</option>
               <option value="unread">Unread</option>
-              <option value="important">Important</option>
             </select>
           </div>
         </div>
@@ -254,7 +246,7 @@ export default function NotificationsPage() {
       <div className="mt-6 text-center">
         {filteredNotifications.length > visibleCount && (
           <button
-            onClick={() => setVisibleCount((prev) => prev + 4)}
+            onClick={() => setVisibleCount((prev) => prev + 6)}
             className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
             Load More Notifications

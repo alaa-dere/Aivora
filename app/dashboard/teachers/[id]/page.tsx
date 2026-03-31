@@ -107,7 +107,12 @@ const formatDateTime = (value?: string | null) => {
   if (!value) return '-';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 export default function TeacherProfilePage() {
@@ -297,8 +302,6 @@ export default function TeacherProfilePage() {
                     <SummaryRow label="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} />
                     <SummaryRow label="This Month" value={money(stats?.monthRevenue ?? 0)} />
                     <SummaryRow label="Total Paid" value={money(stats?.totalPaid ?? 0)} />
-                    <SummaryRow label="Pending Payout" value={money(stats?.pendingPayout ?? 0)} />
-                    <SummaryRow label="Last Payout" value={formatDate(stats?.lastPayoutDate)} />
                   </div>
                 </div>
               </div>
@@ -337,7 +340,6 @@ export default function TeacherProfilePage() {
                         <tr key={course.id} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
-                            <div className="text-xs text-gray-500">ID: {course.id}</div>
                           </td>
                           <td className="px-4 py-3">
                             <StatusPill status={course.status} />
@@ -427,10 +429,9 @@ export default function TeacherProfilePage() {
 
           {tab === 'earnings' && (
             <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <InfoCard title="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} icon={BanknotesIcon} />
                 <InfoCard title="This Month" value={money(stats?.monthRevenue ?? 0)} icon={ArrowTrendingUpIcon} />
-                <InfoCard title="Pending Payout" value={money(stats?.pendingPayout ?? 0)} icon={ClipboardDocumentListIcon} />
                 <InfoCard title="Total Paid" value={money(stats?.totalPaid ?? 0)} icon={CurrencyDollarIcon} />
               </div>
 

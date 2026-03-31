@@ -17,6 +17,58 @@ export async function GET(req: Request) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const notifications = searchParams.get('notifications');
+
+    if (notifications) {
+      if (notifications === 'count') {
+        const [countRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM student_notification
+          WHERE studentId = ? AND readAt IS NULL
+          `,
+          [user.id]
+        );
+        const total = Number(countRows[0]?.total || 0);
+        return NextResponse.json({ total });
+      }
+
+      const limit = notifications === 'all' ? 100 : 5;
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          n.id,
+          n.type,
+          n.title,
+          n.message,
+          n.createdAt,
+          n.readAt,
+          n.courseId,
+          c.title AS courseTitle
+        FROM student_notification n
+        LEFT JOIN course c ON c.id = n.courseId
+        WHERE n.studentId = ?
+        ORDER BY n.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [user.id]
+      );
+
+      return NextResponse.json({
+        notifications: rows.map((row) => ({
+          id: row.id,
+          type: row.type,
+          title: row.title,
+          message: row.message,
+          createdAt: row.createdAt,
+          readAt: row.readAt,
+          courseId: row.courseId,
+          courseTitle: row.courseTitle,
+        })),
+      });
+    }
+
     const [enrollRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT 
@@ -150,6 +202,58 @@ export async function GET(req: Request) {
     console.error('Student dashboard error:', error);
     return NextResponse.json(
       { message: 'Failed to load student dashboard', error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  const user = await getRequestUser(req);
+  if (!user || user.role !== 'student') {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    const body = await req.json();
+    const action = String(body?.action || '');
+
+    if (action === 'mark_notification_read') {
+      const id = String(body?.id || '').trim();
+      if (!id) {
+        return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
+      }
+      await pool.query(
+        `UPDATE student_notification SET readAt = NOW() WHERE id = ? AND studentId = ?`,
+        [id, user.id]
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'mark_all_notifications_read') {
+      await pool.query(
+        `UPDATE student_notification SET readAt = NOW() WHERE studentId = ? AND readAt IS NULL`,
+        [user.id]
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'delete_notification') {
+      const id = String(body?.id || '').trim();
+      if (!id) {
+        return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
+      }
+      await pool.query(
+        `DELETE FROM student_notification WHERE id = ? AND studentId = ?`,
+        [id, user.id]
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ message: 'Unsupported action' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Student notifications error:', error);
+    return NextResponse.json(
+      { message: 'Failed to update notifications', error: error.message },
       { status: 500 }
     );
   }

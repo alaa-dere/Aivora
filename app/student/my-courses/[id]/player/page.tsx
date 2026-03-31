@@ -574,7 +574,7 @@ export default function CoursePlayerPage() {
               You completed all lessons
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              You must complete the quiz to unlock your certificate.
+              You must pass the quiz with at least 60% to unlock your certificate.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">

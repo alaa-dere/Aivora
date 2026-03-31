@@ -1,169 +1,268 @@
+﻿
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
   PlusIcon,
-  VideoCameraIcon,
   CalendarIcon,
   ClockIcon,
-  AcademicCapIcon,
-  Squares2X2Icon,
   UsersIcon,
   LinkIcon,
   DocumentDuplicateIcon,
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  EllipsisVerticalIcon,
   PlayCircleIcon,
-  ArrowDownTrayIcon,
-  EnvelopeIcon,
-  BellIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  ChartBarIcon,
-  DocumentTextIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  ChevronRightIcon,
   XMarkIcon,
   CheckIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
+
+type CourseOption = {
+  id: string;
+  name: string;
+};
+
+type SessionItem = {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  title: string;
+  description: string | null;
+  startAt: string;
+  endAt: string;
+  meetingLink: string | null;
+  status: "scheduled" | "completed";
+  attendees: number;
+  totalStudents: number;
+};
+
+type AttendanceStudent = {
+  id: string;
+  name: string;
+  status: string;
+  attended: boolean;
+  missedCount: number;
+};
 
 export default function LiveSessionsPage() {
   const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [attendanceSession, setAttendanceSession] = useState<SessionItem | null>(null);
+  const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+  const [repeatWeekly, setRepeatWeekly] = useState(true);
+  const [repeatCount, setRepeatCount] = useState(4);
+
   const [formData, setFormData] = useState({
     title: "",
-    course: "",
+    courseId: "",
     description: "",
     date: "",
     startTime: "",
     endTime: "",
-    zoomLink: "",
-    meetingId: "",
-    password: "",
-    reminder: "15",
-    status: "scheduled",
+    meetingLink: "",
   });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
-
-  const sessions = [
-    {
-      id: 1,
-      title: "Python OOP Review Session",
-      course: "Advanced Python",
-      courseCode: "CS401",
-      date: "2024-02-10",
-      time: "14:00 - 16:00",
-      attendees: 32,
-      totalStudents: 45,
-      status: "scheduled",
-      zoomLink: "https://zoom.us/j/123456789",
-      recording: null,
-      description: "Review of Object-Oriented Programming concepts, inheritance, polymorphism, and encapsulation",
-    },
-    // ... باقي الجلسات (أضيفيهم كامل إذا بدك، أنا حافظت على واحدة بس عشان الاختصار)
-  ];
-
-  const courses = [
-    "Advanced Python",
-    "Web Development",
-    "Data Structures",
-    "AI Fundamentals",
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-            <ClockIcon className="w-4 h-4" />
-            Scheduled
-          </span>
-        );
-      case "live":
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-800 animate-pulse">
-            <VideoCameraIcon className="w-4 h-4" />
-            Live Now
-          </span>
-        );
-      case "completed":
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-            <CheckCircleIcon className="w-4 h-4" />
-            Completed
-          </span>
-        );
-      default:
-        return null;
+  const loadCourses = async () => {
+    try {
+      const res = await fetch("/api/teacher/courses", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      const list = (data.courses || []).map((c: any) => ({ id: c.id, name: c.name }));
+      setCourses(list);
+    } catch (error) {
+      console.error("Failed to load courses", error);
     }
   };
 
-  const filteredSessions = sessions.filter((session) => {
-    if (view === "upcoming") return session.status === "scheduled" || session.status === "live";
-    if (view === "past") return session.status === "completed";
-    return true;
-  }).filter((session) =>
-    session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    session.course.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const loadSessions = async () => {
+    try {
+      setLoadingSessions(true);
+      const res = await fetch("/api/teacher/dashboard?liveSessions=1", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      setSessions(data.sessions || []);
+    } catch (error) {
+      console.error("Failed to load sessions", error);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
 
-  const handleCopyLink = (link: string) => {
+  useEffect(() => {
+    if (!mounted) return;
+    loadCourses();
+    loadSessions();
+  }, [mounted]);
+
+  const formatDate = (value: string) => new Date(value).toLocaleDateString();
+  const formatTime = (value: string) =>
+    new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  const filteredSessions = sessions
+    .filter((session) => {
+      if (view === "upcoming") return session.status === "scheduled";
+      if (view === "past") return session.status === "completed";
+      return true;
+    })
+    .filter((session) =>
+      session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      session.courseTitle.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+  const handleCopyLink = (link: string | null) => {
+    if (!link) return;
     navigator.clipboard.writeText(link);
     toast.success("Link copied to clipboard!");
   };
 
-  const handleSendReminder = () => {
-    toast.success("Reminder sent successfully!");
+  const handleSendReminder = async (sessionId: string) => {
+    try {
+      const res = await fetch("/api/teacher/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "notify_session", sessionId }),
+      });
+      if (!res.ok) throw new Error("Failed to send reminder");
+      toast.success("Notification sent to all students!");
+    } catch (error) {
+      toast.error("Failed to send reminder");
+    }
   };
 
-  const handleStartSession = () => {
-    toast.success("Session started!");
-  };
-
-  const handleJoinSession = () => {
-    toast.success("Joining session...");
-  };
-
-  const handleScheduleSubmit = (e: React.FormEvent) => {
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Session data:", formData);
-    toast.success("Session scheduled successfully!");
-    setShowScheduleModal(false);
-    setFormData({
-      title: "",
-      course: "",
-      description: "",
-      date: "",
-      startTime: "",
-      endTime: "",
-      zoomLink: "",
-      meetingId: "",
-      password: "",
-      reminder: "15",
-      status: "scheduled",
-    });
+    try {
+      const res = await fetch("/api/teacher/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_session",
+          ...formData,
+          repeatWeekly,
+          repeatCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to schedule");
+      toast.success("Session scheduled successfully!");
+      setShowScheduleModal(false);
+      setFormData({
+        title: "",
+        courseId: "",
+        description: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        meetingLink: "",
+      });
+      await loadSessions();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to schedule");
+    }
   };
+
+  const openAttendance = async (session: SessionItem) => {
+    try {
+      setAttendanceOpen(true);
+      setAttendanceSession(session);
+      const res = await fetch(
+        `/api/teacher/dashboard?liveSessions=1&sessionId=${encodeURIComponent(session.id)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to load attendance");
+      setAttendanceStudents(data.students || []);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load attendance");
+    }
+  };
+
+  const toggleAttendance = (studentId: string) => {
+    if (attendanceSession?.status === "completed") return;
+    setAttendanceStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, attended: !s.attended } : s))
+    );
+  };
+
+  const handleCompleteSession = async () => {
+    if (!attendanceSession) return;
+    try {
+      setAttendanceSaving(true);
+      const attendedStudentIds = attendanceStudents
+        .filter((s) => s.attended)
+        .map((s) => s.id);
+      const res = await fetch("/api/teacher/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete_session",
+          sessionId: attendanceSession.id,
+          attendedStudentIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to complete session");
+      toast.success("Session completed and absentees notified!");
+      setAttendanceOpen(false);
+      setAttendanceSession(null);
+      setAttendanceStudents([]);
+      await loadSessions();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to complete session");
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      const res = await fetch("/api/teacher/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_session", sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete session");
+      toast.success("Session deleted");
+      await loadSessions();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete session");
+    }
+  };
+
+  const attendanceStats = useMemo(() => {
+    const total = attendanceStudents.length;
+    const attended = attendanceStudents.filter((s) => s.attended).length;
+    return { total, attended };
+  }, [attendanceStudents]);
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300 space-y-6">
-      {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
             Live Sessions
           </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Schedule weekly sessions, notify students, and track attendance.
+          </p>
         </div>
 
         <button
@@ -181,17 +280,35 @@ export default function LiveSessionsPage() {
           "
         >
           <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-          Schedule Session
+          Schedule Weekly Session
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Sessions", value: "24", trend: "+2 this week", icon: Squares2X2Icon },
-          { label: "Upcoming", value: "8", trend: "+3", icon: ClockIcon },
-          { label: "Total Attendees", value: "163", trend: "+15", icon: UsersIcon },
-          { label: "Avg. Attendance", value: "78%", trend: "+4", icon: AcademicCapIcon },
+          { label: "Total Sessions", value: String(sessions.length), icon: UsersIcon },
+          {
+            label: "Upcoming",
+            value: String(sessions.filter((s) => s.status === "scheduled").length),
+            icon: ClockIcon,
+          },
+          {
+            label: "Completed",
+            value: String(sessions.filter((s) => s.status === "completed").length),
+            icon: CheckCircleIcon,
+          },
+          {
+            label: "Avg. Attendance",
+            value:
+              sessions.length === 0
+                ? "0%"
+                : `${Math.round(
+                    (sessions.reduce((sum, s) => sum + s.attendees, 0) /
+                      Math.max(sessions.reduce((sum, s) => sum + s.totalStudents, 0), 1)) *
+                      100
+                  )}%`,
+            icon: UsersIcon,
+          },
         ].map((card) => (
           <div
             key={card.label}
@@ -209,9 +326,6 @@ export default function LiveSessionsPage() {
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                {card.trend}
-              </span>
             </div>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
@@ -219,7 +333,6 @@ export default function LiveSessionsPage() {
         ))}
       </div>
 
-      {/* Search + Filters + View Tabs */}
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
@@ -264,183 +377,135 @@ export default function LiveSessionsPage() {
         </div>
       </div>
 
-      {/* Sessions List */}
       <div className="space-y-4">
-        {filteredSessions.map((session) => (
-          <div
-            key={session.id}
-            className="
-              bg-white dark:bg-gray-800
-              rounded-xl
-              border border-blue-200 dark:border-blue-800
-              shadow-sm
-              p-5
-              hover:-translate-y-1 hover:shadow-lg
-              transition-all duration-200
-            "
-          >
-            <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{session.title}</h3>
-                  {getStatusBadge(session.status)}
-                </div>
-
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  {session.course} • {session.courseCode}
-                </p>
-
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                  {session.description}
-                </p>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span>{session.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span>{session.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <UsersIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span>
-                      {session.status === "scheduled"
-                        ? `${session.attendees}/${session.totalStudents} registered`
-                        : `${session.attendees}/${session.totalStudents} attended`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <a
-                      href={session.zoomLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 truncate max-w-[150px]"
-                    >
-                      Zoom Link
-                    </a>
-                  </div>
-                </div>
-
-                {session.status === "completed" && session.recording && (
-                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Recording Available</span>
-                      <a
-                        href={session.recording}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                      >
-                        <ArrowDownTrayIcon className="w-4 h-4" />
-                        Download
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                {session.status === "live" && (
-                  <button
-                    onClick={handleJoinSession}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <VideoCameraIcon className="w-4 h-4" />
-                    Join Now
-                  </button>
-                )}
-
-                {session.status === "scheduled" && (
-                  <>
-                    <button
-                      onClick={handleStartSession}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
-                    >
-                      <PlayCircleIcon className="w-4 h-4" />
-                      Start Session
-                    </button>
-                    <button
-                      onClick={handleSendReminder}
-                      className="flex-1 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-center gap-2"
-                    >
-                      <EnvelopeIcon className="w-4 h-4" />
-                      Reminder
-                    </button>
-                  </>
-                )}
-
-                <button
-                  onClick={() => handleCopyLink(session.zoomLink)}
-                  className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                >
-                  <DocumentDuplicateIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
-
-                <button className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                  <EllipsisVerticalIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: PlusIcon, title: "Schedule Session", desc: "Plan a new live class" },
-            { icon: VideoCameraIcon, title: "Start Instant", desc: "Begin impromptu session" },
-            { icon: UsersIcon, title: "Take Attendance", desc: "Mark attendance manually" },
-            { icon: DocumentTextIcon, title: "Generate Report", desc: "Attendance analytics" },
-          ].map((action, idx) => (
-            <button
-              key={idx}
+        {loadingSessions ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">Loading sessions...</div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">No sessions yet.</div>
+        ) : (
+          filteredSessions.map((session) => (
+            <div
+              key={session.id}
               className="
-                flex flex-col items-center text-center p-5
-                bg-gray-50 dark:bg-gray-900/50
-                rounded-xl border border-gray-200 dark:border-gray-700
-                hover:bg-gray-100 dark:hover:bg-gray-800
-                hover:border-blue-300 dark:hover:border-blue-700
+                bg-white dark:bg-gray-800
+                rounded-xl
+                border border-blue-200 dark:border-blue-800
+                shadow-sm
+                p-5
+                hover:-translate-y-1 hover:shadow-lg
                 transition-all duration-200
               "
             >
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-3">
-                <action.icon className="w-6 h-6 text-blue-700 dark:text-blue-400" />
+              <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                      {session.title}
+                    </h3>
+                    {session.status === "scheduled" ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                        <ClockIcon className="w-4 h-4" />
+                        Scheduled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                        <CheckCircleIcon className="w-4 h-4" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    {session.courseTitle}
+                  </p>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                    {session.description || "No description provided."}
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span>{formatDate(session.startAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span>
+                        {formatTime(session.startAt)} - {formatTime(session.endAt)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span>
+                        {session.attendees}/{session.totalStudents} attended
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <button
+                        onClick={() => handleCopyLink(session.meetingLink)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 truncate max-w-[150px]"
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                  {session.status === "scheduled" && (
+                    <button
+                      onClick={() => handleSendReminder(session.id)}
+                      className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-blue-200"
+                    >
+                      <BellIcon className="w-4 h-4" />
+                      Notify Students
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => openAttendance(session)}
+                    className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-blue-200"
+                  >
+                    <PlayCircleIcon className="w-4 h-4" />
+                    {session.status === "scheduled" ? "Take Attendance" : "View Attendance"}
+                  </button>
+
+                  <button
+                    onClick={() => handleCopyLink(session.meetingLink)}
+                    className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-200 rounded-md transition"
+                  >
+                    <DocumentDuplicateIcon className="w-4 h-4 text-blue-800" />
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteSession(session.id)}
+                    className="p-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md transition"
+                    title="Delete session"
+                  >
+                    <XCircleIcon className="w-4 h-4 text-red-600" />
+                  </button>
+                </div>
               </div>
-              <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
-                {action.title}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {action.desc}
-              </p>
-            </button>
-          ))}
-        </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Schedule Session Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full my-8">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Schedule New Session</h2>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-3xl w-full my-8">
+            <div className="p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 dark:bg-gray-950 rounded-t-3xl flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Schedule Weekly Session</h2>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+                className="p-2 hover:bg-blue-900/50 dark:hover:bg-gray-800 rounded-lg transition"
               >
-                <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                <XMarkIcon className="w-5 h-5 text-white" />
               </button>
             </div>
 
             <form onSubmit={handleScheduleSubmit} className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
-              {/* Session Details */}
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Session Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -453,7 +518,7 @@ export default function LiveSessionsPage() {
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="e.g. Python OOP Review Session"
+                      placeholder="e.g. Weekly Q&A"
                       required
                     />
                   </div>
@@ -463,15 +528,15 @@ export default function LiveSessionsPage() {
                       Course <span className="text-red-500">*</span>
                     </label>
                     <select
-                      value={formData.course}
-                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      value={formData.courseId}
+                      onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       required
                     >
                       <option value="">Select a course</option>
                       {courses.map((course) => (
-                        <option key={course} value={course}>
-                          {course}
+                        <option key={course.id} value={course.id}>
+                          {course.name}
                         </option>
                       ))}
                     </select>
@@ -479,16 +544,26 @@ export default function LiveSessionsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Status
+                      Repeat weekly
                     </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="draft">Draft</option>
-                    </select>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={repeatWeekly}
+                        onChange={(e) => setRepeatWeekly(e.target.checked)}
+                        className="accent-blue-600"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={repeatCount}
+                        onChange={(e) => setRepeatCount(Number(e.target.value || 1))}
+                        className="w-24 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        disabled={!repeatWeekly}
+                      />
+                      <span className="text-sm text-gray-500 dark:text-gray-400">weeks</span>
+                    </div>
                   </div>
 
                   <div className="md:col-span-2">
@@ -506,7 +581,6 @@ export default function LiveSessionsPage() {
                 </div>
               </section>
 
-              {/* Date & Time */}
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Date & Time</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -560,77 +634,28 @@ export default function LiveSessionsPage() {
                 </div>
               </section>
 
-              {/* Zoom / Meeting Details */}
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Meeting Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Zoom / Meeting Link <span className="text-red-500">*</span>
+                      Meeting Link <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
                         type="url"
-                        value={formData.zoomLink}
-                        onChange={(e) => setFormData({ ...formData, zoomLink: e.target.value })}
+                        value={formData.meetingLink}
+                        onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
                         className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         placeholder="https://zoom.us/j/123456789"
                         required
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Meeting ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.meetingId}
-                      onChange={(e) => setFormData({ ...formData, meetingId: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="123 456 7890"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Password
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                      placeholder="abc123"
-                    />
-                  </div>
                 </div>
               </section>
 
-              {/* Reminder */}
-              <section>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reminder Settings</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Send reminder
-                  </label>
-                  <select
-                    value={formData.reminder}
-                    onChange={(e) => setFormData({ ...formData, reminder: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  >
-                    <option value="5">5 minutes before</option>
-                    <option value="15">15 minutes before</option>
-                    <option value="30">30 minutes before</option>
-                    <option value="60">1 hour before</option>
-                    <option value="1440">1 day before</option>
-                  </select>
-                </div>
-              </section>
-
-              {/* Submit */}
               <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="submit"
@@ -669,7 +694,102 @@ export default function LiveSessionsPage() {
         </div>
       )}
 
+      {attendanceOpen && attendanceSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full my-8">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {attendanceSession.title} • {attendanceSession.courseTitle}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setAttendanceOpen(false);
+                  setAttendanceSession(null);
+                  setAttendanceStudents([]);
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300">
+                <span>
+                  Attended: {attendanceStats.attended}/{attendanceStats.total}
+                </span>
+                <span className="flex items-center gap-2">
+                  <ExclamationTriangleIcon className="w-4 h-4 text-amber-500" />
+                  6 missed sessions = failed course
+                </span>
+              </div>
+
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {attendanceStudents.map((student) => (
+                  <div key={student.id} className="py-3 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        {student.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Missed: {student.missedCount}/6
+                        {student.status === "dropped" && " • Failed"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => toggleAttendance(student.id)}
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                        student.attended
+                          ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800"
+                          : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-100 dark:border-red-800"
+                      } ${attendanceSession.status === "completed" ? "opacity-70 cursor-not-allowed" : ""}`}
+                      disabled={attendanceSession.status === "completed"}
+                    >
+                      {student.attended ? (
+                        <CheckCircleIcon className="w-4 h-4" />
+                      ) : (
+                        <XCircleIcon className="w-4 h-4" />
+                      )}
+                      {student.attended ? "Viewed" : "Not viewed"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-4">
+              {attendanceSession.status === "scheduled" ? (
+                <button
+                  onClick={handleCompleteSession}
+                  disabled={attendanceSaving}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition disabled:opacity-60"
+                >
+                  <CheckIcon className="w-5 h-5" />
+                  {attendanceSaving ? "Saving..." : "Complete & Notify Absents"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setAttendanceOpen(false);
+                    setAttendanceSession(null);
+                    setAttendanceStudents([]);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toaster position="top-right" />
     </div>
   );
 }
+
+

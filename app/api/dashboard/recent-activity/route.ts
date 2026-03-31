@@ -20,7 +20,7 @@ export async function GET() {
       JOIN user u ON u.id = e.studentId
       JOIN course c ON c.id = e.courseId
       ORDER BY e.enrolledAt DESC
-      LIMIT 6
+      LIMIT 5
       `
     );
 

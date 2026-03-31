@@ -7,6 +7,7 @@ import { MessageSquare, Send, Trash2 } from "lucide-react";
 type Teacher = {
   id: string;
   fullName: string;
+  imageUrl?: string | null;
 };
 
 type ThreadSummary = {
@@ -190,16 +191,11 @@ export default function AdminMessagesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <MessageSquare className="w-6 h-6 text-blue-700 dark:text-blue-300" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Chat directly with teachers and keep track of replies.
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Chat directly with teachers and keep track of replies.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -241,8 +237,16 @@ export default function AdminMessagesPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold">
-                        {initials || "T"}
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold overflow-hidden">
+                        {teacher.imageUrl ? (
+                          <img
+                            src={teacher.imageUrl}
+                            alt={teacher.fullName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span>{initials || "T"}</span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">

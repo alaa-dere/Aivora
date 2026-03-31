@@ -17,6 +17,8 @@ import {
   XMarkIcon,
   UserCircleIcon,
   AcademicCapIcon,
+  BellIcon,
+  ChatBubbleLeftRightIcon,
   ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
@@ -464,7 +466,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <Bell className="w-5 h-5 mr-3" />
+                <BellIcon className="w-5 h-5 mr-3" />
                 Notifications
               </Link>
 
@@ -478,7 +480,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <MessageSquare className="w-5 h-5 mr-3" />
+                <ChatBubbleLeftRightIcon className="w-5 h-5 mr-3" />
                 Messages
               </Link>
 

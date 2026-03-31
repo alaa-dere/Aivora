@@ -17,6 +17,7 @@ import {
   BellIcon,
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
+  BanknotesIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
@@ -33,6 +34,7 @@ const menuItems = [
   { href: '/teacher/students', name: 'Students', icon: UsersIcon },
   { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
   { href: '/teacher/messages', name: 'Messages', icon: ChatBubbleLeftRightIcon },
+  { href: '/teacher/earnings', name: 'Earnings', icon: BanknotesIcon },
   { href: '/teacher/profile', name: 'Profile', icon: UserCircleIcon },
   { href: '/teacher/notifications', name: 'Notifications', icon: BellIcon },
 ];
@@ -139,9 +141,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     };
 
     loadProfile();
+    const onProfileUpdate = () => loadProfile();
+    window.addEventListener('teacher:profile-updated', onProfileUpdate as EventListener);
 
     return () => {
       mounted = false;
+      window.removeEventListener('teacher:profile-updated', onProfileUpdate as EventListener);
     };
   }, []);
 

@@ -11,6 +11,8 @@ type TransactionRow = RowDataPacket & {
   amount: number;
   teacherShare: number | null;
   platformShare: number | null;
+  teacherSharePct: number | null;
+  coursePrice: number | null;
   method: 'wallet' | 'card' | 'cash' | 'paypal' | null;
   studentName: string | null;
   teacherName: string | null;
@@ -64,6 +66,8 @@ export async function GET(req: Request) {
           ft.amount,
           ft.teacherShare,
           ft.platformShare,
+          c.teacherSharePct,
+          c.price AS coursePrice,
           ft.method,
           s.fullName AS studentName,
           t.fullName AS teacherName,

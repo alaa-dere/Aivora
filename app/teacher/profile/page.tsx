@@ -216,6 +216,7 @@ export default function TeacherProfilePage() {
       setPhotoFile(null);
       setPhotoPreview('');
       setSuccess('Profile photo updated.');
+      window.dispatchEvent(new Event('teacher:profile-updated'));
     } catch (err: any) {
       setError(err?.message || 'Failed to upload photo');
     } finally {

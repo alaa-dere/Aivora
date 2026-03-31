@@ -10,6 +10,8 @@ type NotificationRow = RowDataPacket & {
   message: string;
   createdAt: string;
   readAt: string | null;
+  courseId: string | null;
+  courseTitle: string | null;
 };
 
 export async function GET(req: Request) {
@@ -33,15 +35,38 @@ export async function GET(req: Request) {
         n.title,
         n.message,
         n.createdAt,
-        n.readAt
+        n.readAt,
+        n.courseId,
+        c.title AS courseTitle
       FROM admin_notification n
+      LEFT JOIN course c ON c.id = n.courseId
       ${where}
       ORDER BY n.createdAt DESC
       LIMIT 100
       `
     );
 
-    return NextResponse.json({ notifications: rows });
+    const notifications = rows.map((row) => {
+      let message = row.message;
+      if (row.courseId && row.courseTitle) {
+        message = message.replace(
+          `course ${row.courseId}`,
+          `course ${row.courseTitle}`
+        );
+      }
+      return {
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        message,
+        createdAt: row.createdAt,
+        readAt: row.readAt,
+        courseId: row.courseId,
+        courseTitle: row.courseTitle,
+      };
+    });
+
+    return NextResponse.json({ notifications });
   } catch (error: any) {
     console.error('Admin notifications error:', error);
     return NextResponse.json(

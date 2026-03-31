@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 
 type QuizRow = RowDataPacket & {
   courseId: string;
   courseTitle: string;
-  quizId: string;
-  quizTitle: string;
+  questionCount: number;
+  bestScore: number;
 };
+
+const PASSING_SCORE_PERCENTAGE = 60;
 
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
@@ -17,26 +20,31 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureCourseQuizSchema();
+
     const [rows] = await pool.query<QuizRow[]>(
       `
       SELECT
         c.id AS courseId,
         c.title AS courseTitle,
-        l.id AS quizId,
-        l.title AS quizTitle
+        COUNT(DISTINCT qb.id) AS questionCount,
+        COALESCE(MAX(qa.scorePercentage), 0) AS bestScore
       FROM enrollment e
       JOIN course c ON c.id = e.courseId
       LEFT JOIN certificate cert
         ON cert.courseId = e.courseId AND cert.studentId = e.studentId
-      JOIN module m ON m.courseId = c.id
-      JOIN lesson l
-        ON l.moduleId = m.id AND l.type = 'quiz' AND l.isPublished = TRUE
+      JOIN course_question_bank qb ON qb.courseId = c.id
+      LEFT JOIN course_quiz_attempt qa
+        ON qa.courseId = c.id AND qa.studentId = e.studentId
       WHERE e.studentId = ?
         AND (e.status = 'completed' OR e.progressPercentage >= 100)
         AND cert.id IS NULL
-      ORDER BY c.title ASC, m.orderNumber ASC, l.orderNumber ASC
+      GROUP BY c.id, c.title
+      HAVING COUNT(DISTINCT qb.id) >= 10
+         AND COALESCE(MAX(qa.scorePercentage), 0) < ?
+      ORDER BY c.title ASC
       `,
-      [user.id]
+      [user.id, PASSING_SCORE_PERCENTAGE]
     );
 
     const grouped: Record<
@@ -53,18 +61,21 @@ export async function GET(req: Request) {
         };
       }
       grouped[row.courseId].quizzes.push({
-        id: row.quizId,
-        title: row.quizTitle,
+        id: `${row.courseId}-final`,
+        title: `Final Course Quiz (pass at least ${PASSING_SCORE_PERCENTAGE}% from ${Number(row.questionCount || 0)} bank items)`,
       });
     }
 
     return NextResponse.json({
       courses: Object.values(grouped),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Certificate quizzes error:', error);
     return NextResponse.json(
-      { message: 'Failed to load certificate quizzes', error: error.message },
+      {
+        message: 'Failed to load certificate quizzes',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
