@@ -164,14 +164,14 @@ export default function StudentProfilePage() {
   }, [stats]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-blue-200 dark:border-blue-800 p-6 mb-6">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Student Profile</h1>
             <p className="text-sm text-gray-500 mt-2">
               Name:{' '}
-              <span className="font-semibold text-gray-700 dark:text-gray-200">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {data?.student.fullName || '-'}
               </span>
             </p>
@@ -179,7 +179,7 @@ export default function StudentProfilePage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/dashboard/students"
-              className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+              className="admin-surface inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
             >
               Back to all students
             </Link>
@@ -211,7 +211,7 @@ export default function StudentProfilePage() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === t.key
                 ? 'bg-blue-950 text-white'
-                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                : 'bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300'
             }`}
           >
             {t.label}
@@ -220,7 +220,7 @@ export default function StudentProfilePage() {
       </div>
 
       {loading && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
           Loading student profile...
         </div>
       )}
@@ -232,7 +232,7 @@ export default function StudentProfilePage() {
       )}
 
       {!loading && !error && data && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 p-6 shadow-sm">
+        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-md">
           {tab === 'overview' && (
             <div className="space-y-6">
               <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -242,8 +242,8 @@ export default function StudentProfilePage() {
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-gray-50 dark:bg-gray-900">
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Profile Details</h2>
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-slate-100/80 dark:bg-slate-900/60">
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <dt className="text-gray-500">Full Name</dt>
@@ -272,8 +272,8 @@ export default function StudentProfilePage() {
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-gray-50 dark:bg-gray-900">
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Payment Snapshot</h2>
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-slate-100/80 dark:bg-slate-900/60">
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Payment Snapshot</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
                     <SummaryRow label="This Month" value={money(stats?.monthSpent ?? 0)} />
@@ -293,7 +293,7 @@ export default function StudentProfilePage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
+                  <thead className="bg-slate-100/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
                       <th className="px-4 py-3 font-medium">Course</th>
                       <th className="px-4 py-3 font-medium">Teacher</th>
@@ -312,11 +312,11 @@ export default function StudentProfilePage() {
                       </tr>
                     ) : (
                       data.courses.map((course) => (
-                        <tr key={course.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
+                        <tr key={course.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
                           </td>
-                          <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                             {course.teacherName || '-'}
                           </td>
                           <td className="px-4 py-3">
@@ -335,7 +335,7 @@ export default function StudentProfilePage() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                             {money(course.price)}
                           </td>
                           <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
@@ -360,7 +360,7 @@ export default function StudentProfilePage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
+                  <thead className="bg-slate-100/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
                       <th className="px-4 py-3 font-medium">Date</th>
                       <th className="px-4 py-3 font-medium">Course</th>
@@ -378,9 +378,9 @@ export default function StudentProfilePage() {
                       </tr>
                     ) : (
                       data.transactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-blue-50/40 dark:hover:bg-blue-900/10">
+                        <tr key={tx.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
                           <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDateTime(tx.dateTime)}</td>
-                          <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{tx.courseTitle || '-'}</td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{tx.courseTitle || '-'}</td>
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
                               {tx.type}
@@ -408,7 +408,7 @@ export default function StudentProfilePage() {
 
 function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-1 transition-all">
+    <div className="bg-slate-100/80 dark:bg-slate-900/60 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 hover:-translate-y-1 transition-all">
       <div className="flex justify-between mb-2">
         <Icon className="w-6 h-6 text-blue-600" />
       </div>
@@ -420,8 +420,8 @@ function InfoCard({ title, value, icon: Icon }: { title: string; value: string |
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 px-4 py-3">
-      <span className="text-gray-600 dark:text-gray-300 text-sm">{label}</span>
+    <div className="admin-surface flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 px-4 py-3">
+      <span className="text-slate-600 dark:text-slate-300 text-sm">{label}</span>
       <span className="font-semibold text-gray-900 dark:text-white">{value}</span>
     </div>
   );

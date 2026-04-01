@@ -219,27 +219,14 @@ export default function StudentsPage() {
         {selectedCourse && (
           <div className="space-y-5">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedCourseId(null);
-                    setStudents([]);
-                    setSearchTerm("");
-                    setError(null);
-                  }}
-                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                >
-                  <ArrowLeftIcon className="w-4 h-4" />
-                  Back to courses
-                </button>
-
-                <div className="relative w-full sm:w-64">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative flex-1 max-w-md">
                   <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search students..."
+                    placeholder="Search by name / email..."
                     className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
                   />
                 </div>
@@ -362,7 +349,7 @@ export default function StudentsPage() {
                         <span
                           className={`text-xs px-3 py-1.5 rounded-full ${
                             student.status === "completed"
-                              ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                              ? "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
                               : student.status === "dropped"
                               ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                               : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"

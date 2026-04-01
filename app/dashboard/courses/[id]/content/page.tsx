@@ -506,7 +506,7 @@ export default function CourseContentPage() {
       }
 
       return (
-        <p key={`p-${idx}`} className="text-sm leading-6 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+        <p key={`p-${idx}`} className="text-sm leading-6 text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
           {renderTextWithLinks(line)}
         </p>
       );
@@ -544,8 +544,8 @@ export default function CourseContentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-lg font-medium text-gray-600 dark:text-gray-300">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100/80 dark:bg-slate-900/60">
+        <div className="text-lg font-medium text-slate-600 dark:text-slate-300">
           Loading course content...
         </div>
       </div>
@@ -554,7 +554,7 @@ export default function CourseContentPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100/80 dark:bg-slate-900/60">
         <div className="text-red-600 dark:text-red-400 text-center">
           <p className="text-xl font-semibold mb-2">Error</p>
           <p>{error}</p>
@@ -564,7 +564,7 @@ export default function CourseContentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60">
       <div className="w-full px-4 sm:px-6 lg:px-10 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -572,14 +572,14 @@ export default function CourseContentPage() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               {courseTitle || 'Course Content'}
             </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Manage your course content and structure
             </p>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-4 bg-blue-950 dark:bg-gray-950 rounded-xl shadow-sm border border-blue-900 dark:border-gray-800 p-2.5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="mb-4 bg-blue-950 dark:bg-gray-950 rounded-2xl shadow-md border border-blue-900 dark:border-gray-800 p-2.5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h3 className="text-xs font-semibold text-white mb-2">
             Quick Actions
           </h3>
@@ -640,7 +640,7 @@ export default function CourseContentPage() {
         {/* Lesson Modal */}
         {showLessonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-800 overflow-hidden">
+            <div className="admin-surface w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
                 <h2 className="text-xl font-bold">
                   {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
@@ -667,7 +667,7 @@ export default function CourseContentPage() {
                   <select
                     value={lessonForm.moduleId}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, moduleId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   >
                     <option value="">Select module...</option>
@@ -692,7 +692,7 @@ export default function CourseContentPage() {
                     value={lessonForm.title}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="e.g., What are Variables?"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   />
                 </div>
@@ -706,7 +706,7 @@ export default function CourseContentPage() {
                     value={lessonForm.description}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Short summary of the lesson"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
@@ -718,14 +718,14 @@ export default function CourseContentPage() {
                     <button
                       type="button"
                       onClick={() => appendToLessonContent('```code\\n\\n```')}
-                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Insert Code Block
                     </button>
                     <button
                       type="button"
                       onClick={() => appendToLessonContent('{{starter:\n\n}}')}
-                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Insert Starter Code
                     </button>
@@ -735,14 +735,14 @@ export default function CourseContentPage() {
                         const url = prompt('Video URL');
                         if (url) appendToLessonContent(`{{video:${url}}}`);
                       }}
-                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Insert Video
                     </button>
                     <button
                       type="button"
                       onClick={() => appendToLessonContent('{{answer:\n\n}}')}
-                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-2.5 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Insert Expected Answer
                     </button>
@@ -752,9 +752,9 @@ export default function CourseContentPage() {
                     value={lessonForm.content}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="Write your lesson content here... Use ``` for code blocks and {{video:URL}} for videos."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
                   />
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     Tip: Use triple backticks for code blocks, <code className="px-1">{"{{video:URL}}"}</code> for videos,
                     <code className="px-1">{"{{starter: ... }}"}</code> for the live editor starter code,
                     <code className="px-1">{"{{answer: ... }}"}</code> for the expected live-editor result, and regular links like
@@ -772,7 +772,7 @@ export default function CourseContentPage() {
                       min="0"
                       value={lessonForm.durationMinutes}
                       onChange={(e) => setLessonForm((prev) => ({ ...prev, durationMinutes: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
 
@@ -810,7 +810,7 @@ export default function CourseContentPage() {
                           liveEditorLanguage: e.target.value as NonNullable<Lesson['liveEditorLanguage']>,
                         }))
                       }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value="python">Python</option>
                       <option value="javascript">JavaScript</option>
@@ -845,7 +845,7 @@ export default function CourseContentPage() {
         {/* Module Modal */}
         {showModuleModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full mx-4 shadow-xl">
+            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl max-w-md w-full mx-4 shadow-xl">
               <form onSubmit={handleSaveModule} className="p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {editingModuleId ? 'Edit Module' : 'Add New Module'}
@@ -859,7 +859,7 @@ export default function CourseContentPage() {
                     type="text"
                     value={moduleForm.title}
                     onChange={(e) => setModuleForm((prev) => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   />
                 </div>
@@ -872,7 +872,7 @@ export default function CourseContentPage() {
                     rows={3}
                     value={moduleForm.description}
                     onChange={(e) => setModuleForm((prev) => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
 
@@ -906,25 +906,25 @@ export default function CourseContentPage() {
             <button
               type="button"
               onClick={openCreateModule}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="admin-surface w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur px-4 py-3 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add New Chapter
             </button>
             {modules.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                <p className="text-gray-500 dark:text-gray-400">No modules yet.</p>
+              <div className="admin-surface text-center py-16 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-gray-700">
+                <p className="text-slate-500 dark:text-slate-400">No modules yet.</p>
               </div>
             ) : (
               modules.map((module) => (
                 <div
                   key={module.id}
-                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+                  className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden"
                 >
                   {/* Module Header */}
                   <div
                     onClick={() => toggleModule(module.id)}
-                    className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
+                    className="px-6 py-4 bg-slate-100/80 dark:bg-slate-900/60 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
                   >
                     <div className="flex items-start">
                       {expandedModules[module.id] ? (
@@ -937,7 +937,7 @@ export default function CourseContentPage() {
                           {module.title}
                         </h2>
                         {module.description && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 whitespace-pre-wrap break-words leading-relaxed">
                             {module.description}
                           </p>
                         )}
@@ -945,7 +945,7 @@ export default function CourseContentPage() {
                     </div>
                     
                     <div className="relative flex items-center gap-3 self-end" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
                         {module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}
                       </span>
                       <button
@@ -958,14 +958,14 @@ export default function CourseContentPage() {
                         <MoreVertical className="w-4 h-4 text-gray-500" />
                       </button>
                       {openModuleMenuId === module.id && (
-                        <div className="absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+                        <div className="admin-surface absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
                           <button
                             type="button"
                             onClick={() => {
                               setOpenModuleMenuId(null);
                               openEditModule(module);
                             }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 text-slate-700 dark:text-slate-200"
                           >
                             Edit Module
                           </button>
@@ -1020,7 +1020,7 @@ export default function CourseContentPage() {
                                       Draft
                                     </span>
                                   )}
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
                                     {lesson.durationMinutes} min
                                   </span>
                                 </div>
@@ -1032,14 +1032,14 @@ export default function CourseContentPage() {
                               <button
                                 type="button"
                                 onClick={() => togglePublishLesson(lesson)}
-                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               >
                                 {lesson.isPublished ? 'Unpublish' : 'Publish'}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => openEditLesson(lesson, module.id)}
-                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               >
                                 Edit
                               </button>
@@ -1054,7 +1054,7 @@ export default function CourseContentPage() {
                           </div>
                         ))
                       ) : (
-                        <div className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <div className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                           No lessons in this module yet.
                           <button
                             type="button"
@@ -1086,15 +1086,15 @@ export default function CourseContentPage() {
 
           {/* Middle Column - Student Preview */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 min-h-[520px]">
+            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-gray-700 p-6 min-h-[520px]">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Student Preview</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 This is how the selected lesson will appear to students.
               </p>
               {(() => {
                 const selected = findSelectedLesson();
                 if (!selected) {
-                  return <p className="text-sm text-gray-500 dark:text-gray-400">Select a lesson to preview.</p>;
+                  return <p className="text-sm text-slate-500 dark:text-slate-400">Select a lesson to preview.</p>;
                 }
                 const { lesson, module } = selected;
                 const segments = parseLessonContent(lesson.content || '');
@@ -1112,14 +1112,14 @@ export default function CourseContentPage() {
                       <p className="text-xs uppercase tracking-wide text-gray-400">Lesson</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{lesson.title}</p>
                       {lesson.description && (
-                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words leading-relaxed">
                           {lesson.description}
                         </p>
                       )}
                     </div>
                     <div className="space-y-3">
                       {segments.length === 0 && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No lesson content yet.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">No lesson content yet.</p>
                       )}
                       {segments.map((seg, idx) => {
                         if (seg.type === 'code') {
@@ -1149,7 +1149,7 @@ export default function CourseContentPage() {
                           const url = normalizeVideoUrl(seg.value);
                           return (
                             <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Embedded Video</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Embedded Video</p>
                               <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/80">
                                 <iframe
                                   src={url}
@@ -1177,7 +1177,7 @@ export default function CourseContentPage() {
 
           {/* Right Column - Stats */}
           <div className="lg:col-span-3 space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Course Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -1205,22 +1205,22 @@ export default function CourseContentPage() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Content Overview</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 Review the formats included in each lesson.
               </p>
               <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {modules.length === 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No content yet.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No content yet.</p>
                 )}
                 {modules.map((module) => (
-                  <div key={module.id} className="border border-gray-100 dark:border-gray-700 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  <div key={module.id} className="border border-slate-200/70 dark:border-slate-800 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                       {module.title}
                     </p>
                     {module.lessons.length === 0 ? (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">No lessons yet.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">No lessons yet.</p>
                     ) : (
                       <div className="mt-2 space-y-2">
                         {module.lessons.map((lesson) => (

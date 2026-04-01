@@ -50,7 +50,7 @@ function typeBadge(type: TxType) {
     return 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800';
   }
   if (type === 'refund') {
-    return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700';
+    return 'bg-gray-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 border-gray-200 dark:border-gray-700';
   }
   return 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800';
 }
@@ -127,13 +127,13 @@ export default function AdminFinanceTransactionsPage() {
   }, [tx, q, typeFilter]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
             Transactions
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Monitor payments and refunds across the platform.
           </p>
         </div>
@@ -147,11 +147,11 @@ export default function AdminFinanceTransactionsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="
-              bg-white dark:bg-gray-800
-              rounded-xl
-              border border-blue-200 dark:border-blue-800
-              shadow-sm
+            className="admin-surface 
+              bg-white/80 dark:bg-slate-900/70 backdrop-blur
+              rounded-2xl
+              border border-slate-200 dark:border-slate-800
+              shadow-md
               p-6
               min-h-[140px]
               hover:-translate-y-1 hover:shadow-lg
@@ -164,12 +164,12 @@ export default function AdminFinanceTransactionsPage() {
               </div>
             </div>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <div className="relative">
@@ -178,7 +178,7 @@ export default function AdminFinanceTransactionsPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by id / student / teacher / course..."
-                className="w-full sm:w-96 pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full sm:w-96 pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
 
@@ -188,7 +188,7 @@ export default function AdminFinanceTransactionsPage() {
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
             </div>
@@ -199,7 +199,7 @@ export default function AdminFinanceTransactionsPage() {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               >
                 <option value="all">All types</option>
                 <option value="enrollment">Enrollment</option>
@@ -210,20 +210,20 @@ export default function AdminFinanceTransactionsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Transactions <span className="text-gray-400 font-normal">({filtered.length})</span>
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Month count: <span className="font-semibold">{stats.count}</span>
           </p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr className="text-left text-gray-600 dark:text-gray-300">
+            <thead className="bg-slate-100/80 dark:bg-slate-900/60">
+              <tr className="text-left text-slate-600 dark:text-slate-300">
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Type</th>
@@ -236,7 +236,7 @@ export default function AdminFinanceTransactionsPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
                     Loading transactions...
                   </td>
                 </tr>
@@ -248,11 +248,11 @@ export default function AdminFinanceTransactionsPage() {
                 </tr>
               ) : (
                 filtered.map((t) => (
-                  <tr key={t.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-700 dark:text-gray-200">
+                  <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">
                     {t.studentName || t.teacherName || '-'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.date}</td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{t.date}</td>
 
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${typeBadge(t.type)}`}>
@@ -260,16 +260,16 @@ export default function AdminFinanceTransactionsPage() {
                     </span>
                   </td>
 
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300 font-semibold">
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-semibold">
                     {money(t.coursePrice ?? 0)}
                   </td>
 
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">
+                      <span className="font-semibold text-slate-800 dark:text-slate-100">
                         {t.courseTitle ?? '-'}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         Student: {t.studentName ?? '-'} • Teacher: {t.teacherName ?? '-'}
                       </span>
                       <span className="text-xs text-gray-400">
@@ -278,10 +278,10 @@ export default function AdminFinanceTransactionsPage() {
                     </div>
                   </td>
 
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                     <div className="flex flex-col text-xs">
                       <span className="font-semibold text-sm">{money(getTeacherProfit(t))}</span>
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-slate-500 dark:text-slate-400">
                         {Number.isFinite(t.teacherSharePct) ? `${Number(t.teacherSharePct).toFixed(1)}%` : '-'}
                       </span>
                     </div>
@@ -294,7 +294,7 @@ export default function AdminFinanceTransactionsPage() {
 
               {!loading && !errorMsg && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
                     No transactions found.
                   </td>
                 </tr>

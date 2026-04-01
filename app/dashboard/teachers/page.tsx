@@ -197,12 +197,12 @@ export default function AdminTeachersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Teachers</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage teacher accounts, status, and access.
           </p>
         </div>
@@ -211,11 +211,11 @@ export default function AdminTeachersPage() {
           onClick={openAddModal}
           className="
             group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-xl
+            px-4 py-2.5 rounded-2xl
             bg-gradient-to-r from-blue-600 to-blue-700
             hover:from-blue-700 hover:to-blue-800
             text-white font-semibold text-sm
-            shadow-sm hover:shadow-md
+            shadow-md hover:shadow-md
             border border-blue-500/50
             transition-all duration-200
             active:scale-95
@@ -227,7 +227,7 @@ export default function AdminTeachersPage() {
       </div>
 
       {/* Search & Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="relative flex-1 max-w-md">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -235,7 +235,7 @@ export default function AdminTeachersPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name / email..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             />
           </div>
 
@@ -244,7 +244,7 @@ export default function AdminTeachersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -255,18 +255,18 @@ export default function AdminTeachersPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Title with filtered count */}
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Teachers List <span className="text-gray-400 font-normal">({filteredCount})</span>
           </p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr className="text-left text-gray-600 dark:text-gray-300">
+            <thead className="bg-slate-100/80 dark:bg-slate-900/60">
+              <tr className="text-left text-slate-600 dark:text-slate-300">
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -278,26 +278,26 @@ export default function AdminTeachersPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     Loading...
                   </td>
                 </tr>
               ) : filteredTeachers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     No teachers found. Try changing filters or add a new teacher.
                   </td>
                 </tr>
               ) : (
                 filteredTeachers.map((teacher) => (
-                  <tr key={teacher.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                  <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-4">
                       <span className="font-semibold text-gray-900 dark:text-gray-100">
                         {teacher.fullName}
                       </span>
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       {teacher.email}
                     </td>
 
@@ -313,7 +313,7 @@ export default function AdminTeachersPage() {
                       </span>
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       {new Date(teacher.createdAt).toLocaleDateString('en-US')}
                     </td>
 
@@ -355,7 +355,7 @@ export default function AdminTeachersPage() {
       {/* Add/Edit Modal */}
       {isAddEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-blue-200 dark:border-blue-800 overflow-hidden">
+          <div className="admin-surface w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">
                 {modalMode === 'add' ? 'Add New Teacher' : 'Edit Teacher'}
@@ -384,7 +384,7 @@ export default function AdminTeachersPage() {
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   type="text"
                   placeholder="Teacher name"
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
               </div>
@@ -398,7 +398,7 @@ export default function AdminTeachersPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   type="email"
                   placeholder="teacher@example.com"
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
               </div>
@@ -413,7 +413,7 @@ export default function AdminTeachersPage() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     type="password"
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
                     required
                   />
                 </div>
@@ -426,7 +426,7 @@ export default function AdminTeachersPage() {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as Status })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -456,7 +456,7 @@ export default function AdminTeachersPage() {
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && teacherToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-800 overflow-hidden">
+          <div className="admin-surface w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-800 overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Confirm Delete</h2>
               <button

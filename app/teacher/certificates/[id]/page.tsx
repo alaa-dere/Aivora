@@ -52,7 +52,7 @@ export default function TeacherCertificateViewPage() {
 
   if (!loading && error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         {error}
       </div>
     );
@@ -60,7 +60,7 @@ export default function TeacherCertificateViewPage() {
 
   if (loading || !cert) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         Loading certificate...
       </div>
     );
@@ -74,7 +74,7 @@ export default function TeacherCertificateViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <style jsx global>{`
         @media print {
           .certificate-actions {

@@ -52,7 +52,7 @@ export default function AdminCertificateViewPage() {
 
   if (!loading && error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
         {error}
       </div>
     );
@@ -60,7 +60,7 @@ export default function AdminCertificateViewPage() {
 
   if (loading || !cert) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
         Loading certificate...
       </div>
     );
@@ -74,7 +74,7 @@ export default function AdminCertificateViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 transition-colors duration-300">
       <style jsx global>{`
         @media print {
           .certificate-actions {
@@ -102,9 +102,9 @@ export default function AdminCertificateViewPage() {
         </Link>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
         <div className="flex justify-center">
-          <div className="relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+          <div className="admin-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
             <img src="/tem.png" alt="" className="block w-full h-auto select-none" />
             <div className="absolute inset-0 z-10 px-[8%] py-[6%]">
               <div className="mt-[12%]">
@@ -174,7 +174,7 @@ export default function AdminCertificateViewPage() {
 
           <Link
             href="/dashboard/certificates"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors"
           >
             Back to list
           </Link>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, Send, Trash2 } from 'lucide-react';
+import { Send, Trash2 } from 'lucide-react';
 
 type TabMode = 'students' | 'admin';
 
@@ -370,16 +370,11 @@ export default function TeacherMessagesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <MessageSquare className="w-6 h-6 text-blue-700 dark:text-blue-300" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Chat with your students and administration.
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Chat with your students and administration.
+        </p>
       </div>
 
       <div className="mb-4 inline-flex rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-1">

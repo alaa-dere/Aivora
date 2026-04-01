@@ -258,7 +258,7 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* رأس الصفحة */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">

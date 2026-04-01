@@ -179,7 +179,7 @@ export default function EditCoursePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
         <div className="p-10 text-center text-gray-600 dark:text-gray-400">
           Loading course data...
         </div>
@@ -188,7 +188,7 @@ export default function EditCoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
           <div>
@@ -196,7 +196,7 @@ export default function EditCoursePage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                className="p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 aria-label="Back to courses"
                 title="Back to courses"
               >
@@ -204,27 +204,27 @@ export default function EditCoursePage() {
               </button>
               <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Edit Course</h1>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Update course details, pricing, and status.
             </p>
           </div>
         </div>
 
         {errorMsg && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {errorMsg}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
             <h2 className="text-lg font-semibold text-white">Course Basics</h2>
             <p className="text-sm text-blue-200 mt-1">
               Start with the core details that appear on the course card.
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Course Title <span className="text-red-500">*</span>
             </label>
@@ -238,7 +238,7 @@ export default function EditCoursePage() {
             />
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Description <span className="text-red-500">*</span>
             </label>
@@ -252,13 +252,13 @@ export default function EditCoursePage() {
             />
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Teacher <span className="text-red-500">*</span>
             </label>
 
             {loadingTeachers ? (
-              <p className="text-gray-500 dark:text-gray-400">Loading teachers...</p>
+              <p className="text-slate-500 dark:text-slate-400">Loading teachers...</p>
             ) : (
               <select
                 value={form.teacherId}
@@ -276,7 +276,7 @@ export default function EditCoursePage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
             <h2 className="text-lg font-semibold text-white">Pricing & Duration</h2>
             <p className="text-sm text-blue-200 mt-1">
               Set the amount students will pay and the expected time to complete.
@@ -284,7 +284,7 @@ export default function EditCoursePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Price (USD)
               </label>
@@ -298,7 +298,7 @@ export default function EditCoursePage() {
               />
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Duration (Weeks)
               </label>
@@ -312,7 +312,7 @@ export default function EditCoursePage() {
               />
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Teacher Share (%)
               </label>
@@ -328,28 +328,28 @@ export default function EditCoursePage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-blue-900 bg-blue-950 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
             <h2 className="text-lg font-semibold text-white">Media</h2>
             <p className="text-sm text-blue-200 mt-1">
               Add a cover image to make the course stand out.
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Cover Image (leave empty to keep current)
             </label>
 
             {coverPreview && (
               <div className="mt-4">
-                <div className="aspect-[16/9] w-full max-w-md overflow-hidden rounded-xl border-2 border-gray-200 bg-gray-100 shadow-md dark:border-gray-700 dark:bg-gray-800">
+                <div className="aspect-[16/9] w-full max-w-md overflow-hidden rounded-2xl border-2 border-gray-200 bg-gray-100 shadow-md dark:border-gray-700 dark:bg-gray-800">
                   <img
                     src={coverPreview}
                     alt="Current or new course cover"
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   Current cover (will be replaced only if you upload a new one)
                 </p>
               </div>
@@ -363,7 +363,7 @@ export default function EditCoursePage() {
             />
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800">
+          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Course Status
             </label>
@@ -383,7 +383,7 @@ export default function EditCoursePage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+              className="admin-surface px-6 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
@@ -391,7 +391,7 @@ export default function EditCoursePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-md hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>

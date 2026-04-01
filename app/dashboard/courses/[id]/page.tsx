@@ -30,20 +30,20 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         {/* Header with title and actions */}
         <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{course.title}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Course overview and key details.
             </p>
           </div>
           <div className="flex gap-3">
             <a
               href={`/dashboard/courses/${course.id}/edit`}
-              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-sm hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-md hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
             >
               Edit
             </a>
@@ -52,7 +52,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
         {/* Cover Image */}
         {course.imageUrl && (
-          <div className="mb-8 rounded-2xl overflow-hidden shadow-sm border border-blue-200 dark:border-blue-800">
+          <div className="mb-8 rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-800">
             <img
               src={course.imageUrl}
               alt={`${course.title} cover`}
@@ -64,7 +64,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         <div className="grid md:grid-cols-3 gap-8">
           {/* Main Content - Description */}
           <div className="md:col-span-2 space-y-6">
-            <section className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+            <section className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
               <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
                 Description
               </h2>
@@ -78,41 +78,41 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
           {/* Sidebar - General Info */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
               <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">
                 General Information
               </h3>
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Teacher</dt>
+                  <dt className="text-slate-500 dark:text-slate-400">Teacher</dt>
                   <dd className="font-medium text-gray-900 dark:text-gray-200">
                     {course.teacherName || 'Not specified'}
                   </dd>
                 </div>
 
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Price</dt>
+                  <dt className="text-slate-500 dark:text-slate-400">Price</dt>
                   <dd className="font-medium text-gray-900 dark:text-gray-200">
                     ${Number(course.price).toFixed(2)}
                   </dd>
                 </div>
 
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Teacher Share</dt>
+                  <dt className="text-slate-500 dark:text-slate-400">Teacher Share</dt>
                   <dd className="font-medium text-gray-900 dark:text-gray-200">
                     {Number(course.teacherSharePct).toFixed(1)}%
                   </dd>
                 </div>
 
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Enrolled Students</dt>
+                  <dt className="text-slate-500 dark:text-slate-400">Enrolled Students</dt>
                   <dd className="font-medium text-gray-900 dark:text-gray-200">
                     {course.students}
                   </dd>
                 </div>
 
                 <div className="flex justify-between">
-                  <dt className="text-gray-500 dark:text-gray-400">Status</dt>
+                  <dt className="text-slate-500 dark:text-slate-400">Status</dt>
                   <dd>
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${

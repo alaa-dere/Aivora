@@ -129,12 +129,12 @@ export default function AdminCoursesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Courses</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage courses, pricing, and publishing status.
           </p>
         </div>
@@ -143,11 +143,11 @@ export default function AdminCoursesPage() {
           href="/dashboard/courses/new"
           className="
             group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-xl
+            px-4 py-2.5 rounded-2xl
             bg-gradient-to-r from-blue-600 to-blue-700
             hover:from-blue-700 hover:to-blue-800
             text-white font-semibold text-sm
-            shadow-sm hover:shadow-md
+            shadow-md hover:shadow-md
             border border-blue-500/50
             transition-all duration-200
             active:scale-95
@@ -172,11 +172,11 @@ export default function AdminCoursesPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="
-              bg-white dark:bg-gray-800
-              rounded-xl
-              border border-blue-200 dark:border-blue-800
-              shadow-sm
+            className="admin-surface 
+              bg-white/80 dark:bg-slate-900/70 backdrop-blur
+              rounded-2xl
+              border border-slate-200 dark:border-slate-800
+              shadow-md
               p-5
               hover:-translate-y-1 hover:shadow-lg
               transition-all duration-200
@@ -188,13 +188,13 @@ export default function AdminCoursesPage() {
               </div>
             </div>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
 
       {/* Search & Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="relative flex-1 max-w-md">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -202,7 +202,7 @@ export default function AdminCoursesPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by title / teacher name / course ID..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             />
           </div>
 
@@ -211,7 +211,7 @@ export default function AdminCoursesPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Statuses</option>
               <option value="published">Published</option>
@@ -223,17 +223,17 @@ export default function AdminCoursesPage() {
       </div>
 
       {/* Courses Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Courses List <span className="text-gray-400 font-normal">({filtered.length})</span>
           </p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900">
-              <tr className="text-left text-gray-600 dark:text-gray-300">
+            <thead className="bg-slate-100/80 dark:bg-slate-900/60">
+              <tr className="text-left text-slate-600 dark:text-slate-300">
                 <th className="px-4 py-3 font-medium">Course</th>
                 <th className="px-4 py-3 font-medium">Teacher</th>
                 <th className="px-4 py-3 font-medium">Price</th>
@@ -247,19 +247,19 @@ export default function AdminCoursesPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     Loading...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     No matching courses found. Try changing filters or add a new course.
                   </td>
                 </tr>
               ) : (
                 filtered.map((c) => (
-                  <tr key={c.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors">
+                  <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-4">
                       <Link
                         href={`/dashboard/courses/${c.id}/content`}
@@ -269,19 +269,19 @@ export default function AdminCoursesPage() {
                       </Link>
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       {c.teacherName || 'Not specified'}
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       ${Number(c.price).toFixed(2)}
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       {Number(c.teacherSharePct ?? 70).toFixed(0)}%
                     </td>
 
-                    <td className="px-4 py-4 text-gray-700 dark:text-gray-200">
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
                       {c.students || 0}
                     </td>
 
@@ -337,7 +337,7 @@ export default function AdminCoursesPage() {
       {/* Delete Confirmation Modal - نفس الستايل اللي بعثتيه */}
       {isDeleteModalOpen && courseToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-800 overflow-hidden">
+          <div className="admin-surface w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-red-200 dark:border-red-800 overflow-hidden">
             <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Confirm Delete</h2>
               <button

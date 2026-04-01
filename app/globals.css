@@ -179,3 +179,80 @@
     background: #2563eb;
   }
 }
+
+@keyframes card-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chart-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes chart-draw {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-fill {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.rounded-xl.shadow-sm,
+.rounded-xl.shadow,
+.rounded-xl.shadow-lg,
+.rounded-xl.shadow-xl,
+[data-slot="card"] {
+  animation: card-rise 520ms ease-out both;
+}
+
+.recharts-wrapper {
+  animation: chart-fade 450ms ease-out both;
+}
+
+.recharts-area-curve,
+.recharts-line-curve {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: chart-draw 1200ms ease-out 120ms forwards;
+}
+
+.recharts-area-area {
+  opacity: 0;
+  animation: chart-fill 900ms ease-out 220ms forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rounded-xl.shadow-sm,
+  .rounded-xl.shadow,
+  .rounded-xl.shadow-lg,
+  .rounded-xl.shadow-xl,
+  [data-slot="card"],
+  .recharts-wrapper,
+  .recharts-area-curve,
+  .recharts-line-curve,
+  .recharts-area-area {
+    animation: none !important;
+    transform: none !important;
+  }
+}

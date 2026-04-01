@@ -192,7 +192,8 @@ const handleLogout = async () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* ──────────────── Topbar ──────────────── */}
-      <header className="sticky top-0 z-30 bg-blue-950 dark:bg-gray-950 border-b border-blue-900 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-30 px-4 pt-4">
+        <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -312,6 +313,7 @@ const handleLogout = async () => {
             <span>Logout</span>
           </button>
         </div>
+        </div>
       </header>
 
       {/* ──────────────── Sidebar + Content ──────────────── */}
@@ -319,7 +321,7 @@ const handleLogout = async () => {
         {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl
+            fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             w-64
@@ -327,7 +329,7 @@ const handleLogout = async () => {
         >
           <div className="h-full flex flex-col">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950">
+            <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 rounded-t-2xl">
               <div className="flex items-center">
                 <Image
                   src="/alaa.png"

@@ -190,19 +190,19 @@ export default function AdminMessagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Chat directly with teachers and keep track of replies.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Teachers</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
               <span className="text-xs text-gray-400">{filteredTeachers.length}</span>
             </div>
             <div className="mt-3">
@@ -210,13 +210,13 @@ export default function AdminMessagesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search teacher..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
           </div>
           <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
             {filteredTeachers.length === 0 && (
-              <div className="p-4 text-sm text-gray-500 dark:text-gray-400">No teachers found.</div>
+              <div className="p-4 text-sm text-slate-500 dark:text-slate-400">No teachers found.</div>
             )}
             {filteredTeachers.map((teacher) => {
               const thread = threadMap.get(teacher.id);
@@ -231,7 +231,7 @@ export default function AdminMessagesPage() {
                 <button
                   key={teacher.id}
                   onClick={() => setSelectedTeacherId(teacher.id)}
-                  className={`w-full text-left px-4 py-3 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors ${
+                  className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
                     selectedTeacherId === teacher.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
                   }`}
                 >
@@ -249,10 +249,10 @@ export default function AdminMessagesPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                           {teacher.fullName}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                           {thread?.lastMessage || "No messages yet"}
                         </p>
                       </div>
@@ -269,22 +269,22 @@ export default function AdminMessagesPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <div className="admin-surface lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {selectedTeacher ? `Chat with ${selectedTeacher.fullName}` : "Select a teacher"}
             </p>
           </div>
 
           <div className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3">
             {loadingMessages && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">Loading messages...</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
             )}
             {!loadingMessages && errorMsg && (
               <div className="text-sm text-red-600 dark:text-red-300">{errorMsg}</div>
             )}
             {!loadingMessages && !errorMsg && messages.length === 0 && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
                 No messages yet. Start the conversation.
               </div>
             )}
@@ -294,16 +294,16 @@ export default function AdminMessagesPage() {
                 className={`flex ${msg.senderRole === "admin" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-md ${
                     msg.senderRole === "admin"
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                      : "bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100"
                   }`}
                 >
                   {msg.senderRole === "admin" && (
                     <button
                       onClick={() => setDeleteTargetId(msg.id)}
-                      className="absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      className="admin-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
                       title="Delete message"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -319,13 +319,13 @@ export default function AdminMessagesPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a message..."
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={sendMessage}
@@ -342,17 +342,17 @@ export default function AdminMessagesPage() {
 
       {deleteTargetId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-4">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+          <div className="admin-surface w-full max-w-sm rounded-2xl bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
               Delete message
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Choose how you want to delete this message.
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => deleteMessage(deleteTargetId, "self")}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Delete for me
               </button>

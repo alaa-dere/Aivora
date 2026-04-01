@@ -225,18 +225,18 @@ export default function TeacherProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
           Profile
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Manage your personal details and security settings.
         </p>
       </div>
 
       {loading && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
           Loading your profile...
         </div>
       )}
@@ -251,9 +251,9 @@ export default function TeacherProfilePage() {
       {!loading && profile && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden">
+                <div className="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center overflow-hidden">
                   {profile.imageUrl ? (
                     <img
                       src={profile.imageUrl}
@@ -261,23 +261,23 @@ export default function TeacherProfilePage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserCircleIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                    <UserCircleIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
                   )}
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                  <p className="text-lg font-semibold text-slate-800 dark:text-white">
                     {profile.fullName}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{profile.email}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{profile.email}</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Profile Photo
                 </label>
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden flex items-center justify-center">
                     {photoPreview ? (
                       <img
                         src={photoPreview}
@@ -305,20 +305,20 @@ export default function TeacherProfilePage() {
                       type="button"
                       onClick={handlePhotoUpload}
                       disabled={!photoFile || photoUploading}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-800 transition disabled:opacity-60"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800 transition disabled:opacity-60"
                     >
                       {photoUploading ? 'Uploading...' : 'Upload Photo'}
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   JPG, PNG, or WebP up to 5MB.
                 </p>
               </div>
 
               <div className="mt-6 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Status</span>
+                  <span className="text-slate-500 dark:text-slate-400">Status</span>
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
                       profile.status === 'inactive'
@@ -330,20 +330,20 @@ export default function TeacherProfilePage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Role</span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800">
+                  <span className="text-slate-500 dark:text-slate-400">Role</span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:border-sky-800">
                     {profile.role || 'Teacher'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Joined</span>
-                  <span className="font-medium text-gray-700 dark:text-gray-200">
+                  <span className="text-slate-500 dark:text-slate-400">Joined</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
                     {formatDate(profile.createdAt)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Last Updated</span>
-                  <span className="font-medium text-gray-700 dark:text-gray-200">
+                  <span className="text-slate-500 dark:text-slate-400">Last Updated</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
                     {formatDate(profile.updatedAt)}
                   </span>
                 </div>
@@ -354,56 +354,56 @@ export default function TeacherProfilePage() {
           <div className="lg:col-span-2">
             <form
               onSubmit={handleSubmit}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6 space-y-6"
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
             >
               <div className="flex items-center gap-2">
-                <UserCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                <UserCircleIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
                   Personal Information
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Full Name
                   </label>
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     type="text"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
                     placeholder="Your name"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Email
                   </label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
                     placeholder="you@example.com"
                     required
                   />
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-6 space-y-4">
                 <div className="flex items-center gap-2">
-                  <KeyIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  <KeyIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
                     Change Password
                   </h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Current Password
                     </label>
                     <input
@@ -418,7 +418,7 @@ export default function TeacherProfilePage() {
                       className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-900 outline-none ${
                         fieldErrors.currentPassword
                           ? 'border-red-400 focus:ring-2 focus:ring-red-300'
-                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500'
+                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700'
                       }`}
                       placeholder="••••••••"
                     />
@@ -427,7 +427,7 @@ export default function TeacherProfilePage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       New Password
                     </label>
                     <input
@@ -442,7 +442,7 @@ export default function TeacherProfilePage() {
                       className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-900 outline-none ${
                         fieldErrors.newPassword
                           ? 'border-red-400 focus:ring-2 focus:ring-red-300'
-                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500'
+                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700'
                       }`}
                       placeholder="At least 6 characters"
                     />
@@ -451,7 +451,7 @@ export default function TeacherProfilePage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Confirm Password
                     </label>
                     <input
@@ -466,7 +466,7 @@ export default function TeacherProfilePage() {
                       className={`w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-900 outline-none ${
                         fieldErrors.confirmPassword
                           ? 'border-red-400 focus:ring-2 focus:ring-red-300'
-                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500'
+                          : 'border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700'
                       }`}
                       placeholder="Re-enter new password"
                     />
@@ -488,7 +488,7 @@ export default function TeacherProfilePage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-800 transition disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-indigo-200 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-800 transition disabled:opacity-60"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
