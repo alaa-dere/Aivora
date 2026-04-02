@@ -46,6 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notificationCount, setNotificationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
@@ -142,7 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className={`${manrope.className} admin-shell min-h-screen bg-slate-100/80 dark:bg-slate-900/60 transition-colors duration-300`}>
+    <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
 
       {/* HEADER */}
       <header className="sticky top-0 z-30 px-4 pt-4">
@@ -281,6 +282,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <HomeSolidIcon className="w-5 h-5 text-white" />
           </Link>
+
+          <div className="relative">
+            <button
+              onClick={() => setAccountOpen((v) => !v)}
+              className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold hover:bg-blue-100 dark:hover:bg-slate-700 transition"
+              aria-label="Account menu"
+            >
+              A
+            </button>
+
+            {accountOpen && (
+              <div className="admin-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <button
+                  onClick={() => {
+                    setAccountOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         </div>
       </header>

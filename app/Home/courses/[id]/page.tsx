@@ -14,12 +14,14 @@ import {
   SunIcon,
   MoonIcon,
   GlobeAltIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
 type Course = {
   id: string;
   title: string;
   description: string;
+  descriptionAr?: string | null;
   imageUrl: string | null;
   durationWeeks: number;
   teacherName: string;
@@ -144,6 +146,9 @@ export default function CourseDetailsPage() {
 
   const isDark = mounted && theme === 'dark';
   const isArabic = language === 'ar';
+  const descriptionText = isArabic
+    ? course?.descriptionAr || course?.description || ''
+    : course?.description || '';
 
   if (loading) {
     return (
@@ -225,6 +230,7 @@ export default function CourseDetailsPage() {
               ) : (
                 <Link href="/login">
                   <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
                       {isArabic ? 'تسجيل الدخول' : 'Login'}
                     </span>
@@ -255,7 +261,7 @@ export default function CourseDetailsPage() {
               </h1>
 
               <p className="text-slate-200 text-lg leading-8 mb-6 whitespace-pre-line">
-                {course.description}
+                {descriptionText}
               </p>
 
               <div className="grid sm:grid-cols-2 gap-4 mb-8">

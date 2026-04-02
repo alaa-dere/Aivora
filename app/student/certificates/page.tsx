@@ -64,16 +64,19 @@ export default function CertificatesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* Title */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Certificates
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          View your ready certificates and track what's still locked.
+        </p>
       </div>
 
       {/* Ready */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <CheckBadgeIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ready</h2>
@@ -123,7 +126,7 @@ export default function CertificatesPage() {
       </div>
 
       {/* Locked */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Locked</h2>
 
         {loading ? (

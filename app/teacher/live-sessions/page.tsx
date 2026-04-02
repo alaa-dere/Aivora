@@ -289,7 +289,7 @@ export default function LiveSessionsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300 space-y-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300 space-y-6">
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -347,7 +347,7 @@ export default function LiveSessionsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="
+            className="portal-surface 
               bg-white dark:bg-gray-800
               rounded-xl
               border border-blue-200 dark:border-blue-800
@@ -380,7 +380,7 @@ export default function LiveSessionsPage() {
               className="
                 w-full pl-10 pr-4 py-2.5 rounded-lg
                 border border-gray-200 dark:border-gray-700
-                bg-gray-50 dark:bg-gray-900
+                bg-white dark:bg-gray-900
                 text-gray-800 dark:text-gray-100
                 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900
               "
@@ -396,7 +396,7 @@ export default function LiveSessionsPage() {
                   className={`px-4 py-2 text-sm font-medium transition-all ${
                     view === v
                       ? "bg-blue-600 text-white"
-                      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700"
                   }`}
                 >
                   {v === "upcoming" ? "Upcoming" : v === "past" ? "Past" : "All"}
@@ -404,7 +404,7 @@ export default function LiveSessionsPage() {
               ))}
             </div>
 
-            <button className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
+            <button className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition flex items-center gap-2">
               <FunnelIcon className="w-5 h-5 text-gray-400" />
               Filter
             </button>
@@ -421,7 +421,7 @@ export default function LiveSessionsPage() {
           filteredSessions.map((session) => (
             <div
               key={session.id}
-              className="
+              className="portal-surface 
                 bg-white dark:bg-gray-800
                 rounded-xl
                 border border-blue-200 dark:border-blue-800
@@ -529,14 +529,14 @@ export default function LiveSessionsPage() {
 
       {showScheduleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-3xl w-full my-8">
+          <div className="portal-surface bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-3xl w-full my-8">
             <div className="p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 dark:bg-gray-950 rounded-t-3xl flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Schedule Weekly Session</h2>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="p-2 hover:bg-blue-900/50 dark:hover:bg-gray-800 rounded-lg transition"
+                className="p-2 rounded-lg text-white hover:bg-white/10 transition"
               >
-                <XMarkIcon className="w-5 h-5 text-white" />
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
@@ -552,7 +552,7 @@ export default function LiveSessionsPage() {
                       type="text"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       placeholder="e.g. Weekly Q&A"
                       required
                     />
@@ -565,7 +565,7 @@ export default function LiveSessionsPage() {
                     <select
                       value={formData.courseId}
                       onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       required
                     >
                       <option value="">Select a course</option>
@@ -594,7 +594,7 @@ export default function LiveSessionsPage() {
                         max={12}
                         value={repeatCount}
                         onChange={(e) => setRepeatCount(Number(e.target.value || 1))}
-                        className="w-24 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        className="portal-surface w-24 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                         disabled={!repeatWeekly}
                       />
                       <span className="text-sm text-gray-500 dark:text-gray-400">weeks</span>
@@ -609,7 +609,7 @@ export default function LiveSessionsPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                      className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                       placeholder="What will be covered in this session?"
                     />
                   </div>
@@ -629,7 +629,7 @@ export default function LiveSessionsPage() {
                         type="date"
                         value={formData.date}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        className="portal-surface w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         required
                       />
                     </div>
@@ -645,7 +645,7 @@ export default function LiveSessionsPage() {
                         type="time"
                         value={formData.startTime}
                         onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                        className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        className="portal-surface w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         required
                       />
                     </div>
@@ -661,7 +661,7 @@ export default function LiveSessionsPage() {
                         type="time"
                         value={formData.endTime}
                         onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                        className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        className="portal-surface w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         required
                       />
                     </div>
@@ -682,7 +682,7 @@ export default function LiveSessionsPage() {
                         type="url"
                         value={formData.meetingLink}
                         onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
-                        className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        className="portal-surface w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                         placeholder="https://zoom.us/j/123456789"
                         required
                       />
@@ -716,7 +716,7 @@ export default function LiveSessionsPage() {
                     py-3.5 px-6 rounded-xl
                     border border-gray-300 dark:border-gray-600
                     text-gray-700 dark:text-gray-300 font-medium
-                    hover:bg-gray-50 dark:hover:bg-gray-800
+                    hover:bg-white dark:hover:bg-gray-800
                     transition-all duration-200
                   "
                 >
@@ -731,7 +731,7 @@ export default function LiveSessionsPage() {
 
       {attendanceOpen && attendanceSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full my-8">
+          <div className="portal-surface bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full my-8">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance</h2>

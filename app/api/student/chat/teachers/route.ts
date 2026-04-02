@@ -9,6 +9,7 @@ type TeacherRow = RowDataPacket & {
   teacherId: string;
   teacherName: string;
   teacherEmail: string;
+  teacherImageUrl: string | null;
   conversationId: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
@@ -71,6 +72,7 @@ export async function GET(req: Request) {
         t.id AS teacherId,
         t.fullName AS teacherName,
         t.email AS teacherEmail,
+        t.imageUrl AS teacherImageUrl,
         conv.id AS conversationId,
         lm.body AS lastMessage,
         lm.createdAt AS lastMessageAt,
@@ -122,6 +124,7 @@ export async function GET(req: Request) {
         teacherId: row.teacherId,
         teacherName: row.teacherName,
         teacherEmail: row.teacherEmail,
+        teacherImageUrl: row.teacherImageUrl || null,
         conversationId: row.conversationId,
         lastMessage: row.lastMessage,
         lastMessageAt: row.lastMessageAt,

@@ -13,6 +13,7 @@ import {
   ClockIcon,
   UserGroupIcon,
   GlobeAltIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
 type Course = {
@@ -164,6 +165,7 @@ export default function AllCoursesPage() {
               ) : (
                 <Link href="/login">
                   <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
                       {isArabic ? 'تسجيل الدخول' : 'Login'}
                     </span>

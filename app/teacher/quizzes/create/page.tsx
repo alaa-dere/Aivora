@@ -266,7 +266,7 @@ export default function CreateQuizPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Link
@@ -284,7 +284,7 @@ export default function CreateQuizPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
+          <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Course <span className="text-red-500">*</span>
             </label>
@@ -295,7 +295,7 @@ export default function CreateQuizPage() {
                 setSuccess(null);
                 setError(null);
               }}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               required
             >
               <option value="">Select a course</option>
@@ -313,7 +313,7 @@ export default function CreateQuizPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
+          <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Add Question</h2>
 
             <div>
@@ -336,7 +336,7 @@ export default function CreateQuizPage() {
                     correctAnswer: selectedType === "true_false" ? 0 : null,
                   }));
                 }}
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               >
                 <option value="multiple_choice">Multiple Choice</option>
                 <option value="true_false">True / False</option>
@@ -350,7 +350,7 @@ export default function CreateQuizPage() {
               onChange={(e) => setCurrentQuestion((prev) => ({ ...prev, text: e.target.value }))}
               placeholder="Enter question text (press Enter for new line)"
               rows={4}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             />
 
             {currentQuestion.questionType === "written" ? (
@@ -365,7 +365,7 @@ export default function CreateQuizPage() {
                     setCurrentQuestion((prev) => ({ ...prev, writtenAnswer: e.target.value }))
                   }
                   placeholder="Type the exact written answer"
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                 />
               </div>
             ) : currentQuestion.questionType === "true_false" ? (
@@ -381,7 +381,7 @@ export default function CreateQuizPage() {
                       correctAnswer: e.target.value === "" ? null : Number(e.target.value),
                     }))
                   }
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                 >
                   <option value="">Select True or False</option>
                   <option value="0">True</option>
@@ -402,7 +402,7 @@ export default function CreateQuizPage() {
                           setCurrentQuestion((prev) => ({ ...prev, options: nextOptions }));
                         }}
                         placeholder={`Option ${idx + 1}`}
-                        className="flex-1 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        className="portal-surface flex-1 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                       />
                     </div>
                   ))}
@@ -420,7 +420,7 @@ export default function CreateQuizPage() {
                         correctAnswer: e.target.value === "" ? null : Number(e.target.value),
                       }))
                     }
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="portal-surface w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                   >
                     <option value="">Select the correct answer</option>
                     {currentQuestion.options.map((option, idx) => (
@@ -443,7 +443,7 @@ export default function CreateQuizPage() {
             </button>
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
+          <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Queued Questions</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">{queuedQuestions.length} queued</span>
@@ -478,7 +478,7 @@ export default function CreateQuizPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
+          <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Saved Question Bank</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">{savedQuestions.length} saved</span>
@@ -530,7 +530,7 @@ export default function CreateQuizPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-[#1E3A8A] hover:bg-[#1E40AF] text-white font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
               {saving ? "Saving..." : "Save Queued Questions"}
@@ -538,7 +538,7 @@ export default function CreateQuizPage() {
             <button
               type="button"
               onClick={() => router.push("/teacher/quizzes")}
-              className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition flex items-center justify-center gap-2"
             >
               <X className="w-5 h-5" />
               Back

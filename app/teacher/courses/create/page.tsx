@@ -82,7 +82,7 @@ export default function CreateCoursePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -104,7 +104,7 @@ export default function CreateCoursePage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-10">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 md:p-8 space-y-10">
+          <div className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 md:p-8 space-y-10">
             {/* Basic Information */}
             <section>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
@@ -119,7 +119,7 @@ export default function CreateCoursePage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="e.g. Advanced Python Programming"
                     required
                   />
@@ -133,7 +133,7 @@ export default function CreateCoursePage() {
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="e.g. CS401"
                     required
                   />
@@ -154,7 +154,7 @@ export default function CreateCoursePage() {
                   <select
                     value={formData.language}
                     onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   >
                     {programmingLanguages.map((lang) => (
@@ -172,7 +172,7 @@ export default function CreateCoursePage() {
                   <select
                     value={formData.level}
                     onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   >
                     {levels.map((level) => (
@@ -190,7 +190,7 @@ export default function CreateCoursePage() {
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   >
                     {categories.map((cat) => (
@@ -209,7 +209,7 @@ export default function CreateCoursePage() {
                     type="number"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="e.g. 40"
                     required
                   />
@@ -223,7 +223,7 @@ export default function CreateCoursePage() {
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="0 for free"
                   />
                 </div>
@@ -238,7 +238,7 @@ export default function CreateCoursePage() {
                       type="url"
                       value={formData.githubRepo}
                       onChange={(e) => setFormData({ ...formData, githubRepo: e.target.value })}
-                      className="w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      className="portal-surface w-full pl-10 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       placeholder="https://github.com/username/repo"
                     />
                   </div>
@@ -260,7 +260,7 @@ export default function CreateCoursePage() {
                     type="url"
                     value={formData.image}
                     onChange={handleImageChange}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="https://example.com/course-image.jpg"
                   />
                 </div>
@@ -298,7 +298,7 @@ export default function CreateCoursePage() {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                     placeholder="Brief overview that appears on course cards"
                     required
                   />
@@ -312,7 +312,7 @@ export default function CreateCoursePage() {
                     value={formData.longDescription}
                     onChange={(e) => setFormData({ ...formData, longDescription: e.target.value })}
                     rows={8}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                     placeholder="Detailed learning outcomes, what students will build, tools used, etc."
                   />
                 </div>
@@ -325,7 +325,7 @@ export default function CreateCoursePage() {
                     value={formData.prerequisites}
                     onChange={(e) => setFormData({ ...formData, prerequisites: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                    className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                     placeholder="Required prior knowledge or skills"
                   />
                 </div>
@@ -344,7 +344,7 @@ export default function CreateCoursePage() {
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="portal-surface w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 >
                   <option value="draft">Draft (not visible to students)</option>
                   <option value="active">Active (published and available)</option>
@@ -355,20 +355,20 @@ export default function CreateCoursePage() {
             {/* Submit Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
               <button
-  type="submit"
-  className="
-    flex-1 flex items-center justify-center gap-2
-    py-3.5 px-6 rounded-xl
-    bg-blue-950 hover:bg-blue-900
-    text-white font-medium
-    shadow-md hover:shadow-lg
-    transition-all duration-200
-    active:scale-98
-  "
->
-  <Save className="w-5 h-5" />
-  Create Course
-</button>
+                type="submit"
+                className="
+                  flex-1 flex items-center justify-center gap-2
+                  py-3.5 px-6 rounded-xl
+                  bg-blue-50 text-blue-700 border border-blue-200
+                  shadow-sm hover:bg-blue-100
+                  font-medium
+                  transition-all duration-200
+                  active:scale-98
+                "
+              >
+                <Save className="w-5 h-5" />
+                Create Course
+              </button>
               <Link
                 href="/teacher/courses"
                 className="
@@ -376,7 +376,7 @@ export default function CreateCoursePage() {
                   py-3.5 px-6 rounded-xl
                   border border-gray-300 dark:border-gray-600
                   text-gray-700 dark:text-gray-300 font-medium
-                  hover:bg-gray-50 dark:hover:bg-gray-800
+                  hover:bg-white dark:hover:bg-gray-800
                   transition-all duration-200
                 "
               >

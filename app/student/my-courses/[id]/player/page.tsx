@@ -381,7 +381,7 @@ export default function CoursePlayerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading content...</p>
       ) : error ? (
@@ -460,7 +460,7 @@ export default function CoursePlayerPage() {
                     const target = firstUnlockedLesson || firstLesson;
                     if (target) setSelectedLessonId(target.id);
                   }}
-                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   {modules.map((m, idx) => (
                     <option key={m.id} value={m.id}>
@@ -472,7 +472,7 @@ export default function CoursePlayerPage() {
                 <select
                   value={selectedLessonId || ''}
                   onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   {lessonsInSelectedModule.map((lesson, idx) => (
                     <option key={lesson.id} value={lesson.id} disabled={!lesson.unlocked}>
@@ -485,9 +485,12 @@ export default function CoursePlayerPage() {
             </div>
             </div>
           </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Follow the lesson content, mark progress, and move to the next step.
+          </p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
               <h2 className="font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
               <div className="space-y-2">
                 {allLessons.map((lesson) => (
@@ -510,7 +513,7 @@ export default function CoursePlayerPage() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
               <div className="flex items-center gap-2 mb-2">
                 <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
@@ -524,7 +527,7 @@ export default function CoursePlayerPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+          <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
             <div className="flex items-center justify-end mb-3">
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                 {allLessons.length > 0
@@ -647,7 +650,7 @@ export default function CoursePlayerPage() {
 
       {showCertPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-6 shadow-xl">
+          <div className="portal-surface w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
               You completed all lessons
             </h2>

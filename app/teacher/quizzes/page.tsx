@@ -96,7 +96,7 @@ export default function QuizzesPage() {
   }, [courses, searchTerm, statusFilter]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300 space-y-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300 space-y-6">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3">
         <div>
@@ -111,7 +111,7 @@ export default function QuizzesPage() {
       </div>
 
       {/* Controls: Search + Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -123,7 +123,7 @@ export default function QuizzesPage() {
               className="
                 w-full pl-10 pr-4 py-2.5 rounded-lg
                 border border-gray-200 dark:border-gray-700
-                bg-gray-50 dark:bg-gray-900
+                bg-white dark:bg-gray-900
                 text-gray-800 dark:text-gray-100
                 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900
               "
@@ -138,7 +138,7 @@ export default function QuizzesPage() {
               className="
                 px-3 py-2.5 rounded-lg
                 border border-gray-200 dark:border-gray-700
-                bg-gray-50 dark:bg-gray-900
+                bg-white dark:bg-gray-900
                 text-gray-800 dark:text-gray-100
                 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900
               "
@@ -165,7 +165,7 @@ export default function QuizzesPage() {
           filteredCourses.map((course) => (
             <div
               key={course.id}
-              className="
+              className="portal-surface 
                 bg-white dark:bg-gray-800
                 rounded-xl
                 border border-blue-200 dark:border-blue-800

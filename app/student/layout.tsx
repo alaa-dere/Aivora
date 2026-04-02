@@ -1,6 +1,7 @@
 // app/student/layout.tsx
 'use client';
 import Image from "next/image";
+import { Manrope } from "next/font/google";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -22,25 +23,32 @@ import {
   Bars3Icon,
   XMarkIcon,
   UserCircleIcon,
-  ArrowRightOnRectangleIcon,
   SunIcon,
   MoonIcon,
   ClipboardDocumentCheckIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
+import {
+  BellIcon as BellSolidIcon,
+  ChatBubbleLeftRightIcon as ChatSolidIcon,
+  HomeIcon as HomeSolidIcon,
+  SunIcon as SunSolidIcon,
+  MoonIcon as MoonSolidIcon,
+} from '@heroicons/react/24/solid';
 
 const navigation = [
-  { name: 'Home', href: '/Home', icon: HomeIcon },
   { name: 'Dashboard', href: '/student', icon: ChartBarIcon },
   { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
   { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
   { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
   { name: 'Certificate Quizzes', href: '/student/certificate-quizzes', icon: ClipboardDocumentCheckIcon },
-  { name: 'Messages', href: '/student/chat', icon: MessageSquare },
-  { name: 'Notifications', href: '/student/notifications', icon: BellIcon },
   { name: 'Leaderboard', href: '/student/leaderboard', icon: TrophyIcon },
-  { name: 'Profile', href: '/student/profile', icon: UserCircleIcon },
 ];
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -48,6 +56,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [messageCount, setMessageCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
     { id: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
@@ -165,7 +174,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
       {/* Header - نفس ستايل الأدمن */}
       <header className="sticky top-0 z-30 px-4 pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -189,19 +198,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
 
         <div className="flex items-center space-x-3">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <SunIcon className="w-5 h-5 text-white" />
-            ) : (
-              <MoonIcon className="w-5 h-5 text-white" />
-            )}
-          </button>
-          
-           {/* Notifications */}
+          {/* Notifications */}
           <div className="relative">
             <button
               onClick={() => {
@@ -212,7 +209,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
               aria-label="Notifications"
             >
-              <Bell className="w-5 h-5 text-white" />
+              <BellSolidIcon className="w-5 h-5 text-white" />
               {notificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                   {notificationCount > 99 ? '99+' : notificationCount}
@@ -221,7 +218,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </button>
 
             {notificationOpen && (
-              <div className="absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="portal-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Notifications
@@ -271,21 +268,72 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             className="relative p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
             aria-label="Messages"
           >
-            <MessageSquare className="w-5 h-5 text-white" />
+            <ChatSolidIcon className="w-5 h-5 text-white" />
             {messageCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {messageCount > 99 ? '99+' : messageCount}
               </span>
             )}
           </Link>
-          
+
           <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors text-white"
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Toggle theme"
           >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            <span>Logout</span>
+            {theme === 'dark' ? (
+              <SunSolidIcon className="w-5 h-5 text-white" />
+            ) : (
+              <MoonSolidIcon className="w-5 h-5 text-white" />
+            )}
           </button>
+
+          <Link
+            href="/"
+            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Home"
+          >
+            <HomeSolidIcon className="w-5 h-5 text-white" />
+          </Link>
+
+          <div className="relative">
+            <button
+              onClick={() => setAccountOpen((v) => !v)}
+              className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold hover:bg-blue-100 dark:hover:bg-slate-700 transition overflow-hidden"
+              aria-label="Account menu"
+            >
+              {profile?.imageUrl ? (
+                <img
+                  src={profile.imageUrl}
+                  alt={profile?.fullName || 'Student'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (profile?.fullName || 'S').trim().charAt(0).toUpperCase()
+              )}
+            </button>
+
+            {accountOpen && (
+              <div className="portal-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <Link
+                  href="/student/profile"
+                  onClick={() => setAccountOpen(false)}
+                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={() => {
+                    setAccountOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         </div>
       </header>
@@ -370,6 +418,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                   </p>
                 </div>
               </Link>
+              <button
+                onClick={handleLogout}
+                className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
           </div>
         </aside>
@@ -386,6 +441,107 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      <style jsx global>{`
+        .portal-surface {
+          background: #ffffff !important;
+          border: 1px solid rgba(148, 163, 184, 0.35) !important;
+          box-shadow:
+            0 14px 32px rgba(15, 23, 42, 0.12),
+            0 2px 6px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        .dark .portal-surface {
+          background: #0f172a !important;
+          border: 1px solid rgba(71, 85, 105, 0.5) !important;
+          box-shadow:
+            0 16px 34px rgba(0, 0, 0, 0.38),
+            0 2px 6px rgba(0, 0, 0, 0.28) !important;
+        }
+
+        .portal-shell table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        .portal-shell table thead th {
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          font-size: 0.7rem;
+          padding: 0.9rem 1rem !important;
+          background: rgba(241, 245, 249, 0.9);
+          color: #0f172a;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.45);
+        }
+
+        .dark .portal-shell table thead th {
+          background: rgba(15, 23, 42, 0.7);
+          color: #e2e8f0;
+          border-bottom: 1px solid rgba(51, 65, 85, 0.7);
+        }
+
+        .portal-shell table tbody tr {
+          background: transparent;
+          transition: background-color 140ms ease;
+        }
+
+        .portal-shell table tbody tr:hover {
+          background: rgba(226, 232, 240, 0.55);
+        }
+
+        .dark .portal-shell table tbody tr:hover {
+          background: rgba(30, 41, 59, 0.45);
+        }
+
+        .portal-shell table tbody td {
+          padding: 0.95rem 1rem !important;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+          color: inherit;
+        }
+
+        .dark .portal-shell table tbody td {
+          border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+        }
+
+        .portal-shell .portal-surface button[class*='bg-blue'],
+        .portal-shell .portal-surface a[class*='bg-blue'] {
+          background: #e0f2fe !important;
+          border: 1px solid #bae6fd !important;
+          color: #075985 !important;
+        }
+
+        .portal-shell .portal-surface button[class*='bg-indigo'],
+        .portal-shell .portal-surface a[class*='bg-indigo'] {
+          background: #e0e7ff !important;
+          border: 1px solid #c7d2fe !important;
+          color: #3730a3 !important;
+        }
+
+        .portal-shell .portal-surface button[class*='bg-emerald'],
+        .portal-shell .portal-surface a[class*='bg-emerald'],
+        .portal-shell .portal-surface button[class*='bg-green'],
+        .portal-shell .portal-surface a[class*='bg-green'] {
+          background: #dcfce7 !important;
+          border: 1px solid #bbf7d0 !important;
+          color: #166534 !important;
+        }
+
+        .portal-shell .portal-surface button[class*='bg-amber'],
+        .portal-shell .portal-surface a[class*='bg-amber'],
+        .portal-shell .portal-surface button[class*='bg-yellow'],
+        .portal-shell .portal-surface a[class*='bg-yellow'] {
+          background: #fef3c7 !important;
+          border: 1px solid #fde68a !important;
+          color: #92400e !important;
+        }
+
+        .portal-shell .portal-surface button[class*='bg-red'],
+        .portal-shell .portal-surface a[class*='bg-red'] {
+          background: #fee2e2 !important;
+          border: 1px solid #fecaca !important;
+          color: #991b1b !important;
+        }
+      `}</style>
     </div>
   );
 }

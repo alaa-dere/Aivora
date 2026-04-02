@@ -56,12 +56,15 @@ export default function StudentDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* Title */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Track your learning stats, courses, and progress at a glance.
+        </p>
       </div>
 
       {/* Stats cards */}
@@ -94,7 +97,7 @@ export default function StudentDashboard() {
         ].map((stat) => (
           <div
             key={stat.name}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+            className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -113,7 +116,7 @@ export default function StudentDashboard() {
 
       {/* Study Trend */}
       <div className="mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
               Study Time Trend
@@ -158,7 +161,7 @@ export default function StudentDashboard() {
       {/* Continue Learning + Quizzes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Continue Learning */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Continue Learning
           </h2>
@@ -201,7 +204,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Recent Quiz Results */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Recent Quiz Results
           </h2>

@@ -52,7 +52,7 @@ export default function TeacherCertificateViewPage() {
 
   if (!loading && error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         {error}
       </div>
     );
@@ -60,7 +60,7 @@ export default function TeacherCertificateViewPage() {
 
   if (loading || !cert) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         Loading certificate...
       </div>
     );
@@ -74,7 +74,7 @@ export default function TeacherCertificateViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <style jsx global>{`
         @media print {
           .certificate-actions {
@@ -102,9 +102,9 @@ export default function TeacherCertificateViewPage() {
         </Link>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
         <div className="flex justify-center">
-          <div className="relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+          <div className="portal-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
             <img src="/tem.png" alt="" className="block w-full h-auto select-none" />
             <div className="absolute inset-0 z-10 px-[8%] py-[6%]">
               <div className="mt-[12%]">

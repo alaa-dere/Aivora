@@ -52,7 +52,7 @@ export default function AdminCertificateViewPage() {
 
   if (!loading && error) {
     return (
-      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
+      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
         {error}
       </div>
     );
@@ -60,7 +60,7 @@ export default function AdminCertificateViewPage() {
 
   if (loading || !cert) {
     return (
-      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
+      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
         Loading certificate...
       </div>
     );
@@ -74,7 +74,7 @@ export default function AdminCertificateViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 transition-colors duration-300">
       <style jsx global>{`
         @media print {
           .certificate-actions {

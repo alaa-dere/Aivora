@@ -162,26 +162,26 @@ export default function StudentNotificationsPage() {
     notification.title.toLowerCase().includes("certificate unlocked");
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Updates about live sessions, quiz results, and certificates.
           </p>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4 mb-6">
+      <div className="portal-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
               <Filter className="w-4 h-4" />
               All notifications
             </button>
             <button
               onClick={markAllAsRead}
-              className="inline-flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
             >
               <CheckCircle className="w-4 h-4" />
               Mark all as read
@@ -193,7 +193,7 @@ export default function StudentNotificationsPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as "all" | "unread")}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All</option>
               <option value="unread">Unread</option>
@@ -202,7 +202,7 @@ export default function StudentNotificationsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Notifications List{" "}
@@ -222,24 +222,24 @@ export default function StudentNotificationsPage() {
           {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-4 md:p-5 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
+              className={`p-3 md:p-4 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
                 !notification.read ? "bg-blue-50/40 dark:bg-blue-900/10" : ""
               }`}
             >
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <div
-                  className={`w-11 h-11 rounded-lg ${getTypeBg(notification.type)} flex items-center justify-center shrink-0`}
+                  className={`w-9 h-9 rounded-md ${getTypeBg(notification.type)} flex items-center justify-center shrink-0`}
                 >
                   {getTypeIcon(notification.type)}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                         {notification.title}
                       </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                         {notification.message}
                       </p>
                     </div>
@@ -293,7 +293,7 @@ export default function StudentNotificationsPage() {
         {filteredNotifications.length > visibleCount && (
           <button
             onClick={() => setVisibleCount((prev) => prev + 6)}
-            className="px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            className="portal-surface px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
             Load More Notifications
           </button>

@@ -149,7 +149,7 @@ export default function NotificationsPage() {
     notification.title.toLowerCase().includes("certificate unlocked");
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
@@ -181,7 +181,7 @@ export default function NotificationsPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as "all" | "unread" | "important")}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All</option>
               <option value="unread">Unread</option>
@@ -211,7 +211,7 @@ export default function NotificationsPage() {
           {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 md:p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+              className={`p-3 md:p-4 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
                 !notification.read ? "bg-blue-50/40 dark:bg-blue-900/10" : ""
               }`}
             >

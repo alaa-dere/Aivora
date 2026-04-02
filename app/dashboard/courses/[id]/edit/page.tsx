@@ -179,7 +179,7 @@ export default function EditCoursePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
         <div className="p-10 text-center text-gray-600 dark:text-gray-400">
           Loading course data...
         </div>
@@ -188,7 +188,7 @@ export default function EditCoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
           <div>
@@ -391,7 +391,7 @@ export default function EditCoursePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-sm shadow-md hover:shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>

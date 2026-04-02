@@ -37,7 +37,7 @@ export default function AdminCertificatesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           All Certificates
@@ -65,7 +65,7 @@ export default function AdminCertificatesPage() {
 
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+                <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                   <tr>
                     <th className="text-left px-4 py-3">Student</th>
                     <th className="text-left px-4 py-3">Course</th>

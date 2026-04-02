@@ -36,55 +36,69 @@ export default function TeacherCertificatesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-6">
-        Course Certificates
-      </h1>
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+          Course Certificates
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Review issued certificates and student details.
+        </p>
+      </div>
 
-      <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+      <div className="portal-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur shadow-md overflow-hidden">
         {loading ? (
-          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">Loading certificates...</p>
+          <p className="p-4 text-sm text-slate-500 dark:text-slate-400">Loading certificates...</p>
         ) : error ? (
           <p className="p-4 text-sm text-red-600 dark:text-red-400">{error}</p>
         ) : certificates.length === 0 ? (
-          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">No certificates found.</p>
+          <p className="p-4 text-sm text-slate-500 dark:text-slate-400">No certificates found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
-                <tr>
-                  <th className="text-left px-4 py-3">Certificate No</th>
-                  <th className="text-left px-4 py-3">Student</th>
-                  <th className="text-left px-4 py-3">Course</th>
-                  <th className="text-left px-4 py-3">Issued</th>
-                  <th className="text-left px-4 py-3">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {certificates.map((cert) => (
-                  <tr key={cert.id} className="border-t border-gray-100 dark:border-gray-700">
-                    <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-100">{cert.certificateNo}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
-                      <div>{cert.student.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{cert.student.email}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{cert.course.title}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
-                      {new Date(cert.issuedAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/teacher/certificates/${cert.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
+          <>
+            <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Certificates List{' '}
+                <span className="text-gray-400 font-normal">({certificates.length})</span>
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+                  <tr>
+                    <th className="text-left px-4 py-3">Certificate No</th>
+                    <th className="text-left px-4 py-3">Student</th>
+                    <th className="text-left px-4 py-3">Course</th>
+                    <th className="text-left px-4 py-3">Issued</th>
+                    <th className="text-left px-4 py-3">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {certificates.map((cert) => (
+                    <tr key={cert.id} className="border-t border-slate-200/70 dark:border-slate-800">
+                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{cert.certificateNo}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                        <div>{cert.student.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{cert.student.email}</div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{cert.course.title}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
+                        {new Date(cert.issuedAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/teacher/certificates/${cert.id}`}
+                          className="inline-flex items-center justify-center px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

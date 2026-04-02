@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS course (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
     title           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
     description     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    descriptionAr   TEXT NULL COLLATE utf8mb4_unicode_ci,
     imageUrl        VARCHAR(255) COLLATE utf8mb4_unicode_ci,
     durationWeeks   INT DEFAULT 0,
     teacherId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,

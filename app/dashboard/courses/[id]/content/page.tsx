@@ -544,7 +544,7 @@ export default function CourseContentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100/80 dark:bg-slate-900/60">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900/60">
         <div className="text-lg font-medium text-slate-600 dark:text-slate-300">
           Loading course content...
         </div>
@@ -554,7 +554,7 @@ export default function CourseContentPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100/80 dark:bg-slate-900/60">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900/60">
         <div className="text-red-600 dark:text-red-400 text-center">
           <p className="text-xl font-semibold mb-2">Error</p>
           <p>{error}</p>
@@ -564,7 +564,7 @@ export default function CourseContentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60">
       <div className="w-full px-4 sm:px-6 lg:px-10 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -579,10 +579,13 @@ export default function CourseContentPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-4 bg-blue-950 dark:bg-gray-950 rounded-2xl shadow-md border border-blue-900 dark:border-gray-800 p-2.5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-          <h3 className="text-xs font-semibold text-white mb-2">
-            Quick Actions
-          </h3>
+        <div className="mb-4 admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+              Quick Actions
+            </h3>
+            <span className="text-[10px] text-slate-400">Build faster</span>
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
@@ -615,21 +618,20 @@ export default function CourseContentPage() {
                 key={index}
                 onClick={action.onClick}
                 className="
-                  flex flex-col items-center text-center p-1.5
-                  bg-blue-900/40 dark:bg-gray-900/50
-                  rounded-md border border-blue-800 dark:border-gray-700
-                  hover:bg-blue-900/60 dark:hover:bg-gray-800
-                  hover:border-blue-700 dark:hover:border-gray-600
+                  group flex flex-col items-start text-left p-3
+                  bg-blue-50 text-blue-700
+                  rounded-xl border border-blue-200
+                  hover:bg-blue-100
                   transition-all duration-200
                 "
               >
-                <div className="p-1 bg-blue-900/60 dark:bg-gray-800 rounded mb-1">
-                  <action.icon className="w-4 h-4 text-white" />
+                <div className="h-8 w-8 rounded-lg bg-white border border-blue-100 flex items-center justify-center shadow-sm mb-2 group-hover:border-blue-200">
+                  <action.icon className="w-4 h-4 text-blue-600" />
                 </div>
-                <p className="font-medium text-white text-[10px]">
+                <p className="font-semibold text-[11px]">
                   {action.title}
                 </p>
-                <p className="text-[9px] text-blue-100/80 mt-0.5">
+                <p className="text-[10px] text-blue-600/80 mt-0.5">
                   {action.desc}
                 </p>
               </button>
@@ -924,7 +926,7 @@ export default function CourseContentPage() {
                   {/* Module Header */}
                   <div
                     onClick={() => toggleModule(module.id)}
-                    className="px-6 py-4 bg-slate-100/80 dark:bg-slate-900/60 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
+                    className="px-6 py-4 bg-white dark:bg-slate-900/60 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-colors"
                   >
                     <div className="flex items-start">
                       {expandedModules[module.id] ? (

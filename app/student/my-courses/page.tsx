@@ -76,40 +76,43 @@ export default function MyCoursesPage() {
   }, [courses, view]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           My Courses
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Pick up where you left off or review completed courses.
+        </p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           onClick={() => setView('in_progress')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
             view === 'in_progress'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-gray-700 dark:text-gray-200'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20'
           }`}
         >
           In Progress ({inProgressCount})
         </button>
         <button
           onClick={() => setView('completed')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
             view === 'completed'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-gray-700 dark:text-gray-200'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20'
           }`}
         >
           Completed ({completedCount})
         </button>
         <button
           onClick={() => setView('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
             view === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-gray-700 dark:text-gray-200'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20'
           }`}
         >
           All ({courses.length})
@@ -138,7 +141,7 @@ export default function MyCoursesPage() {
           return (
             <div
               key={c.id}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+              className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
             >
               <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-950 mb-4">
                 <img
@@ -169,7 +172,7 @@ export default function MyCoursesPage() {
                       Completed
                     </span>
                   )}
-                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/90 text-blue-900">
+                  <span className="portal-surface text-xs font-semibold px-2 py-1 rounded-full bg-white/90 text-blue-900">
                     {c.progress}%
                   </span>
                 </div>

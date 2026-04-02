@@ -369,7 +369,7 @@ export default function TeacherMessagesPage() {
   }, [adminMessages]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -377,23 +377,23 @@ export default function TeacherMessagesPage() {
         </p>
       </div>
 
-      <div className="mb-4 inline-flex rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-1">
+      <div className="portal-surface mb-4 inline-flex rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-1">
         <button
           onClick={() => setMode('students')}
-          className={`px-4 py-2 text-sm rounded-md transition ${
+          className={`px-4 py-2 text-sm rounded-md transition border ${
             mode === 'students'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-blue-100/60'
           }`}
         >
           Students
         </button>
         <button
           onClick={() => setMode('admin')}
-          className={`px-4 py-2 text-sm rounded-md transition ${
+          className={`px-4 py-2 text-sm rounded-md transition border ${
             mode === 'admin'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-blue-100/60'
           }`}
         >
           Administration
@@ -409,7 +409,7 @@ export default function TeacherMessagesPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 overflow-hidden max-h-[68vh]">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Students</p>
@@ -420,11 +420,11 @@ export default function TeacherMessagesPage() {
                     value={inputSearch}
                     onChange={(e) => setInputSearch(e.target.value)}
                     placeholder="Search student or course..."
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
                   />
                 </div>
               </div>
-              <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="max-h-[56vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
                 {loadingStudents ? (
                   <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
                 ) : filteredStudents.length === 0 ? (
@@ -443,7 +443,7 @@ export default function TeacherMessagesPage() {
                       <button
                         key={`${s.courseId}-${s.studentId}`}
                         onClick={() => setSelected(s)}
-                        className={`w-full text-left px-4 py-3 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors ${
+                        className={`w-full text-left px-3 py-2 mx-2 my-1.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
                           selected?.courseId === s.courseId &&
                           selected?.studentId === s.studentId
                             ? 'bg-blue-50/60 dark:bg-blue-900/20'
@@ -452,7 +452,7 @@ export default function TeacherMessagesPage() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold">
+                            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-semibold">
                               {initials || 'S'}
                             </div>
                             <div className="min-w-0">
@@ -480,7 +480,7 @@ export default function TeacherMessagesPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col">
+            <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col min-h-[60vh]">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   {selected ? `Chat with ${selected.studentName}` : 'Select a student'}
@@ -523,7 +523,7 @@ export default function TeacherMessagesPage() {
                       {msg.senderRole === 'teacher' && (
                         <button
                           onClick={() => setDeleteTarget({ id: msg.id, channel: 'student' })}
-                          className="absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                          className="portal-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
                           title="Delete message"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -548,7 +548,7 @@ export default function TeacherMessagesPage() {
                       if (e.key === 'Enter') handleSend();
                     }}
                     placeholder="Write a message..."
-                    className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="portal-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     onClick={handleSend}
@@ -566,7 +566,7 @@ export default function TeacherMessagesPage() {
       )}
 
       {mode === 'admin' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col min-h-[65vh]">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col min-h-[65vh]">
           <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
               {adminName ? `Administration: ${adminName}` : 'Administration Chat'}
@@ -603,7 +603,7 @@ export default function TeacherMessagesPage() {
                   {msg.senderRole === 'teacher' && (
                     <button
                       onClick={() => setDeleteTarget({ id: msg.id, channel: 'admin' })}
-                      className="absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      className="portal-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
                       title="Delete message"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -628,7 +628,7 @@ export default function TeacherMessagesPage() {
                   if (e.key === 'Enter') sendAdminMessage();
                 }}
                 placeholder="Write a message to administration..."
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="portal-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={sendAdminMessage}
@@ -650,7 +650,7 @@ export default function TeacherMessagesPage() {
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-4">
+          <div className="portal-surface w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-4">
             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
               Delete message
             </p>
@@ -660,7 +660,7 @@ export default function TeacherMessagesPage() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => handleDelete('self')}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700"
               >
                 Delete for me
               </button>

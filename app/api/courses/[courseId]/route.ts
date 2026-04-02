@@ -9,12 +9,32 @@ import { getRequestUser, requirePermission } from '@/lib/request-auth';
 interface Params {
   params: Promise<{ courseId: string }>;
 }
+
+async function hasColumn(tableName: string, columnName: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    LIMIT 1
+    `,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
 export async function GET(req: Request, { params }: Params) {
   try {
     const { courseId } = await params;
     const normalizedCourseId = decodeURIComponent(courseId).trim();
     const user = await getRequestUser(req);
     const includeEnrollment = user?.role === 'student';
+    const hasArabicDescription = await hasColumn('course', 'descriptionAr');
+    const descriptionArSelect = hasArabicDescription
+      ? 'c.descriptionAr'
+      : 'NULL AS descriptionAr';
 
     console.log('Route param courseId:', courseId);
     console.log('Normalized courseId:', normalizedCourseId);
@@ -46,6 +66,7 @@ export async function GET(req: Request, { params }: Params) {
         c.id,
         c.title,
         c.description,
+        ${descriptionArSelect},
         c.imageUrl,
         c.durationWeeks,
         u.fullName AS teacherName,
@@ -85,6 +106,7 @@ export async function GET(req: Request, { params }: Params) {
       id: row.id,
       title: row.title,
       description: row.description,
+      descriptionAr: row.descriptionAr || null,
       imageUrl: row.imageUrl || '/default-course.jpg',
       durationWeeks: Number(row.durationWeeks || 0),
       teacherName: row.teacherName || 'Unknown Teacher',

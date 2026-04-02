@@ -190,7 +190,7 @@ export default function AdminMessagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -210,7 +210,7 @@ export default function AdminMessagesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search teacher..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function AdminMessagesPage() {
                 <button
                   key={teacher.id}
                   onClick={() => setSelectedTeacherId(teacher.id)}
-                  className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
+                  className={`w-full text-left px-4 py-3 hover:bg-white dark:hover:bg-slate-800/40 transition-colors ${
                     selectedTeacherId === teacher.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
                   }`}
                 >

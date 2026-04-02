@@ -25,3 +25,16 @@ WHERE ft.type = 'enrollment';
 
 -- Delete all payout rows
 DELETE FROM finance_payout;
+
+-- Add Arabic description for courses (run once)
+ALTER TABLE course
+ADD COLUMN descriptionAr TEXT NULL COLLATE utf8mb4_unicode_ci;
+
+-- Sample Arabic descriptions
+UPDATE course
+SET descriptionAr = 'هذه الدورة تقدم أساسيات بايثون خطوة بخطوة، مع أمثلة عملية وتمارين تساعدك على فهم المتغيرات والدوال والتحكم بالتدفق، وصولاً للتعامل مع الملفات والمكتبات.'
+WHERE title = 'Python Programming';
+
+UPDATE course
+SET descriptionAr = 'دورة تطوير الويب تغطي أساسيات بناء المواقع باستخدام HTML وCSS وJavaScript، مع تطبيقات عملية لبناء صفحات تفاعلية.'
+WHERE title = 'web development';

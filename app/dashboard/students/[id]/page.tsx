@@ -164,7 +164,7 @@ export default function StudentProfilePage() {
   }, [stats]);
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6">
       <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -210,7 +210,7 @@ export default function StudentProfilePage() {
             onClick={() => setTab(t.key as any)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === t.key
-                ? 'bg-blue-950 text-white'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
                 : 'bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300'
             }`}
           >
@@ -242,7 +242,7 @@ export default function StudentProfilePage() {
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-slate-100/80 dark:bg-slate-900/60">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -272,7 +272,7 @@ export default function StudentProfilePage() {
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-slate-100/80 dark:bg-slate-900/60">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Payment Snapshot</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
@@ -293,7 +293,7 @@ export default function StudentProfilePage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
                       <th className="px-4 py-3 font-medium">Course</th>
                       <th className="px-4 py-3 font-medium">Teacher</th>
@@ -360,7 +360,7 @@ export default function StudentProfilePage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100/80 dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
                       <th className="px-4 py-3 font-medium">Date</th>
                       <th className="px-4 py-3 font-medium">Course</th>
@@ -408,7 +408,7 @@ export default function StudentProfilePage() {
 
 function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
   return (
-    <div className="bg-slate-100/80 dark:bg-slate-900/60 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 hover:-translate-y-1 transition-all">
+    <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 hover:-translate-y-1 transition-all">
       <div className="flex justify-between mb-2">
         <Icon className="w-6 h-6 text-blue-600" />
       </div>

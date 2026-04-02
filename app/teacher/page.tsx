@@ -39,7 +39,7 @@ import {
 const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", delay = 0 }: any) => {
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="
+      <div className="portal-surface 
         bg-white dark:bg-gray-800 
         rounded-xl 
         shadow-sm 
@@ -65,7 +65,7 @@ const CourseCard = ({ course, index }: any) => {
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
       <div
-        className="
+        className="portal-surface 
           bg-white dark:bg-gray-800
           rounded-xl
           border border-blue-200 dark:border-blue-800
@@ -258,7 +258,7 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {/* رأس الصفحة */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
@@ -290,7 +290,7 @@ export default function TeacherDashboard() {
       {/* باقي الأقسام (My Courses, AI Insights, Student Performance, Recent Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* My Courses */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
               My Courses
@@ -315,7 +315,7 @@ export default function TeacherDashboard() {
         </div>
 
         {/* AI Insights */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             AI Insights
           </h2>
@@ -332,7 +332,7 @@ export default function TeacherDashboard() {
 
       {/* Student Performance + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Student Performance
           </h2>
@@ -351,7 +351,7 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Recent Activity
           </h2>

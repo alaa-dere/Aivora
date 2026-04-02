@@ -175,7 +175,7 @@ export default function CourseQuizzesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-4">
         <Link
           href="/student/my-courses"
@@ -201,7 +201,7 @@ export default function CourseQuizzesPage() {
       ) : (
         <div className="space-y-6">
           {activeQuestions.length === 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={startQuiz}
@@ -234,7 +234,7 @@ export default function CourseQuizzesPage() {
           )}
 
           {activeQuestions.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
               {currentQuestion && (
                 <>
                   <div className="flex items-center justify-between mb-4">
@@ -261,7 +261,7 @@ export default function CourseQuizzesPage() {
                           }
                           placeholder="Write your answer"
                           rows={4}
-                          className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                          className="portal-surface w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                         />
                       ) : (
                         currentQuestion.options.map((option, optionIndex) => (

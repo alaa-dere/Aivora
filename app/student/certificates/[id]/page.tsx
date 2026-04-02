@@ -56,7 +56,7 @@ export default function CertificateViewPage() {
 
   if (!loading && error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         {error}
       </div>
     );
@@ -64,7 +64,7 @@ export default function CertificateViewPage() {
 
   if (loading || !cert) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         Loading certificate...
       </div>
     );
@@ -82,7 +82,7 @@ export default function CertificateViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <style jsx global>{`
         @media print {
           .certificate-actions {
@@ -109,11 +109,14 @@ export default function CertificateViewPage() {
           All certificates
         </Link>
       </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        Preview your certificate and download a copy.
+      </p>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
         {/* Certificate frame */}
         <div className="flex justify-center">
-          <div className="relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+          <div className="portal-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
             <img
               src="/tem.png"
               alt=""

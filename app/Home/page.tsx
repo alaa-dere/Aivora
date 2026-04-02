@@ -233,7 +233,7 @@ export default function HomePage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 pt-4">
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
         <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center shrink-0">
@@ -317,7 +317,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative z-10 space-y-10 md:space-y-14 pb-14 pt-6">
+      <main className="relative z-10 space-y-10 md:space-y-14 pb-14 pt-28 md:pt-32">
         {/* Home Section */}
         <section id="home" className={sectionBase}>
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-center">

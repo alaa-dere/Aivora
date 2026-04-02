@@ -65,7 +65,7 @@ export default function StudentCoursesPage() {
   }, [q, courses]);
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Explore Courses
@@ -76,7 +76,7 @@ export default function StudentCoursesPage() {
       </div>
 
       {/* Search */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4 mb-6 shadow-sm">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4 mb-6 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <div className="flex-1 relative">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -84,7 +84,7 @@ export default function StudentCoursesPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by title, teacher, keyword..."
-              className="w-full pl-10 pr-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none"
+              className="portal-surface w-full pl-10 pr-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none"
             />
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function StudentCoursesPage() {
           return (
             <div
               key={c.id}
-              className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+              className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
             >
               <div className="overflow-hidden rounded-xl">
                 <img

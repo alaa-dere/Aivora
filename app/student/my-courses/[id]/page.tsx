@@ -137,7 +137,7 @@ export default function StudentCourseOverviewPage() {
   }, [params.id, selectedLessonId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <style jsx global>{`
         @keyframes aivora-celebrate {
           0% { transform: scale(0.98); opacity: 0.9; }
@@ -222,7 +222,7 @@ export default function StudentCourseOverviewPage() {
                     const firstUnlockedLesson = module.lessons.find((l) => l.unlocked) || module.lessons[0];
                     setSelectedLessonId(firstUnlockedLesson?.id || '');
                   }}
-                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   {modules.map((m, idx) => (
                     <option key={m.id} value={m.id}>
@@ -234,7 +234,7 @@ export default function StudentCourseOverviewPage() {
                 <select
                   value={selectedLessonId}
                   onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   {lessonsInSelectedModule.map((lesson, idx) => (
                     <option key={lesson.id} value={lesson.id} disabled={!lesson.unlocked}>
@@ -247,7 +247,10 @@ export default function StudentCourseOverviewPage() {
             </div>
             </div>
           </div>
-          <div className="mb-6 overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Browse lessons, track progress, and continue where you left off.
+          </p>
+          <div className="portal-surface mb-6 overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800">
             <div className="relative h-52 md:h-60">
               <img
                 src="/code.jpg"
@@ -297,7 +300,7 @@ export default function StudentCourseOverviewPage() {
             {modules.map((module) => (
               <div
                 key={module.id}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 shadow-sm hover:shadow-md transition-shadow"
+                className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 shadow-sm hover:shadow-md transition-shadow"
               >
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{module.title}</h2>
                 {module.description && (
@@ -313,7 +316,7 @@ export default function StudentCourseOverviewPage() {
                       className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
                         lesson.unlocked
                           ? 'border-blue-200 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900'
                       }`}
                     >
                       <div>

@@ -68,7 +68,7 @@ export default function StudentLeaderboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Leaderboard
@@ -79,7 +79,7 @@ export default function StudentLeaderboardPage() {
       </div>
 
       {loading && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-10 text-center text-gray-500 dark:text-gray-300">
           Loading leaderboard...
         </div>
       )}
@@ -94,7 +94,7 @@ export default function StudentLeaderboardPage() {
       {!loading && !error && data && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <UserCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -135,7 +135,7 @@ export default function StudentLeaderboardPage() {
               </div>
             </div>
 
-            <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+            <div className="portal-surface mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
               <div className="flex items-center gap-2">
                 <TrophyIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">How it works</h2>
@@ -148,7 +148,7 @@ export default function StudentLeaderboardPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   Top 10 Students
@@ -158,7 +158,7 @@ export default function StudentLeaderboardPage() {
 
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
+                  <thead className="bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300">
                     <tr className="text-left">
                       <th className="px-4 py-3 font-medium">Rank</th>
                       <th className="px-4 py-3 font-medium">Student</th>
@@ -233,7 +233,7 @@ export default function StudentLeaderboardPage() {
             </div>
 
             {data.current && !data.top.some((row) => row.id === data.current?.id) && (
-              <div className="mt-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
+              <div className="portal-surface mt-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
                 <p className="text-sm text-gray-700 dark:text-gray-200">
                   You are currently ranked{' '}
                   <span className="font-semibold text-blue-700 dark:text-blue-300">

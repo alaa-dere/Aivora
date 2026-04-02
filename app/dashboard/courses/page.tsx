@@ -129,7 +129,7 @@ export default function AdminCoursesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
@@ -202,7 +202,7 @@ export default function AdminCoursesPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by title / teacher name / course ID..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             />
           </div>
 
@@ -211,7 +211,7 @@ export default function AdminCoursesPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Statuses</option>
               <option value="published">Published</option>
@@ -232,7 +232,7 @@ export default function AdminCoursesPage() {
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-100/80 dark:bg-slate-900/60">
+            <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
                 <th className="px-4 py-3 font-medium">Course</th>
                 <th className="px-4 py-3 font-medium">Teacher</th>
@@ -259,7 +259,7 @@ export default function AdminCoursesPage() {
                 </tr>
               ) : (
                 filtered.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={c.id} className="hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-4">
                       <Link
                         href={`/dashboard/courses/${c.id}/content`}
@@ -361,7 +361,7 @@ export default function AdminCoursesPage() {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-6 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
+                  className="px-6 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/40 transition"
                 >
                   Delete Course
                 </button>

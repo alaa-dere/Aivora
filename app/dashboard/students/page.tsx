@@ -192,7 +192,7 @@ export default function AdminStudentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
@@ -230,7 +230,7 @@ export default function AdminStudentsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name / email..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             />
           </div>
 
@@ -239,7 +239,7 @@ export default function AdminStudentsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-slate-100/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -260,7 +260,7 @@ export default function AdminStudentsPage() {
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-100/80 dark:bg-slate-900/60">
+            <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
@@ -285,7 +285,7 @@ export default function AdminStudentsPage() {
                 </tr>
               ) : (
                 filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={student.id} className="hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-4">
                       <span className="font-semibold text-gray-900 dark:text-gray-100">
                         {student.fullName}
@@ -438,7 +438,7 @@ export default function AdminStudentsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
+                  className="px-6 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/40 transition"
                 >
                   {modalMode === 'add' ? 'Add Student' : 'Save Changes'}
                 </button>
@@ -475,7 +475,7 @@ export default function AdminStudentsPage() {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-6 py-2 rounded-lg bg-blue-950 dark:bg-gray-950 text-white hover:bg-blue-700 transition"
+                  className="px-6 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/40 transition"
                 >
                   Delete Student
                 </button>

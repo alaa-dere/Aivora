@@ -36,7 +36,7 @@ export default async function TeacherCourseDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -75,7 +75,7 @@ export default async function TeacherCourseDetailPage({
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="portal-surface bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">
                 Course Information
               </h3>

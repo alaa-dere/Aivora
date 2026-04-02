@@ -30,7 +30,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/80 dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
         {/* Header with title and actions */}
         <div className="flex items-start sm:items-center justify-between gap-3 mb-6">

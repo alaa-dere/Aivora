@@ -130,7 +130,7 @@ export default function CourseDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         Loading course...
       </div>
     );
@@ -138,14 +138,14 @@ export default function CourseDetailsPage() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         {error || 'Course not found.'}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 px-6 py-6 md:px-10 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => router.back()}
@@ -161,8 +161,11 @@ export default function CourseDetailsPage() {
           <PlayCircleIcon className="w-5 h-5" /> My Courses
         </Link>
       </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        Review course details and enroll securely.
+      </p>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6 shadow-sm">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6 shadow-sm">
         <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-950 mb-6">
           <img
             src={course.imageUrl || '/default-course.jpg'}
@@ -228,7 +231,7 @@ export default function CourseDetailsPage() {
                     value={paymentForm.fullName}
                     onChange={(e) => setPaymentForm({ ...paymentForm, fullName: e.target.value })}
                     placeholder="Full name"
-                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                     required
                   />
                   <input
@@ -236,14 +239,14 @@ export default function CourseDetailsPage() {
                     onChange={(e) => setPaymentForm({ ...paymentForm, email: e.target.value })}
                     placeholder="Email"
                     type="email"
-                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                    className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                     required
                   />
                   <input
                     value={paymentForm.country}
                     onChange={(e) => setPaymentForm({ ...paymentForm, country: e.target.value })}
                     placeholder="Country"
-                    className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
+                    className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
                     required
                   />
                 </div>
@@ -279,20 +282,20 @@ export default function CourseDetailsPage() {
                       value={paymentForm.cardNumber}
                       onChange={(e) => setPaymentForm({ ...paymentForm, cardNumber: e.target.value })}
                       placeholder="Card number"
-                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
+                      className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white md:col-span-2"
                       required={method === 'card'}
                     />
                     <input
                       value={paymentForm.expiry}
                       onChange={(e) => setPaymentForm({ ...paymentForm, expiry: e.target.value })}
                       placeholder="MM/YY"
-                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                     />
                     <input
                       value={paymentForm.cvc}
                       onChange={(e) => setPaymentForm({ ...paymentForm, cvc: e.target.value })}
                       placeholder="CVC"
-                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                     />
                   </div>
                 )}
@@ -304,14 +307,14 @@ export default function CourseDetailsPage() {
                       onChange={(e) => setPaymentForm({ ...paymentForm, paypalEmail: e.target.value })}
                       placeholder="PayPal email"
                       type="email"
-                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                       required={method === 'paypal'}
                     />
                     <input
                       value={paymentForm.paypalTxnId}
                       onChange={(e) => setPaymentForm({ ...paymentForm, paypalTxnId: e.target.value })}
                       placeholder="PayPal transaction ID"
-                      className="w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
+                      className="portal-surface w-full px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
                       required={method === 'paypal'}
                     />
                   </div>

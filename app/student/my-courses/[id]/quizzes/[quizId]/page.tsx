@@ -152,7 +152,7 @@ export default function QuizResultPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-gray-700 dark:text-gray-200">
         Loading result...
       </div>
     );
@@ -160,14 +160,14 @@ export default function QuizResultPage() {
 
   if (error || !attempt) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-red-600 dark:text-red-400">
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 text-red-600 dark:text-red-400">
         {error || 'Result not found.'}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-4 flex items-center justify-between">
         <Link
           href={`/student/my-courses/${courseId}/quizzes`}
@@ -208,7 +208,7 @@ export default function QuizResultPage() {
             <div className="mt-4">
               <Link
                 href={`/student/certificates/${attempt.certificateId}`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium transition-colors"
+                className="portal-surface inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium transition-colors"
               >
                 View Certificate
               </Link>
@@ -218,7 +218,7 @@ export default function QuizResultPage() {
       )}
 
       {showEvaluationPrompt && (
-        <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-5">
+        <div className="portal-surface mb-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-5">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Rate This Course</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             You unlocked your certificate. Would you like to rate this course and share feedback?
@@ -248,7 +248,7 @@ export default function QuizResultPage() {
             onChange={(e) => setFeedback(e.target.value)}
             rows={4}
             placeholder="Optional feedback..."
-            className="mt-4 w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white p-3 text-sm"
+            className="portal-surface mt-4 w-full rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white p-3 text-sm"
           />
 
           {evaluationError && (
@@ -268,7 +268,7 @@ export default function QuizResultPage() {
               type="button"
               onClick={handleSkipEvaluation}
               disabled={savingEvaluation}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-white dark:hover:bg-gray-700 disabled:opacity-60"
             >
               Skip
             </button>
@@ -276,7 +276,7 @@ export default function QuizResultPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -299,7 +299,7 @@ export default function QuizResultPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Answers</h2>
 
         <div className="space-y-3">

@@ -224,7 +224,7 @@ export default function StudentProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">
           Profile
@@ -235,7 +235,7 @@ export default function StudentProfilePage() {
       </div>
 
       {loading && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
           Loading your profile...
         </div>
       )}
@@ -250,7 +250,7 @@ export default function StudentProfilePage() {
       {!loading && profile && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
+            <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center overflow-hidden">
                   {profile.imageUrl ? (
@@ -353,7 +353,7 @@ export default function StudentProfilePage() {
           <div className="lg:col-span-2">
             <form
               onSubmit={handleSubmit}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
+              className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
             >
               <div className="flex items-center gap-2">
                 <UserCircleIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -371,7 +371,7 @@ export default function StudentProfilePage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     type="text"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
+                    className="portal-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
                     placeholder="Your name"
                     required
                   />
@@ -385,7 +385,7 @@ export default function StudentProfilePage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
+                    className="portal-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 outline-none"
                     placeholder="you@example.com"
                     required
                   />
@@ -487,7 +487,7 @@ export default function StudentProfilePage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-indigo-200 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-800 transition disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 transition disabled:opacity-60"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
