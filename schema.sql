@@ -27,6 +27,18 @@ CREATE TABLE IF NOT EXISTS user (
     INDEX idx_roleId (roleId)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS category (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    name            VARCHAR(191) UNIQUE NOT NULL COLLATE utf8mb4_unicode_ci,
+    description     TEXT NULL COLLATE utf8mb4_unicode_ci,
+    status          ENUM('active', 'inactive') DEFAULT 'active',
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_category_status (status)
+) ENGINE=InnoDB;
+
+
 -- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ course
 CREATE TABLE IF NOT EXISTS course (
     id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
@@ -36,6 +48,7 @@ CREATE TABLE IF NOT EXISTS course (
     imageUrl        VARCHAR(255) COLLATE utf8mb4_unicode_ci,
     durationWeeks   INT DEFAULT 0,
     teacherId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    categoryId      VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
     price           DECIMAL(10,2) DEFAULT 0.00,
     teacherSharePct DECIMAL(5,2) DEFAULT 70.00 
         COMMENT 'Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â© ÃƒËœÃ‚Â­ÃƒËœÃ‚ÂµÃƒËœÃ‚Â© ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â¯ÃƒËœÃ‚Â±ÃƒËœÃ‚Â³ Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã¢â‚¬Â  ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¹ÃƒËœÃ‚Â± ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã†â€™Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â±ÃƒËœÃ‚Â³ (Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â«Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â¹ 60 = 60%)',
@@ -45,8 +58,69 @@ CREATE TABLE IF NOT EXISTS course (
 
     FOREIGN KEY (teacherId) REFERENCES user(id) 
         ON DELETE RESTRICT ON UPDATE CASCADE,
-    INDEX idx_teacherId (teacherId)
+    FOREIGN KEY (categoryId) REFERENCES category(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_teacherId (teacherId),
+    INDEX idx_categoryId (categoryId)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS learning_path (
+    id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    categoryId          VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    title               VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    description         TEXT NULL COLLATE utf8mb4_unicode_ci,
+    level               ENUM('beginner', 'intermediate', 'advanced', 'all_levels') DEFAULT 'beginner',
+    price               DECIMAL(10,2) DEFAULT 0.00,
+    status              ENUM('draft', 'published', 'archived') DEFAULT 'draft',
+    estimatedHours      INT DEFAULT 0,
+    createdBy           VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    createdAt           DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt           DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (categoryId) REFERENCES category(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (createdBy) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_learning_path_category (categoryId),
+    INDEX idx_learning_path_status (status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS learning_path_course (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    pathId          VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    orderNumber     INT NOT NULL,
+    isRequired      BOOLEAN DEFAULT TRUE,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (pathId) REFERENCES learning_path(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_path_course (pathId, courseId),
+    UNIQUE KEY unique_path_order (pathId, orderNumber),
+    INDEX idx_learning_path_course_path (pathId),
+    INDEX idx_learning_path_course_course (courseId)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS path_enrollment (
+    id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    pathId              VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    studentId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    enrolledAt          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status              ENUM('enrolled', 'in_progress', 'completed', 'dropped') DEFAULT 'enrolled',
+    progressPercentage  DECIMAL(5,2) DEFAULT 0.00,
+    completedAt         DATETIME NULL,
+
+    FOREIGN KEY (pathId) REFERENCES learning_path(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY unique_path_enrollment (pathId, studentId),
+    INDEX idx_path_enrollment_path (pathId),
+    INDEX idx_path_enrollment_student (studentId)
+) ENGINE=InnoDB;
+
 
 -- ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾ module
 CREATE TABLE IF NOT EXISTS module (
