@@ -3,10 +3,12 @@ import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 import { getRequestUser } from "@/lib/request-auth";
 import { ensureCourseEvaluationSchema } from "@/lib/ensure-course-evaluation-schema";
+import { ensureRecentCourseViewSchema } from "@/lib/ensure-recent-course-view-schema";
 
 export async function GET(req: Request) {
   try {
     await ensureCourseEvaluationSchema();
+    await ensureRecentCourseViewSchema();
 
     const user = await getRequestUser(req);
     const includeEnrollment = user?.role === 'student';
@@ -28,7 +30,19 @@ export async function GET(req: Request) {
         c.imageUrl,
         c.durationWeeks,
         u.fullName AS instructor,
-        COUNT(e.id) AS studentsCount
+        COUNT(e.id) AS studentsCount,
+        (
+          SELECT AVG(ce.rating)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS averageRating,
+        (
+          SELECT COUNT(*)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS evaluationCount
         ${enrollmentSelect}
       FROM course c
       JOIN user u ON c.teacherId = u.id
@@ -69,6 +83,51 @@ export async function GET(req: Request) {
       `
     );
 
+    const [enrolledRows] = includeEnrollment
+      ? await pool.query<RowDataPacket[]>(
+          `
+          SELECT
+            c.id,
+            c.title,
+            c.description,
+            c.price,
+            c.imageUrl,
+            c.durationWeeks,
+            u.fullName AS instructor,
+            COUNT(e.id) AS studentsCount,
+            (
+              SELECT AVG(ce.rating)
+              FROM course_evaluation ce
+              WHERE ce.courseId = c.id
+                AND ce.rating IS NOT NULL
+            ) AS averageRating,
+            (
+              SELECT COUNT(*)
+              FROM course_evaluation ce
+              WHERE ce.courseId = c.id
+                AND ce.rating IS NOT NULL
+            ) AS evaluationCount,
+            1 AS enrolled
+          FROM enrollment e
+          JOIN course c ON c.id = e.courseId
+          JOIN user u ON u.id = c.teacherId
+          WHERE e.studentId = ?
+            AND c.status = 'published'
+          GROUP BY
+            c.id,
+            c.title,
+            c.description,
+            c.price,
+            c.imageUrl,
+            c.durationWeeks,
+            u.fullName
+          ORDER BY e.enrolledAt DESC
+          LIMIT 4
+          `,
+          [user?.id]
+        )
+      : [[], []];
+
     const courses = rows.map((course) => ({
       id: course.id,
       title: course.title,
@@ -79,6 +138,27 @@ export async function GET(req: Request) {
       duration: `${Number(course.durationWeeks || 0)} Weeks`,
       students: String(Number(course.studentsCount || 0)),
       enrolled: Boolean(course.enrolled),
+      averageRating:
+        course.averageRating === null || course.averageRating === undefined
+          ? 0
+          : Number(course.averageRating),
+      evaluationCount: Number(course.evaluationCount || 0),
+    }));
+    const enrolledCourses = (enrolledRows as RowDataPacket[]).map((course) => ({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      price: Number(course.price),
+      image: course.imageUrl || "/default-course.jpg",
+      instructor: course.instructor,
+      duration: `${Number(course.durationWeeks || 0)} Weeks`,
+      students: String(Number(course.studentsCount || 0)),
+      enrolled: Boolean(course.enrolled),
+      averageRating:
+        course.averageRating === null || course.averageRating === undefined
+          ? 0
+          : Number(course.averageRating),
+      evaluationCount: Number(course.evaluationCount || 0),
     }));
     const feedbacks = feedbackRows.map((row) => ({
       id: String(row.id),
@@ -95,6 +175,7 @@ export async function GET(req: Request) {
       success: true,
       data: courses,
       feedbacks,
+      enrolledCourses,
     });
   } catch (error) {
     console.error("Error fetching courses:", error);
