@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   ClockIcon,
   UserGroupIcon,
+  StarIcon,
   GlobeAltIcon,
   ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
@@ -30,6 +31,8 @@ type Course = {
   createdAt: string;
   students: number;
   enrolled?: boolean;
+  averageRating?: number;
+  evaluationCount?: number;
 };
 
 export default function AllCoursesPage() {
@@ -89,6 +92,20 @@ export default function AllCoursesPage() {
 
   const isDark = mounted && theme === 'dark';
   const isArabic = language === 'ar';
+
+  const trackCourseView = (courseId: string) => {
+    if (status !== 'authenticated') return;
+    try {
+      fetch('/api/recent-courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+        keepalive: true,
+      }).catch(() => null);
+    } catch {
+      // best-effort tracking
+    }
+  };
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -217,68 +234,98 @@ export default function AllCoursesPage() {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filteredCourses.map((course) => (
-                <div
-                  key={course.id}
-                  className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                >
-                  <div className="h-40 overflow-hidden">
-                    <img
-                      src={course.imageUrl || '/default-course.jpg'}
-                      alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  </div>
+              {filteredCourses.map((course) => {
+                const rating = Number(course.averageRating || 0);
+                const reviewCount = Number(course.evaluationCount || 0);
+                const filledStars = Math.round(rating);
 
-                  <div className="p-4">
-                    <p className="text-sm text-blue-200 mb-2 font-medium">
-                      {isArabic ? 'بواسطة' : 'By'} {course.teacherName}
-                    </p>
-
-                    <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
-                      {course.title}
-                    </h3>
-
-                    <p className="text-sm text-slate-300 mb-4 line-clamp-2 min-h-[40px]">
-                      {course.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="w-4 h-4 text-blue-300" />
-                        {course.durationWeeks} {isArabic ? 'أسابيع' : 'Weeks'}
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <UserGroupIcon className="w-4 h-4 text-blue-300" />
-                        {course.students} {isArabic ? 'طلاب' : 'Students'}
-                      </div>
+                return (
+                  <div
+                    key={course.id}
+                    className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                  >
+                    <div className="h-40 overflow-hidden">
+                      <img
+                        src={course.imageUrl || '/default-course.jpg'}
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-xl font-black text-blue-300">
-                        ${course.price}
-                      </span>
+                    <div className="p-4">
+                      <p className="text-sm text-blue-200 mb-2 font-medium">
+                        {isArabic ? '??????' : 'By'} {course.teacherName}
+                      </p>
 
-                      {course.enrolled ? (
-                        <Link
-                          href={`/student/my-courses/${course.id}`}
-                          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
-                        >
-                          {isArabic ? 'ØªÙ… Ø§Ù„ØªØ³Ø¬ÙŠÙ„' : 'Enrolled'}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/Home/courses/${course.id}`}
-                          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
-                        >
-                          View Course
-                        </Link>
-                      )}
+                      <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                        {course.title}
+                      </h3>
+
+                      <p className="text-sm text-slate-300 mb-4 line-clamp-2 min-h-[40px]">
+                        {course.description}
+                      </p>
+
+                      <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="w-4 h-4 text-blue-300" />
+                          {course.durationWeeks} {isArabic ? '??????' : 'Weeks'}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <UserGroupIcon className="w-4 h-4 text-blue-300" />
+                          {course.students} {isArabic ? '????' : 'Students'}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 mb-4">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <StarIcon
+                            key={`${course.id}-rating-${idx}`}
+                            className={`w-4 h-4 ${
+                              idx < filledStars
+                                ? 'text-yellow-400 fill-yellow-400'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        ))}
+                        {reviewCount > 0 ? (
+                          <span className="ml-2 text-xs text-slate-300">
+                            {rating.toFixed(1)} ({reviewCount})
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-xs text-slate-300">
+                            {isArabic ? '???? ????? ???' : 'No reviews yet'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-xl font-black text-blue-300">
+                          ${course.price}
+                        </span>
+
+                        {course.enrolled ? (
+                          <Link
+                            href={`/student/my-courses/${course.id}`}
+                            onClick={() => trackCourseView(course.id)}
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                          >
+                            {isArabic ? '?? ???????' : 'Enrolled'}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/Home/courses/${course.id}`}
+                            onClick={() => trackCourseView(course.id)}
+                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                          >
+                            View Course
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

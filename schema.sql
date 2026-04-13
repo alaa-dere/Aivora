@@ -528,6 +528,23 @@ CREATE TABLE IF NOT EXISTS passwordresettoken (
     INDEX idx_token (token)
 ) ENGINE=InnoDB;
 
+-- recent_course_view
+CREATE TABLE IF NOT EXISTS recent_course_view (
+    id          VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    studentId   VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    courseId    VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+    lastViewedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE KEY uniq_recent_course_view (studentId, courseId),
+    INDEX idx_recent_student (studentId),
+    INDEX idx_recent_last_viewed (lastViewedAt)
+) ENGINE=InnoDB;
+
 -- ÃƒËœÃ‚Â¨Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â§ÃƒËœÃ‚Âª ÃƒËœÃ‚Â£Ãƒâ„¢Ã‹â€ Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã…Â ÃƒËœÃ‚Â© (ÃƒËœÃ‚Â§ÃƒËœÃ‚Â®ÃƒËœÃ‚ÂªÃƒâ„¢Ã…Â ÃƒËœÃ‚Â§ÃƒËœÃ‚Â±Ãƒâ„¢Ã…Â )
 INSERT IGNORE INTO role (id, name) VALUES 
     (UUID(), 'admin'),

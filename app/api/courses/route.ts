@@ -4,9 +4,11 @@ import { RowDataPacket, OkPacket } from 'mysql2';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { getRequestUser, requirePermission } from '@/lib/request-auth';
+import { ensureCourseEvaluationSchema } from '@/lib/ensure-course-evaluation-schema';
 
 export async function GET(req: Request) {
   try {
+    await ensureCourseEvaluationSchema();
     const user = await getRequestUser(req);
     const includeEnrollment = user?.role === 'student';
 
@@ -37,7 +39,19 @@ export async function GET(req: Request) {
           SELECT COUNT(*) 
           FROM enrollment 
           WHERE courseId = c.id
-        ) AS students
+        ) AS students,
+        (
+          SELECT AVG(ce.rating)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS averageRating,
+        (
+          SELECT COUNT(*)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS evaluationCount
         ${enrollmentSelect}
       FROM course c
       LEFT JOIN category cat ON c.categoryId = cat.id
@@ -66,6 +80,11 @@ export async function GET(req: Request) {
       createdAt: row.createdAt,
       students: Number(row.students || 0),
       enrolled: Boolean(row.enrolled),
+      averageRating:
+        row.averageRating === null || row.averageRating === undefined
+          ? 0
+          : Number(row.averageRating),
+      evaluationCount: Number(row.evaluationCount || 0),
     }));
 
     return NextResponse.json({ courses });
