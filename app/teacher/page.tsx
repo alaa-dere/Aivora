@@ -203,6 +203,9 @@ export default function TeacherDashboard() {
   const [courses, setCourses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [aiInsights, setAiInsights] = useState<{ title: string; description: string; type: 'forecast' | 'trend' | 'recommendation' }[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiSource, setAiSource] = useState<'openai' | 'rule-based' | 'unknown'>('unknown');
 
   useEffect(() => {
     setMounted(true);
@@ -233,25 +236,28 @@ export default function TeacherDashboard() {
     }
   }, [mounted]);
 
-  if (!mounted) return null;
+  useEffect(() => {
+    const loadAiInsights = async () => {
+      try {
+        setAiLoading(true);
+        const res = await fetch('/api/teacher/ai/insights', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        setAiInsights(data.insights || []);
+        setAiSource(data.source === 'openai' || data.source === 'rule-based' ? data.source : 'unknown');
+      } catch (error) {
+        console.error('Failed to load AI insights', error);
+      } finally {
+        setAiLoading(false);
+      }
+    };
 
-  const aiInsights = [
-    {
-      title: 'Forecast',
-      description: 'Next month Python Basics +18%',
-     icon: ArrowTrendingUpIcon
-    },
-    {
-      title: 'Risk',
-      description: 'At-risk Web Dev student based on quiz performance',
-      icon: ArrowTrendingDownIcon,
-    },
-    {
-      title: 'Recommendation',
-      description: 'JavaScript Async (68% wrong) needs review',
-      icon: AcademicCapIcon,
-    },
-  ];
+    if (mounted) {
+      loadAiInsights();
+    }
+  }, [mounted]);
+
+  if (!mounted) return null;
 
   const recentActivitiesFallback = [
     { type: 'ENROLL', description: 'No recent activity yet', time: '' },
@@ -319,13 +325,38 @@ export default function TeacherDashboard() {
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             AI Insights
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Smart analytics & suggestions
-          </p>
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <span>Smart analytics & suggestions</span>
+            <span className="text-xs uppercase tracking-wide">
+              Source: {aiSource === 'openai' ? 'OpenAI' : aiSource === 'rule-based' ? 'Rule-based' : 'Unknown'}
+            </span>
+          </div>
           <div className="space-y-4">
-            {aiInsights.map((insight, index) => (
-              <AIInsightItem key={index} icon={insight.icon} title={insight.title} description={insight.description} />
-            ))}
+            {aiLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Loading insights...</p>
+            ) : aiInsights.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No insights yet.</p>
+            ) : (
+              aiInsights.map((insight, index) => {
+                const isDown = insight.type === 'trend' && insight.description.toLowerCase().includes('down');
+                const icon =
+                  insight.type === 'forecast'
+                    ? SparklesIcon
+                    : insight.type === 'recommendation'
+                      ? AcademicCapIcon
+                      : isDown
+                        ? ArrowTrendingDownIcon
+                        : ArrowTrendingUpIcon;
+                return (
+                  <AIInsightItem
+                    key={`${insight.title}-${index}`}
+                    icon={icon}
+                    title={insight.title}
+                    description={insight.description}
+                  />
+                );
+              })
+            )}
           </div>
         </div>
       </div>

@@ -79,6 +79,22 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
           >
             {isArabic ? "لوحة التحكم" : "Dashboard"}
           </Link>
+          <Link
+            href={`/${role}/profile`}
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+          >
+            {isArabic ? "الملف الشخصي" : "Profile"}
+          </Link>
+          {role === "student" ? (
+            <Link
+              href="/student/favorites"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+            >
+              {isArabic ? "الدورات المفضلة" : "Favorite Courses"}
+            </Link>
+          ) : null}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"

@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import HomeUserMenu from '@/components/home-user-menu';
+import CourseFavoriteButton from '@/components/course-favorite-button';
 import {
   SunIcon,
   MoonIcon,
@@ -45,6 +46,7 @@ export default function AllCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -81,6 +83,26 @@ export default function AllCoursesPage() {
 
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (status !== 'authenticated') {
+        setFavoriteIds(new Set());
+        return;
+      }
+      try {
+        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok) {
+          setFavoriteIds(new Set((data.ids || []) as string[]));
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadFavorites();
+  }, [status]);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -120,6 +142,15 @@ export default function AllCoursesPage() {
       );
     });
   }, [courses, searchQuery]);
+
+  const updateFavorite = (courseId: string, next: boolean) => {
+    setFavoriteIds((prev) => {
+      const nextSet = new Set(prev);
+      if (next) nextSet.add(courseId);
+      else nextSet.delete(courseId);
+      return nextSet;
+    });
+  };
 
   return (
     <div className="min-h-screen relative text-slate-900 dark:text-slate-100" dir={isArabic ? 'rtl' : 'ltr'}>
@@ -244,11 +275,17 @@ export default function AllCoursesPage() {
                     key={course.id}
                     className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                   >
-                    <div className="h-40 overflow-hidden">
+                    <div className="relative h-40 overflow-hidden">
                       <img
                         src={course.imageUrl || '/default-course.jpg'}
                         alt={course.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <CourseFavoriteButton
+                        courseId={course.id}
+                        initialFavorite={favoriteIds.has(course.id)}
+                        onChange={(next) => updateFavorite(course.id, next)}
+                        className="absolute top-3 right-3 h-8 w-8"
                       />
                     </div>
 

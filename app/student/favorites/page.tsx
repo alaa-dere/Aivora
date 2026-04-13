@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenIcon,
   ClockIcon,
@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import CourseFavoriteButton from '@/components/course-favorite-button';
 
-type Course = {
+type FavoriteCourse = {
   id: string;
   title: string;
   teacherName: string;
@@ -27,43 +27,29 @@ type Course = {
   enrolled: boolean;
 };
 
-export default function StudentCoursesPage() {
+export default function StudentFavoritesPage() {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteCourse[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const loadCourses = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/student/courses', { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.message || 'Failed to load courses');
-        }
-        setCourses(data.courses || []);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load courses');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCourses();
-  }, []);
 
   useEffect(() => {
     const loadFavorites = async () => {
       try {
-        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        setLoading(true);
+        const res = await fetch('/api/student/favorites', { cache: 'no-store' });
         const data = await res.json();
-        if (res.ok) {
-          setFavoriteIds(new Set((data.ids || []) as string[]));
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load favorites');
         }
-      } catch {
-        // ignore
+        const items = data.favorites || [];
+        setFavorites(items);
+        setFavoriteIds(new Set(items.map((c: FavoriteCourse) => c.id)));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load favorites');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -72,7 +58,7 @@ export default function StudentCoursesPage() {
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return courses.filter((c) => {
+    return favorites.filter((c) => {
       const matchQ =
         !query ||
         c.title.toLowerCase().includes(query) ||
@@ -80,7 +66,7 @@ export default function StudentCoursesPage() {
         c.description.toLowerCase().includes(query);
       return matchQ;
     });
-  }, [q, courses]);
+  }, [q, favorites]);
 
   const updateFavorite = (courseId: string, next: boolean) => {
     setFavoriteIds((prev) => {
@@ -89,20 +75,23 @@ export default function StudentCoursesPage() {
       else nextSet.delete(courseId);
       return nextSet;
     });
+
+    if (!next) {
+      setFavorites((prev) => prev.filter((c) => c.id !== courseId));
+    }
   };
 
   return (
     <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-          Explore Courses
+          Favorite Courses
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Discover new courses and start learning today.
+          Your saved courses in one place.
         </p>
       </div>
 
-      {/* Search */}
       <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4 mb-6 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <div className="flex-1 relative">
@@ -110,17 +99,16 @@ export default function StudentCoursesPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by title, teacher, keyword..."
+              placeholder="Search favorites..."
               className="portal-surface w-full pl-10 pr-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-white outline-none"
             />
           </div>
         </div>
       </div>
 
-      {/* Courses */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading favorites...</p>
         ) : error ? (
           <p className="text-sm text-red-500">{error}</p>
         ) : filtered.map((c) => {
@@ -149,7 +137,7 @@ export default function StudentCoursesPage() {
 
               <div className="mt-4">
                 <span className="inline-flex items-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2.5 py-1 text-xs font-semibold">
-                  #Skill Building
+                  #Favorites
                 </span>
 
                 <h3 className="mt-3 text-xl leading-snug font-semibold text-gray-900 dark:text-white line-clamp-2">
@@ -207,7 +195,7 @@ export default function StudentCoursesPage() {
 
       {!loading && !error && filtered.length === 0 && (
         <div className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
-          No courses match your search.
+          No favorites yet.
         </div>
       )}
     </div>

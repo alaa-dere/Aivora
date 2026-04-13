@@ -27,6 +27,8 @@ export async function GET(req: Request) {
         LEFT(c.description, 150) AS description,
         c.imageUrl,
         c.durationWeeks,
+        c.categoryId,
+        cat.name AS categoryName,
         u.fullName AS teacherName,
         u.id AS teacherId,
         c.price,
@@ -52,6 +54,7 @@ export async function GET(req: Request) {
         ) AS evaluationCount
         ${enrollmentSelect}
       FROM course c
+      LEFT JOIN category cat ON c.categoryId = cat.id
       JOIN user u ON c.teacherId = u.id
       ORDER BY c.createdAt DESC
     `;
@@ -67,6 +70,8 @@ export async function GET(req: Request) {
       description: row.description,
       imageUrl: row.imageUrl,
       durationWeeks: Number(row.durationWeeks || 0),
+      categoryId: row.categoryId || null,
+      categoryName: row.categoryName || null,
       teacherName: row.teacherName,
       teacherId: row.teacherId,
       price: Number(row.price),
@@ -83,12 +88,12 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json({ courses });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching courses:', error);
     return NextResponse.json(
       {
         message: 'Failed to fetch courses',
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -218,13 +223,16 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating course:', error);
     return NextResponse.json(
       {
         message: 'Failed to create course',
-        error: error.message,
-        sqlMessage: error.sqlMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sqlMessage:
+          typeof error === 'object' && error !== null && 'sqlMessage' in error
+            ? String((error as { sqlMessage?: unknown }).sqlMessage ?? '')
+            : undefined,
       },
       { status: 500 }
     );

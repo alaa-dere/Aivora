@@ -208,7 +208,7 @@ export default function QuizResultPage() {
             <div className="mt-4">
               <Link
                 href={`/student/certificates/${attempt.certificateId}`}
-                className="portal-surface inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-sm font-medium transition-colors"
+                className="portal-surface inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-sm font-semibold transition-colors"
               >
                 View Certificate
               </Link>

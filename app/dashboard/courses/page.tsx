@@ -5,6 +5,8 @@ import {
   BookOpenIcon,
   MagnifyingGlassIcon,
   PlusIcon,
+  QueueListIcon,
+  TagIcon,
   PencilSquareIcon,
   FunnelIcon,
   CurrencyDollarIcon,
@@ -22,6 +24,8 @@ type Course = {
   id: string;
   title: string;
   description?: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
   teacherName: string;
   teacherId: string;
   price: number;
@@ -31,10 +35,18 @@ type Course = {
   createdAt: string;
 };
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [teachers, setTeachers] = useState<{ id: string; fullName: string }[]>([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [bulkCategoryId, setBulkCategoryId] = useState('');
 
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
@@ -45,7 +57,7 @@ export default function AdminCoursesPage() {
 
   useEffect(() => {
     fetchCourses();
-    fetchTeachers();
+    fetchCategories();
   }, []);
 
   const fetchCourses = async () => {
@@ -54,7 +66,11 @@ export default function AdminCoursesPage() {
       const res = await fetch('/api/courses');
       const data = await res.json();
       if (res.ok) {
-        setCourses(data.courses || []);
+        const nextCourses = data.courses || [];
+        setCourses(nextCourses);
+        setSelectedCourseIds((prev) =>
+          prev.filter((id) => nextCourses.some((course: Course) => course.id === id))
+        );
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -63,15 +79,15 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const fetchTeachers = async () => {
+  const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/teachers/list');
+      const res = await fetch('/api/categories', { cache: 'no-store' });
       const data = await res.json();
       if (res.ok) {
-        setTeachers(data.teachers || []);
+        setCategories(data.categories || []);
       }
     } catch (error) {
-      console.error('Error fetching teachers:', error);
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -94,10 +110,30 @@ export default function AdminCoursesPage() {
         !query ||
         c.title.toLowerCase().includes(query) ||
         (c.teacherName || '').toLowerCase().includes(query) ||
+        (c.categoryName || '').toLowerCase().includes(query) ||
         c.id.toLowerCase().includes(query);
       return matchesStatus && matchesQuery;
     });
   }, [courses, q, statusFilter]);
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((course) => selectedCourseIds.includes(course.id));
+
+  const toggleCourseSelection = (courseId: string) => {
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      setSelectedCourseIds((prev) => prev.filter((id) => !filtered.some((course) => course.id === id)));
+      return;
+    }
+
+    const filteredIds = filtered.map((course) => course.id);
+    setSelectedCourseIds((prev) => [...new Set([...prev, ...filteredIds])]);
+  };
 
   // Open delete modal
   const openDeleteModal = (id: string, title: string) => {
@@ -128,6 +164,43 @@ export default function AdminCoursesPage() {
     }
   };
 
+  const handleBulkCategoryAssign = async () => {
+    if (selectedCourseIds.length === 0) {
+      alert('Select at least one course first');
+      return;
+    }
+
+    setBulkSaving(true);
+    try {
+      const res = await fetch('/api/courses/bulk-category', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseIds: selectedCourseIds,
+          categoryId: bulkCategoryId || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data?.message || 'Failed to assign category');
+        return;
+      }
+
+      await fetchCourses();
+      setSelectedCourseIds([]);
+      alert(
+        bulkCategoryId
+          ? 'Category assigned to selected courses.'
+          : 'Selected courses are now uncategorized.'
+      );
+    } catch (error) {
+      console.error('Bulk category assignment failed:', error);
+      alert('Failed to assign category');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
@@ -139,23 +212,41 @@ export default function AdminCoursesPage() {
           </p>
         </div>
 
-        <Link
-          href="/dashboard/courses/new"
-          className="
-            group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-2xl
-            bg-gradient-to-r from-blue-600 to-blue-700
-            hover:from-blue-700 hover:to-blue-800
-            text-white font-semibold text-sm
-            shadow-md hover:shadow-md
-            border border-blue-500/50
-            transition-all duration-200
-            active:scale-95
-          "
-        >
-          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-          Add New Course
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/courses/new"
+            className="
+              group inline-flex items-center gap-2
+              px-4 py-2.5 rounded-2xl
+              bg-gradient-to-r from-blue-600 to-blue-700
+              hover:from-blue-700 hover:to-blue-800
+              text-white font-semibold text-sm
+              shadow-md hover:shadow-md
+              border border-blue-500/50
+              transition-all duration-200
+              active:scale-95
+            "
+          >
+            <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+            Add New Course
+          </Link>
+
+          <Link
+            href="/dashboard/paths"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <QueueListIcon className="w-4 h-4" />
+            Paths
+          </Link>
+
+          <Link
+            href="/dashboard/categories"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <TagIcon className="w-4 h-4" />
+            Categories
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -210,7 +301,7 @@ export default function AdminCoursesPage() {
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | CourseStatus)}
               className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Statuses</option>
@@ -218,6 +309,35 @@ export default function AdminCoursesPage() {
               <option value="archived">Archived</option>
               <option value="draft">Draft</option>
             </select>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Selected courses: <span className="font-semibold">{selectedCourseIds.length}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={bulkCategoryId}
+              onChange={(e) => setBulkCategoryId(e.target.value)}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            >
+              <option value="">Set as Uncategorized</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              disabled={bulkSaving || selectedCourseIds.length === 0}
+              onClick={handleBulkCategoryAssign}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+            >
+              {bulkSaving ? 'Applying...' : 'Apply Category'}
+            </button>
           </div>
         </div>
       </div>
@@ -234,7 +354,16 @@ export default function AdminCoursesPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
+                <th className="px-4 py-3 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Select all filtered courses"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Course</th>
+                <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium">Teacher</th>
                 <th className="px-4 py-3 font-medium">Price</th>
                 <th className="px-4 py-3 font-medium">Teacher Share</th>
@@ -247,13 +376,13 @@ export default function AdminCoursesPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     Loading...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     No matching courses found. Try changing filters or add a new course.
                   </td>
                 </tr>
@@ -261,12 +390,25 @@ export default function AdminCoursesPage() {
                 filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedCourseIds.includes(c.id)}
+                        onChange={() => toggleCourseSelection(c.id)}
+                        aria-label={`Select course ${c.title}`}
+                      />
+                    </td>
+
+                    <td className="px-4 py-4">
                       <Link
                         href={`/dashboard/courses/${c.id}/content`}
                         className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                       >
                         {c.title}
                       </Link>
+                    </td>
+
+                    <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
+                      {c.categoryName || 'Uncategorized'}
                     </td>
 
                     <td className="px-4 py-4 text-slate-700 dark:text-slate-200">

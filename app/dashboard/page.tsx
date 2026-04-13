@@ -1,4 +1,3 @@
-// app/admin/dashboard/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -9,6 +8,7 @@ import {
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import {
   AreaChart,
@@ -20,7 +20,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-// الإحصائيات الرئيسية
 const statCards = [
   {
     key: 'totalStudents',
@@ -44,10 +43,9 @@ const statCards = [
   },
 ] as const;
 
-// بيانات الرسم البياني للإيرادات (آخر 12 أسبوعًا)
+// Revenue chart (last 12 weeks)
 type RevenuePoint = { week: string; revenue: number };
 
-// Transactions from DB
 type RecentTx = {
   id: string;
   name: string;
@@ -61,37 +59,17 @@ function formatMoney(value: number) {
   return `$${safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// Recent activity from DB
 type RecentActivity = {
   type: 'ENROLL';
   description: string;
   time: string;
 };
 
-// رؤى الذكاء الاصطناعي (بألوان زرقاء)
-const aiInsights = [
-  {
-    title: 'Forecast',
-    description: 'Next month React Basics +18%',
-    icon: ArrowTrendingUpIcon,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-  },
-  {
-    title: 'Risk',
-    description: 'At-risk Web Dev student based on quiz performance',
-    icon: ArrowTrendingDownIcon,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-  },
-  {
-    title: 'Recommendation',
-    description: 'JavaScript Async (68% wrong) needs review',
-    icon: AcademicCapIcon,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-  },
-];
+type AiInsight = {
+  title: string;
+  description: string;
+  type: 'forecast' | 'trend' | 'recommendation';
+};
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -106,6 +84,10 @@ export default function AdminDashboard() {
   const [activityLoading, setActivityLoading] = useState(true);
   const [revenueData, setRevenueData] = useState<RevenuePoint[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(true);
+  const [aiInsights, setAiInsights] = useState<AiInsight[]>([]);
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiSource, setAiSource] = useState<'openai' | 'rule-based' | 'unknown'>('unknown');
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadStats() {
@@ -190,6 +172,30 @@ export default function AdminDashboard() {
     loadRevenue();
   }, []);
 
+  useEffect(() => {
+    const loadAiInsights = async () => {
+      try {
+        setAiLoading(true);
+        setAiError(null);
+        const res = await fetch('/api/admin/ai/revenue-forecast', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          setAiError(data?.message || 'Failed to load AI insights');
+          return;
+        }
+        setAiInsights(data.insights || []);
+        setAiSource(data.source === 'openai' || data.source === 'rule-based' ? data.source : 'unknown');
+      } catch (error) {
+        console.error('Failed to load AI insights', error);
+        setAiError('Failed to load AI insights');
+      } finally {
+        setAiLoading(false);
+      }
+    };
+
+    loadAiInsights();
+  }, []);
+
   const formattedStats = useMemo(
     () => ({
       totalStudents: stats.totalStudents.toLocaleString('en-US'),
@@ -205,7 +211,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      {/* رأس الصفحة */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard
@@ -215,7 +220,6 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* بطاقات الإحصائيات مع تأثير hover */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat, index) => (
           <div
@@ -236,9 +240,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* الرسم البياني ورؤى الذكاء الاصطناعي مع تأثير hover */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* الرسم البياني للإيرادات - موجة زرقاء */}
         <div className="admin-surface dashboard-card revenue-trend lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200" style={{ animationDelay: '200ms' }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200">
@@ -259,16 +261,9 @@ export default function AdminDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bfdbfe" />
-                <XAxis 
-                  dataKey="week" 
-                  tick={{ fill: '#1e3a8a' }} 
-                  stroke="#1e3a8a"
-                />
-                <YAxis 
-                  tick={{ fill: '#1e3a8a' }} 
-                  stroke="#1e3a8a"
-                />
-                <Tooltip 
+                <XAxis dataKey="week" tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
+                <YAxis tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
+                <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}
                   labelStyle={{ color: '#1e293b' }}
                 />
@@ -287,37 +282,60 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* رؤى الذكاء الاصطناعي مع تأثير hover */}
         <div className="admin-surface dashboard-card bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200" style={{ animationDelay: '260ms' }}>
           <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4">
             AI Insights
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Smart analytics & suggestions
-          </p>
+          <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 mb-4">
+            <span>Smart analytics & suggestions</span>
+            <span className="text-xs uppercase tracking-wide">
+              Source: {aiSource === 'openai' ? 'OpenAI' : aiSource === 'rule-based' ? 'Rule-based' : 'Unknown'}
+            </span>
+          </div>
           <div className="space-y-4">
-            {aiInsights.map((insight) => (
-              <div key={insight.title} className="flex gap-3">
-                <div className={`${insight.bg} p-2 rounded-lg h-fit`}>
-                  <insight.icon className={`w-5 h-5 ${insight.color}`} />
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-800 dark:text-gray-200 text-sm">
-                    {insight.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    {insight.description}
-                  </p>
-                </div>
-              </div>
-            ))}
+            {aiLoading ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading insights...</p>
+            ) : aiError ? (
+              <p className="text-sm text-rose-600 dark:text-rose-400">{aiError}</p>
+            ) : aiInsights.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No insights yet.</p>
+            ) : (
+              aiInsights.map((insight) => {
+                const isDown = insight.type === 'trend' && insight.description.toLowerCase().includes('down');
+                const icon =
+                  insight.type === 'forecast'
+                    ? SparklesIcon
+                    : insight.type === 'recommendation'
+                      ? AcademicCapIcon
+                      : isDown
+                        ? ArrowTrendingDownIcon
+                        : ArrowTrendingUpIcon;
+                const color = 'text-blue-600 dark:text-blue-400';
+                const bg = 'bg-blue-100 dark:bg-blue-900/30';
+
+                const Icon = icon;
+                return (
+                  <div key={insight.title} className="flex gap-3">
+                    <div className={`${bg} p-2 rounded-lg h-fit`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-800 dark:text-gray-200 text-sm">
+                        {insight.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {insight.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
 
-      {/* المعاملات الأخيرة وآخر الأنشطة مع تأثير hover */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Transactions */}
         <div className="admin-surface dashboard-card bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200" style={{ animationDelay: '320ms' }}>
           <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4">
             Recent Transactions
@@ -357,7 +375,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="admin-surface dashboard-card bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200" style={{ animationDelay: '380ms' }}>
           <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4">
             Recent Activity
