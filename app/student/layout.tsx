@@ -322,6 +322,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 >
                   Profile
                 </Link>
+                <Link
+                  href="/student/favorites"
+                  onClick={() => setAccountOpen(false)}
+                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Favorite Courses
+                </Link>
                 <button
                   onClick={() => {
                     setAccountOpen(false);

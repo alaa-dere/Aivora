@@ -10,8 +10,21 @@ CREATE TABLE IF NOT EXISTS category (
     INDEX idx_category_status (status)
 ) ENGINE=InnoDB;
 
-ALTER TABLE course
-    ADD COLUMN IF NOT EXISTS categoryId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci AFTER teacherId;
+SET @category_col_exists := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'course'
+      AND COLUMN_NAME = 'categoryId'
+);
+SET @category_col_sql := IF(
+    @category_col_exists = 0,
+    'ALTER TABLE course ADD COLUMN categoryId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci AFTER teacherId',
+    'SELECT 1'
+);
+PREPARE stmt_category_col FROM @category_col_sql;
+EXECUTE stmt_category_col;
+DEALLOCATE PREPARE stmt_category_col;
 
 SET @category_fk_exists := (
     SELECT COUNT(*)

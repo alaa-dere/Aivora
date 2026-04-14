@@ -118,7 +118,7 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">

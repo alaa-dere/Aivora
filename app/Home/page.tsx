@@ -6,6 +6,7 @@ import { FaInstagram } from "react-icons/fa";
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from "next-auth/react";
 import HomeUserMenu from "@/components/home-user-menu";
+import CourseFavoriteButton from "@/components/course-favorite-button";
 import {
   SunIcon,
   MoonIcon,
@@ -122,6 +123,7 @@ export default function HomePage() {
   const [recentCourses, setRecentCourses] = useState<Course[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [recentError, setRecentError] = useState('');
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
 
   useEffect(() => {
@@ -233,6 +235,26 @@ export default function HomePage() {
     fetchRecent();
   }, [status]);
 
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (status !== 'authenticated') {
+        setFavoriteIds(new Set());
+        return;
+      }
+      try {
+        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok) {
+          setFavoriteIds(new Set((data.ids || []) as string[]));
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadFavorites();
+  }, [status]);
+
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
@@ -260,6 +282,15 @@ export default function HomePage() {
     } catch {
       // best-effort tracking
     }
+  };
+
+  const updateFavorite = (courseId: string, next: boolean) => {
+    setFavoriteIds((prev) => {
+      const nextSet = new Set(prev);
+      if (next) nextSet.add(courseId);
+      else nextSet.delete(courseId);
+      return nextSet;
+    });
   };
 
   const navItems = isArabic ? navItemsAr : navItemsEn;
@@ -538,11 +569,17 @@ export default function HomePage() {
                         key={`enrolled-${course.id}`}
                         className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                       >
-                        <div className="h-40 overflow-hidden">
+                        <div className="relative h-40 overflow-hidden">
                           <img
                             src={course.image || '/default-course.jpg'}
                             alt={course.title}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          <CourseFavoriteButton
+                            courseId={course.id}
+                            initialFavorite={favoriteIds.has(course.id)}
+                            onChange={(next) => updateFavorite(course.id, next)}
+                            className="absolute top-3 right-3 h-8 w-8"
                           />
                         </div>
 
@@ -659,11 +696,17 @@ export default function HomePage() {
                         key={`recent-${course.id}`}
                         className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                       >
-                        <div className="h-40 overflow-hidden">
+                        <div className="relative h-40 overflow-hidden">
                           <img
                             src={course.image || '/default-course.jpg'}
                             alt={course.title}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          <CourseFavoriteButton
+                            courseId={course.id}
+                            initialFavorite={favoriteIds.has(course.id)}
+                            onChange={(next) => updateFavorite(course.id, next)}
+                            className="absolute top-3 right-3 h-8 w-8"
                           />
                         </div>
 
@@ -794,11 +837,17 @@ export default function HomePage() {
                       key={course.id}
                       className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                     >
-                    <div className="h-40 overflow-hidden">
+                    <div className="relative h-40 overflow-hidden">
                       <img
                         src={course.image || '/default-course.jpg'}
                         alt={course.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <CourseFavoriteButton
+                        courseId={course.id}
+                        initialFavorite={favoriteIds.has(course.id)}
+                        onChange={(next) => updateFavorite(course.id, next)}
+                        className="absolute top-3 right-3 h-8 w-8"
                       />
                     </div>
 
