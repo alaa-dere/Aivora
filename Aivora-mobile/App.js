@@ -1,11 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   Image,
   ImageBackground,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +20,12 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import RolePortalScreen from './RolePortalScreen';
+import {
+  apiFetch,
+  getActiveApiBaseUrl,
+  toImageSource,
+} from './src/services/api-client';
 
 const navItemsEn = [
   { name: 'Home', id: 'home' },
@@ -127,17 +136,29 @@ const sampleCourses = [
   },
 ];
 
-const API_BASE_URL = 'http://192.168.68.116:3000';
-
-function HomeScreen({ onLoginPress }) {
+function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
   const [isDark, setIsDark] = useState(false);
   const [language, setLanguage] = useState('en');
   const [courses, setCourses] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState('');
   const isArabic = language === 'ar';
   const navItems = isArabic ? navItemsAr : navItemsEn;
-  const testimonials = isArabic ? testimonialsAr : testimonialsEn;
+  const testimonials =
+    feedbacks.length > 0
+      ? feedbacks.map((item) => ({
+          name: item.name,
+          role: item.role,
+          content: item.content,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            item.name || 'Student'
+          )}&background=2563eb&color=fff`,
+          rating: Number(item.rating || 0),
+        }))
+      : isArabic
+      ? testimonialsAr
+      : testimonialsEn;
   const scrollRef = useRef(null);
   const sectionRefs = useRef({});
 
@@ -146,17 +167,19 @@ function HomeScreen({ onLoginPress }) {
       try {
         setCoursesLoading(true);
         setCoursesError('');
-        const res = await fetch(`${API_BASE_URL}/api/home`, {
+        const res = await apiFetch('/api/home', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         });
         const data = await res.json();
         if (!res.ok || !data?.success) {
           throw new Error(data?.message || 'Failed to fetch courses');
         }
         setCourses(Array.isArray(data.data) ? data.data : []);
+        setFeedbacks(Array.isArray(data.feedbacks) ? data.feedbacks : []);
       } catch (error) {
-        setCoursesError('Failed to load courses');
+        setCoursesError(`Failed to load courses (${getActiveApiBaseUrl()})`);
       } finally {
         setCoursesLoading(false);
       }
@@ -164,6 +187,21 @@ function HomeScreen({ onLoginPress }) {
 
     fetchCourses();
   }, []);
+
+  const openExternal = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        throw new Error('unsupported url');
+      }
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert(
+        'Unable to open link',
+        'Please make sure the required app is installed on your phone.'
+      );
+    }
+  };
 
   const scrollTo = (id) => {
     const target = sectionRefs.current[id];
@@ -246,27 +284,90 @@ function HomeScreen({ onLoginPress }) {
                   {isArabic ? 'EN' : 'AR'}
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={onLoginPress}
-                style={[
-                  homeStyles.headerButton,
-                  isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
-                ]}
-              >
-                <Ionicons
-                  name="log-in-outline"
-                  size={18}
-                  color={isDark ? '#ffffff' : '#000000'}
-                />
-                <Text
+              {user ? (
+                <>
+                  <Pressable
+                    onPress={onWorkspacePress}
+                    style={[
+                      homeStyles.headerButton,
+                      isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
+                    ]}
+                  >
+                    <Ionicons
+                      name="grid-outline"
+                      size={18}
+                      color={isDark ? '#ffffff' : '#000000'}
+                    />
+                    <Text
+                      style={[
+                        homeStyles.headerButtonText,
+                        isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                      ]}
+                    >
+                      Workspace
+                    </Text>
+                  </Pressable>
+                  <View style={homeStyles.userChip}>
+                    <Ionicons
+                      name="person-circle-outline"
+                      size={18}
+                      color={isDark ? '#ffffff' : '#0b1e2d'}
+                    />
+                    <Text
+                      style={[
+                        homeStyles.userChipText,
+                        isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {user.fullName || user.email}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={onLogoutPress}
+                    style={[
+                      homeStyles.headerButton,
+                      isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
+                    ]}
+                  >
+                    <Ionicons
+                      name="log-out-outline"
+                      size={18}
+                      color={isDark ? '#ffffff' : '#000000'}
+                    />
+                    <Text
+                      style={[
+                        homeStyles.headerButtonText,
+                        isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                      ]}
+                    >
+                      Logout
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable
+                  onPress={onLoginPress}
                   style={[
-                    homeStyles.headerButtonText,
-                    isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                    homeStyles.headerButton,
+                    isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
                   ]}
                 >
-                  {isArabic ? 'دخول' : 'Login'}
-                </Text>
-              </Pressable>
+                  <Ionicons
+                    name="log-in-outline"
+                    size={18}
+                    color={isDark ? '#ffffff' : '#000000'}
+                  />
+                  <Text
+                    style={[
+                      homeStyles.headerButtonText,
+                      isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                    ]}
+                  >
+                    {isArabic ? 'Login' : 'Login'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
 
@@ -322,12 +423,18 @@ function HomeScreen({ onLoginPress }) {
                     : 'Aivora is a modern learning platform that helps students and professionals master AI, programming, and digital skills through practical courses and real projects.'}
                 </Text>
                 <View style={homeStyles.heroButtons}>
-                  <Pressable style={homeStyles.primaryBtn}>
+                  <Pressable
+                    style={homeStyles.primaryBtn}
+                    onPress={() => scrollTo('courses')}
+                  >
                     <Text style={homeStyles.primaryBtnText}>
                       {isArabic ? 'استكشف الدورات' : 'Explore Courses'}
                     </Text>
                   </Pressable>
-                  <Pressable style={homeStyles.secondaryBtn}>
+                  <Pressable
+                    style={homeStyles.secondaryBtn}
+                    onPress={() => scrollTo('about')}
+                  >
                     <Text style={homeStyles.secondaryBtnText}>
                       {isArabic ? 'تعرف أكثر' : 'Learn More'}
                     </Text>
@@ -386,7 +493,7 @@ function HomeScreen({ onLoginPress }) {
               </Text>
             ) : coursesError ? (
               <Text style={homeStyles.errorText}>
-                {isArabic ? 'فشل تحميل الدورات' : 'Failed to load courses'}
+                {isArabic ? 'فشل تحميل الدورات' : coursesError}
               </Text>
             ) : courses.length === 0 ? (
               <Text style={homeStyles.loadingText}>
@@ -403,11 +510,7 @@ function HomeScreen({ onLoginPress }) {
                     ]}
                   >
                     <Image
-                      source={
-                        course.image
-                          ? { uri: `${API_BASE_URL}${course.image}` }
-                          : require('./assets/p3.png')
-                      }
+                      source={toImageSource(course.image, require('./assets/p3.png'))}
                       style={homeStyles.courseImage}
                       resizeMode="cover"
                     />
@@ -462,7 +565,11 @@ function HomeScreen({ onLoginPress }) {
               >
                 <View style={homeStyles.testimonialHeader}>
                   <Image
-                    source={{ uri: t.avatar }}
+                    source={
+                      t.avatar
+                        ? { uri: t.avatar }
+                        : require('./assets/p3.png')
+                    }
                     style={homeStyles.testimonialAvatar}
                   />
                   <View>
@@ -471,6 +578,16 @@ function HomeScreen({ onLoginPress }) {
                   </View>
                 </View>
                 <Text style={homeStyles.testimonialText}>"{t.content}"</Text>
+                <View style={homeStyles.ratingRow}>
+                  {[...Array(5)].map((_, i) => (
+                    <Ionicons
+                      key={`${t.name}-star-${i}`}
+                      name={i < Math.floor(Number(t.rating || 0)) ? 'star' : 'star-outline'}
+                      size={14}
+                      color="#facc15"
+                    />
+                  ))}
+                </View>
               </View>
             ))}
           </View>
@@ -494,43 +611,43 @@ function HomeScreen({ onLoginPress }) {
               </Text>
             </Text>
             <View style={homeStyles.contactGrid}>
-              <View
+              <Pressable
                 style={[
                   homeStyles.contactCard,
                   isDark ? homeStyles.cardDark : homeStyles.cardLight,
                 ]}
+                onPress={() =>
+                  openExternal(
+                    'https://mail.google.com/mail/?view=cm&fs=1&to=alaadere35@gmail.com'
+                  )
+                }
               >
-                <Text style={homeStyles.contactTitle}>
-                  {isArabic ? 'البريد الإلكتروني' : 'Email'}
-                </Text>
-                <Text style={homeStyles.contactBody}>
-                  {isArabic
-                    ? 'راسلنا في أي وقت.'
-                    : 'Send us your questions anytime.'}
-                </Text>
-              </View>
-              <View
+                <Text style={homeStyles.contactTitle}>Email</Text>
+                <Text style={homeStyles.contactBody}>Send us your questions anytime.</Text>
+                <Text style={homeStyles.contactLink}>alaadere35@gmail.com</Text>
+              </Pressable>
+              <Pressable
                 style={[
                   homeStyles.contactCard,
                   isDark ? homeStyles.cardDark : homeStyles.cardLight,
                 ]}
+                onPress={() => openExternal('https://wa.me/972597889750')}
               >
-                <Text style={homeStyles.contactTitle}>
-                  {isArabic ? 'الهاتف' : 'Phone'}
-                </Text>
+                <Text style={homeStyles.contactTitle}>Phone</Text>
                 <Text style={homeStyles.contactBody}>+972 597 889 750</Text>
-              </View>
-              <View
+                <Text style={homeStyles.contactLink}>WhatsApp</Text>
+              </Pressable>
+              <Pressable
                 style={[
                   homeStyles.contactCard,
                   isDark ? homeStyles.cardDark : homeStyles.cardLight,
                 ]}
+                onPress={() => openExternal('https://www.instagram.com/aivora_gb/')}
               >
-                <Text style={homeStyles.contactTitle}>
-                  {isArabic ? 'إنستغرام' : 'Instagram'}
-                </Text>
+                <Text style={homeStyles.contactTitle}>Instagram</Text>
                 <Text style={homeStyles.contactBody}>@aivora_gb</Text>
-              </View>
+                <Text style={homeStyles.contactLink}>Open profile</Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>
@@ -541,19 +658,110 @@ function HomeScreen({ onLoginPress }) {
 
 export default function App() {
   const [screen, setScreen] = useState('home');
+  const [user, setUser] = useState(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      try {
+        const profileRes = await apiFetch('/api/profile/me', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+
+        if (!profileRes.ok) return;
+        const profileData = await profileRes.json();
+        const email = profileData?.user?.email;
+        if (!email) return;
+
+        const roleRes = await apiFetch(`/api/auth/check?email=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        const roleData = await roleRes.json();
+
+        if (!isMounted) return;
+        setUser({
+          ...profileData.user,
+          role: roleData?.role || 'student',
+        });
+        setScreen('portal');
+      } catch (error) {
+        // keep default home screen if session cannot be restored
+      } finally {
+        if (isMounted) setIsBootstrapping(false);
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await apiFetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.log('Logout request failed:', error);
+    } finally {
+      setUser(null);
+      setScreen('home');
+    }
+  };
+
+  if (isBootstrapping) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.bootstrapWrap}>
+            <ActivityIndicator size="large" color="#003153" />
+            <Text style={styles.bootstrapText}>Restoring your session...</Text>
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
       {screen === 'home' ? (
-        <HomeScreen onLoginPress={() => setScreen('auth')} />
+        <HomeScreen
+          user={user}
+          onLoginPress={() => setScreen('auth')}
+          onWorkspacePress={() => setScreen('portal')}
+          onLogoutPress={handleLogout}
+        />
+      ) : screen === 'portal' ? (
+        <RolePortalScreen
+          user={user}
+          onBackHome={() => setScreen('home')}
+          onLogout={handleLogout}
+          apiFetch={apiFetch}
+        />
       ) : (
-        <AuthScreen onBack={() => setScreen('home')} />
+        <AuthScreen
+          onBack={() => setScreen('home')}
+          onAuthSuccess={(nextUser) => {
+            setUser(nextUser);
+            setScreen('portal');
+          }}
+        />
       )}
     </SafeAreaProvider>
   );
 }
 
-function AuthScreen({ onBack }) {
+function AuthScreen({ onBack, onAuthSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -585,40 +793,141 @@ function AuthScreen({ onBack }) {
     [isLogin]
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setErr('');
     setSuccess('');
-    setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
 
-    setTimeout(() => {
-      if (!email.trim() || !password.trim()) {
-        setErr('Please enter your email and password.');
-        setLoading(false);
+    if (!normalizedEmail || !normalizedPassword) {
+      setErr('Please enter your email and password.');
+      return;
+    }
+    if (!isLogin && fullName.trim().length < 3) {
+      setErr('Please enter your full name.');
+      return;
+    }
+    if (!isLogin && normalizedPassword.length < 6) {
+      setErr('Password must be at least 6 characters.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      if (isLogin) {
+        const loginRes = await apiFetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password: normalizedPassword,
+          }),
+        });
+        const loginData = await loginRes.json();
+
+        if (!loginRes.ok || !loginData?.success || !loginData?.user) {
+          setErr(loginData?.message || 'Invalid email or password.');
+          return;
+        }
+
+        setSuccess('Login successful. Redirecting...');
+        onAuthSuccess?.(loginData.user);
         return;
       }
-      if (!isLogin && fullName.trim().length < 3) {
-        setErr('Please enter your full name.');
-        setLoading(false);
+
+      const registerRes = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: normalizedEmail,
+          password: normalizedPassword,
+        }),
+      });
+      const registerData = await registerRes.json();
+
+      if (!registerRes.ok) {
+        setErr(registerData?.message || 'Registration failed. Please try again.');
         return;
       }
 
-      setSuccess(isLogin ? 'Login successful (demo).' : 'Account created (demo).');
+      const loginAfterSignUpRes = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password: normalizedPassword,
+        }),
+      });
+      const loginAfterSignUpData = await loginAfterSignUpRes.json();
+
+      if (
+        !loginAfterSignUpRes.ok ||
+        !loginAfterSignUpData?.success ||
+        !loginAfterSignUpData?.user
+      ) {
+        setSuccess('Account created. Please sign in.');
+        setIsLogin(true);
+        return;
+      }
+
+      setSuccess('Account created successfully. Redirecting...');
+      onAuthSuccess?.(loginAfterSignUpData.user);
+    } catch (error) {
+      setErr('Unable to connect to server. Please try again.');
+    } finally {
       setLoading(false);
-    }, 700);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setErr('Enter your email first to reset password.');
+      return;
+    }
+
+    try {
+      setErr('');
+      setSuccess('');
+      setLoading(true);
+
+      const response = await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErr(data?.message || 'Failed to send reset link.');
+        return;
+      }
+
+      setSuccess(data?.message || 'Reset link sent to your email.');
+    } catch (error) {
+      setErr('Unable to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" />
-        <Pressable style={styles.backButton} onPress={onBack}>
-          <Ionicons name="chevron-back" size={18} color="#0b1e2d" />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="light" />
+      <Pressable style={styles.backButton} onPress={onBack}>
+        <Ionicons name="chevron-back" size={18} color="#0b1e2d" />
+        <Text style={styles.backText}>Back</Text>
+      </Pressable>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
           <View style={styles.backgroundWrap} pointerEvents="none">
             <Animated.View
               style={[
@@ -785,7 +1094,11 @@ function AuthScreen({ onBack }) {
               )}
 
               {isLogin ? (
-                <Pressable style={styles.forgotButton}>
+                <Pressable
+                  style={styles.forgotButton}
+                  onPress={handleForgotPassword}
+                  disabled={loading}
+                >
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </Pressable>
               ) : null}
@@ -808,10 +1121,16 @@ function AuthScreen({ onBack }) {
                 <View style={styles.dividerLine} />
               </View>
 
-              <Pressable style={styles.secondaryButton}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setErr('Google sign in is currently available on web app only.')}
+              >
                 <Text style={styles.secondaryButtonText}>Continue with Google</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => setErr('GitHub sign in is currently available on web app only.')}
+              >
                 <Text style={styles.secondaryButtonText}>Continue with GitHub</Text>
               </Pressable>
 
@@ -833,9 +1152,8 @@ function AuthScreen({ onBack }) {
               </View>
             </Animated.View>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </SafeAreaProvider>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -846,6 +1164,17 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  bootstrapWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  bootstrapText: {
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '600',
   },
   backgroundWrap: {
     position: 'absolute',
@@ -1145,6 +1474,22 @@ const homeStyles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+    maxWidth: '65%',
+  },
+  userChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 130,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  userChipText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   headerButton: {
     paddingHorizontal: 10,
@@ -1405,6 +1750,11 @@ const homeStyles = StyleSheet.create({
     color: '#d9e6f4',
     fontStyle: 'italic',
   },
+  ratingRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 8,
+  },
   contactGrid: {
     gap: 12,
   },
@@ -1419,5 +1769,11 @@ const homeStyles = StyleSheet.create({
   },
   contactBody: {
     color: '#d4e2f2',
+  },
+  contactLink: {
+    marginTop: 8,
+    color: '#bfdbfe',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
