@@ -9,6 +9,16 @@ interface Params {
 
 const validTypes = ['text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed'];
 
+function normalizeLessonContent(content: string | null) {
+  if (!content) return content;
+  return content
+    .replace(/\\`/g, '`')
+    .replace(
+      /```[ \t]*([a-zA-Z0-9_+-]+)[ \t]*\r?\n([\s\S]*?)```/g,
+      (_match, _lang, codeBody: string) => `\`\`\`${codeBody}\`\`\``
+    );
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   const authError = await requirePermission(req, 'course:edit');
   if (authError) return authError;
@@ -33,7 +43,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     if (body?.content !== undefined) {
       updates.push('content = ?');
-      values.push(body.content ? String(body.content) : null);
+      values.push(normalizeLessonContent(body.content ? String(body.content) : null));
     }
 
     if (body?.codeContent !== undefined) {

@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircl
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
+import LessonContentView from '@/components/lesson-content-view';
 
 type Lesson = {
   id: string;
@@ -410,47 +411,82 @@ export default function CourseContentPage() {
 
   const parseLessonContent = (content: string) => {
     const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
-    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}/gi;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
+    const tokenRegex = /```|\{\{\s*video\s*:|\{\{\s*starter\s*:/gi;
+    let cursor = 0;
 
-    while ((match = regex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    while (cursor < content.length) {
+      tokenRegex.lastIndex = cursor;
+      const match = tokenRegex.exec(content);
+      if (!match) {
+        segments.push({ type: 'text', value: content.slice(cursor) });
+        break;
       }
-      if (match[1] !== undefined) {
-        segments.push({ type: 'code', value: match[1].trim() });
-      } else if (match[2] !== undefined) {
-        segments.push({ type: 'video', value: match[2].trim() });
-      } else if (match[3] !== undefined) {
-        segments.push({ type: 'starter', value: match[3].trim() });
-      }
-      lastIndex = regex.lastIndex;
-    }
 
-    if (lastIndex < content.length) {
-      segments.push({ type: 'text', value: content.slice(lastIndex) });
+      const tokenStart = match.index;
+      const token = match[0];
+      if (tokenStart > cursor) {
+        segments.push({ type: 'text', value: content.slice(cursor, tokenStart) });
+      }
+
+      if (token === '```') {
+        const codeStart = tokenRegex.lastIndex;
+        const codeEnd = content.indexOf('```', codeStart);
+        if (codeEnd === -1) {
+          segments.push({ type: 'text', value: content.slice(tokenStart) });
+          break;
+        }
+
+        let codeValue = content.slice(codeStart, codeEnd);
+        const newLineMatch = codeValue.match(/\r?\n/);
+        if (newLineMatch && newLineMatch.index !== undefined) {
+          const firstLine = codeValue.slice(0, newLineMatch.index).trim();
+          if (/^[a-zA-Z0-9_+-]+$/.test(firstLine)) {
+            codeValue = codeValue.slice(newLineMatch.index + newLineMatch[0].length);
+          }
+        }
+
+        segments.push({ type: 'code', value: codeValue.trim() });
+        cursor = codeEnd + 3;
+        continue;
+      }
+
+      const valueStart = tokenRegex.lastIndex;
+      const valueEnd = content.indexOf('}}', valueStart);
+      if (valueEnd === -1) {
+        segments.push({ type: 'text', value: content.slice(tokenStart) });
+        break;
+      }
+
+      const value = content.slice(valueStart, valueEnd).trim();
+      if (token.toLowerCase().includes('video')) {
+        segments.push({ type: 'video', value });
+      } else {
+        segments.push({ type: 'starter', value });
+      }
+      cursor = valueEnd + 2;
     }
 
     return segments.filter((segment) => segment.value.trim() !== '');
   };
 
   const renderTextWithLinks = (text: string) => {
-    const parts: Array<{ type: 'text' | 'link'; value: string; href?: string }> = [];
-    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|\bhttps?:\/\/[^\s)]+/gi;
+    const parts: Array<{ type: 'text' | 'link' | 'code'; value: string; href?: string }> = [];
+    const tokenRegex = /`([^`\n]+)`|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s)]+)/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = tokenRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
       }
-      if (match[1] && match[2]) {
-        parts.push({ type: 'link', value: match[1], href: match[2] });
-      } else if (match[0]) {
-        parts.push({ type: 'link', value: match[0], href: match[0] });
+      if (match[1] !== undefined) {
+        parts.push({ type: 'code', value: match[1] });
+      } else if (match[2] && match[3]) {
+        parts.push({ type: 'link', value: match[2], href: match[3] });
+      } else if (match[4]) {
+        parts.push({ type: 'link', value: match[4], href: match[4] });
       }
-      lastIndex = linkRegex.lastIndex;
+      lastIndex = tokenRegex.lastIndex;
     }
 
     if (lastIndex < text.length) {
@@ -458,6 +494,16 @@ export default function CourseContentPage() {
     }
 
     return parts.map((part, idx) => {
+      if (part.type === 'code') {
+        return (
+          <code
+            key={`code-${idx}`}
+            className="rounded bg-gray-200 dark:bg-gray-700 px-1 py-0.5 text-[0.92em]"
+          >
+            {part.value}
+          </code>
+        );
+      }
       if (part.type === 'link' && part.href) {
         return (
           <a
@@ -1099,7 +1145,6 @@ export default function CourseContentPage() {
                   return <p className="text-sm text-slate-500 dark:text-slate-400">Select a lesson to preview.</p>;
                 }
                 const { lesson, module } = selected;
-                const segments = parseLessonContent(lesson.content || '');
                 return (
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -1119,58 +1164,12 @@ export default function CourseContentPage() {
                         </p>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      {segments.length === 0 && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No lesson content yet.</p>
-                      )}
-                      {segments.map((seg, idx) => {
-                        if (seg.type === 'code') {
-                          return (
-                            <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-                              <code>{seg.value}</code>
-                            </pre>
-                          );
-                        }
-                        if (seg.type === 'starter') {
-                          if (!lesson.enableLiveEditor) {
-                            return (
-                              <div key={idx} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-200">
-                                Starter code found, but Live Editor is disabled for this lesson.
-                              </div>
-                            );
-                          }
-                          if (lesson.liveEditorLanguage === 'javascript') {
-                            return <LiveJsEditor key={idx} initialCode={seg.value} />;
-                          }
-                          if (lesson.liveEditorLanguage === 'html_css') {
-                            return <LiveHtmlPreview key={idx} initialCode={seg.value} />;
-                          }
-                          return <LivePythonEditor key={idx} initialCode={seg.value} />;
-                        }
-                        if (seg.type === 'video') {
-                          const url = normalizeVideoUrl(seg.value);
-                          return (
-                            <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Embedded Video</p>
-                              <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/80">
-                                <iframe
-                                  src={url}
-                                  className="h-full w-full"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  title="Lesson video"
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div key={idx} className="space-y-1">
-                            {renderFormattedText(seg.value)}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <LessonContentView
+                      content={lesson.content || ''}
+                      enableLiveEditor={lesson.enableLiveEditor}
+                      liveEditorLanguage={lesson.liveEditorLanguage || 'python'}
+                      starterDisabledMessage="Starter code found, but Live Editor is disabled for this lesson."
+                    />
                   </div>
                 );
               })()}

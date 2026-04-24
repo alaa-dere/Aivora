@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
-import { 
+import {
   Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
   Sun, Moon, X, MessageSquare
 } from "lucide-react";
@@ -35,6 +35,11 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
+import {
+  API_ROUTES,
+  normalizeNotificationList,
+  normalizeStudentProfileResponse,
+} from '@aivora/shared';
 
 const navigation = [
   { name: 'Dashboard', href: '/student', icon: ChartBarIcon },
@@ -69,7 +74,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
  const handleLogout = async () => {
   try {
     await Promise.all([
-      fetch('/api/auth/logout', { method: 'POST' }),
+      fetch(API_ROUTES.auth.logout, { method: 'POST' }),
       signOut({ redirect: false }),
     ]);
     router.replace('/login');
@@ -83,14 +88,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     async function loadProfile() {
       try {
-        const res = await fetch('/api/student/profile', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.profile, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok && mounted) {
-          setProfile({
-            fullName: data?.student?.fullName || 'Student User',
-            email: data?.student?.email || 'student@aivora.com',
-            imageUrl: data?.student?.imageUrl || null,
-          });
+          setProfile(normalizeStudentProfileResponse(data));
         }
       } catch {
         if (mounted) {
@@ -112,7 +113,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     const loadMessageCount = async () => {
       try {
-        const res = await fetch('/api/student/chat/teachers?unreadCount=1', {
+        const res = await fetch(API_ROUTES.student.chatTeachersUnreadCount, {
           cache: 'no-store',
         });
         const data = await res.json();
@@ -135,7 +136,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     const loadNotificationCount = async () => {
       try {
-        const res = await fetch('/api/student/dashboard?notifications=count', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.dashboardNotificationsCount, { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok || !mounted) return;
         setNotificationCount(Number(data.total || 0));
@@ -157,17 +158,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   const loadNotifications = async () => {
     try {
-      const res = await fetch('/api/student/dashboard?notifications=1', { cache: 'no-store' });
+      const res = await fetch(API_ROUTES.student.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      const items = (data.notifications || []).map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        createdAt: n.createdAt,
-        read: Boolean(n.readAt),
-      }));
-      setNotificationItems(items);
+      setNotificationItems(normalizeNotificationList(data.notifications));
     } catch (error) {
       console.error('Failed to load student notifications', error);
     }

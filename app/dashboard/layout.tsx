@@ -31,6 +31,7 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
+import { API_ROUTES } from '@aivora/shared';
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -68,8 +69,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const loadCount = async () => {
       try {
         const [notifRes, msgRes] = await Promise.all([
-          fetch('/api/admin/notifications/count', { cache: 'no-store' }),
-          fetch('/api/admin/messages?unreadCount=1', { cache: 'no-store' }),
+          fetch(API_ROUTES.admin.notificationsCount, { cache: 'no-store' }),
+          fetch(API_ROUTES.admin.messagesUnreadCount, { cache: 'no-store' }),
         ]);
         const notifData = await notifRes.json();
         const msgData = await msgRes.json();
@@ -97,8 +98,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const loadNotifications = async () => {
     try {
       const [notifRes, msgRes] = await Promise.all([
-        fetch('/api/admin/notifications', { cache: 'no-store' }),
-        fetch('/api/admin/messages', { cache: 'no-store' }),
+        fetch(API_ROUTES.admin.notifications, { cache: 'no-store' }),
+        fetch(API_ROUTES.admin.messages, { cache: 'no-store' }),
       ]);
       const notifData = await notifRes.json();
       const msgData = await msgRes.json();
@@ -132,7 +133,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleLogout = async () => {
     try {
       await Promise.all([
-        fetch('/api/auth/logout', { method: 'POST' }),
+        fetch(API_ROUTES.auth.logout, { method: 'POST' }),
         signOut({ redirect: false }),
       ]);
       router.replace('/login');

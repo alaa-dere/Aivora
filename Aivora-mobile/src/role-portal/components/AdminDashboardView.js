@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { portalStyles } from '../styles';
 import RevenueAreaChart from './RevenueAreaChart';
 
@@ -22,7 +22,7 @@ const formatDateTime = (value) => {
   return parsed.toLocaleString();
 };
 
-export default function AdminDashboardView({ apiFetch }) {
+export default function AdminDashboardView({ apiFetch, theme }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({
@@ -104,15 +104,19 @@ export default function AdminDashboardView({ apiFetch }) {
     [trend]
   );
 
+  const uiTheme = theme || {
+    cardBg: '#ffffff',
+    cardBorder: '#e2e8f0',
+    textPrimary: '#0f172a',
+    textMuted: '#64748b',
+  };
+
   return (
     <View style={portalStyles.adminWrap}>
       <View style={portalStyles.adminHeaderRow}>
-        <Text style={portalStyles.adminHeaderTitle}>Admin Dashboard</Text>
-        <Pressable style={portalStyles.adminRefreshBtn} onPress={loadDashboard} disabled={loading}>
-          <Text style={portalStyles.adminRefreshText}>{loading ? 'Loading...' : 'Refresh'}</Text>
-        </Pressable>
+        <Text style={[portalStyles.adminHeaderTitle, { color: uiTheme.textPrimary }]}>Admin Dashboard</Text>
       </View>
-      <Text style={portalStyles.adminSubTitle}>
+      <Text style={[portalStyles.adminSubTitle, { color: uiTheme.textMuted }]}>
         Overview of key metrics, revenue, and recent activity.
       </Text>
 
@@ -122,26 +126,26 @@ export default function AdminDashboardView({ apiFetch }) {
       {!loading ? (
         <>
           <View style={portalStyles.statsGrid}>
-            <View style={portalStyles.statCard}>
-              <Text style={portalStyles.statValue}>{stats.totalStudents.toLocaleString()}</Text>
-              <Text style={portalStyles.statLabel}>Total Students</Text>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.totalStudents.toLocaleString()}</Text>
+              <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Total Students</Text>
             </View>
-            <View style={portalStyles.statCard}>
-              <Text style={portalStyles.statValue}>{stats.totalTeachers.toLocaleString()}</Text>
-              <Text style={portalStyles.statLabel}>Total Teachers</Text>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.totalTeachers.toLocaleString()}</Text>
+              <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Total Teachers</Text>
             </View>
-            <View style={portalStyles.statCard}>
-              <Text style={portalStyles.statValue}>{stats.activeCourses.toLocaleString()}</Text>
-              <Text style={portalStyles.statLabel}>Active Courses</Text>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.activeCourses.toLocaleString()}</Text>
+              <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Active Courses</Text>
             </View>
-            <View style={portalStyles.statCard}>
-              <Text style={portalStyles.statValue}>{formatMoney(stats.monthlyRevenue)}</Text>
-              <Text style={portalStyles.statLabel}>Monthly Revenue</Text>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{formatMoney(stats.monthlyRevenue)}</Text>
+              <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Monthly Revenue</Text>
             </View>
           </View>
 
-          <View style={portalStyles.adminSection}>
-            <Text style={portalStyles.adminSectionTitle}>Revenue Trend (Last 12 weeks)</Text>
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Revenue Trend (Last 12 weeks)</Text>
             {trend.length === 0 ? (
               <Text style={portalStyles.empty}>No revenue trend data.</Text>
             ) : (
@@ -155,8 +159,8 @@ export default function AdminDashboardView({ apiFetch }) {
             )}
           </View>
 
-          <View style={portalStyles.adminSection}>
-            <Text style={portalStyles.adminSectionTitle}>AI Insights</Text>
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>AI Insights</Text>
             {aiInsights.map((insight) => (
               <View key={insight.title} style={portalStyles.insightRow}>
                 <Text style={portalStyles.insightTitle}>{insight.title}</Text>
@@ -165,8 +169,8 @@ export default function AdminDashboardView({ apiFetch }) {
             ))}
           </View>
 
-          <View style={portalStyles.adminSection}>
-            <Text style={portalStyles.adminSectionTitle}>Recent Transactions</Text>
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Recent Transactions</Text>
             {transactions.length === 0 ? (
               <Text style={portalStyles.empty}>No transactions yet.</Text>
             ) : (
@@ -187,8 +191,8 @@ export default function AdminDashboardView({ apiFetch }) {
             )}
           </View>
 
-          <View style={portalStyles.adminSection}>
-            <Text style={portalStyles.adminSectionTitle}>Recent Activity</Text>
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Recent Activity</Text>
             {activities.length === 0 ? (
               <Text style={portalStyles.empty}>No recent activity.</Text>
             ) : (

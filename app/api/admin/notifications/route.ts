@@ -81,3 +81,21 @@ export async function GET(req: Request) {
     );
   }
 }
+
+export async function PATCH(req: Request) {
+  const role = await getRequestRole(req);
+  if (role !== 'admin') {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await pool.query(`UPDATE admin_notification SET readAt = NOW() WHERE readAt IS NULL`);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Admin notifications mark-all error:', error);
+    return NextResponse.json(
+      { message: 'Failed to mark all notifications as read', error: error.message },
+      { status: 500 }
+    );
+  }
+}

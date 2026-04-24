@@ -305,16 +305,6 @@ export async function GET(req: Request) {
 
     if (notifications) {
       if (notifications === 'count') {
-        const [countRows] = await pool.query<RowDataPacket[]>(
-          `
-          SELECT COUNT(*) AS total
-          FROM enrollment e
-          JOIN course c ON c.id = e.courseId
-          WHERE c.teacherId = ?
-            AND e.enrolledAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-          `,
-          [teacherId]
-        );
         const [messageRows] = await pool.query<RowDataPacket[]>(
           `
           SELECT COUNT(*) AS total
@@ -344,17 +334,16 @@ export async function GET(req: Request) {
           SELECT COUNT(*) AS total
           FROM teacher_notification
           WHERE teacherId = ?
-            AND createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            AND readAt IS NULL
           `,
           [teacherId]
         );
 
-        const enrollmentCount = Number(countRows[0]?.total || 0);
         const messageCount = Number(messageRows[0]?.total || 0);
         const studentMessageCount = Number(studentMessageRows[0]?.total || 0);
         const quizNotifCount = Number(quizNotifRows[0]?.total || 0);
         return NextResponse.json({
-          total: enrollmentCount + messageCount + studentMessageCount + quizNotifCount,
+          total: messageCount + studentMessageCount + quizNotifCount,
         });
       }
 
@@ -421,9 +410,11 @@ export async function GET(req: Request) {
         `
         SELECT
           tn.id,
+          tn.type,
           tn.title,
           tn.message,
           tn.createdAt,
+          tn.readAt,
           cert.id AS certificateId
         FROM teacher_notification tn
         LEFT JOIN certificate cert
@@ -442,7 +433,7 @@ export async function GET(req: Request) {
         title: 'New enrollment',
         message: `${row.studentName} enrolled in ${row.courseTitle}`,
         createdAt: row.enrolledAt,
-        read: false,
+        read: true,
       }));
 
       const messageItems = adminMessageRows.map((row) => ({
@@ -464,11 +455,11 @@ export async function GET(req: Request) {
       }));
       const quizItems = quizNotifRows.map((row) => ({
         id: row.id,
-        type: 'course_enroll',
+        type: 'teacher_notification',
         title: row.title || 'Quiz update',
         message: row.message || '',
         createdAt: row.createdAt,
-        read: false,
+        read: Boolean(row.readAt),
         certificateId: row.certificateId || null,
       }));
 
@@ -777,10 +768,103 @@ export async function POST(req: Request) {
   }
 
   try {
+    await ensureAdminTeacherDeleteColumns();
+    await ensureChatDeleteColumns();
     await ensureLiveSessionTables();
+    await ensureTeacherNotificationTable();
     const teacherId = user.id;
     const body = await req.json();
     const action = String(body?.action || '');
+
+    if (action === 'mark_notification_read') {
+      const id = String(body?.id || '').trim();
+      const notificationType = String(body?.type || '').trim();
+      if (!id) {
+        return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
+      }
+
+      if (notificationType === 'admin_message') {
+        await pool.query(
+          `
+          UPDATE admin_teacher_message m
+          JOIN admin_teacher_thread t ON t.id = m.threadId
+          SET m.readAt = NOW()
+          WHERE m.id = ?
+            AND t.teacherId = ?
+            AND m.senderRole = 'admin'
+            AND m.readAt IS NULL
+          `,
+          [id, teacherId]
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      if (notificationType === 'student_message') {
+        await pool.query(
+          `
+          UPDATE chat_message m
+          JOIN chat_conversation c ON c.id = m.conversationId
+          SET m.readAt = NOW()
+          WHERE m.id = ?
+            AND c.teacherId = ?
+            AND m.senderRole = 'student'
+            AND m.readAt IS NULL
+          `,
+          [id, teacherId]
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      await pool.query(
+        `
+        UPDATE teacher_notification
+        SET readAt = NOW()
+        WHERE id = ?
+          AND teacherId = ?
+          AND readAt IS NULL
+        `,
+        [id, teacherId]
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'mark_all_notifications_read') {
+      await pool.query(
+        `
+        UPDATE admin_teacher_message m
+        JOIN admin_teacher_thread t ON t.id = m.threadId
+        SET m.readAt = NOW()
+        WHERE t.teacherId = ?
+          AND m.senderRole = 'admin'
+          AND m.readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      await pool.query(
+        `
+        UPDATE chat_message m
+        JOIN chat_conversation c ON c.id = m.conversationId
+        SET m.readAt = NOW()
+        WHERE c.teacherId = ?
+          AND m.senderRole = 'student'
+          AND m.readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      await pool.query(
+        `
+        UPDATE teacher_notification
+        SET readAt = NOW()
+        WHERE teacherId = ?
+          AND readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      return NextResponse.json({ success: true });
+    }
 
     const formatDate = (date: Date) => date.toISOString().slice(0, 10);
     const addDays = (dateStr: string, days: number) => {

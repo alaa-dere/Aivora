@@ -5,6 +5,12 @@ import { useTheme } from 'next-themes';
 import { FaInstagram } from "react-icons/fa";
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from "next-auth/react";
+import {
+  API_ROUTES,
+  normalizeCourseList,
+  normalizeFeedbackList,
+  toTestimonialRecord,
+} from "@aivora/shared";
 import HomeUserMenu from "@/components/home-user-menu";
 import CourseFavoriteButton from "@/components/course-favorite-button";
 import {
@@ -160,7 +166,7 @@ export default function HomePage() {
         setCoursesLoading(true);
         setCoursesError('');
 
-        const res = await fetch('/api/home', {
+        const res = await fetch(API_ROUTES.home, {
           method: 'GET',
           cache: 'no-store',
         });
@@ -171,9 +177,9 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to fetch courses');
         }
 
-        setCourses(data.data || []);
-        setFeedbacks(Array.isArray(data.feedbacks) ? data.feedbacks : []);
-        setEnrolledCourses(Array.isArray(data.enrolledCourses) ? data.enrolledCourses : []);
+        setCourses(normalizeCourseList(data.data));
+        setFeedbacks(normalizeFeedbackList(data.feedbacks));
+        setEnrolledCourses(normalizeCourseList(data.enrolledCourses));
       } catch (error) {
         console.error('Failed to load courses:', error);
         setCoursesError('Failed to load courses');
@@ -193,7 +199,7 @@ export default function HomePage() {
         setRecentLoading(true);
         setRecentError('');
 
-        const res = await fetch('/api/recent-courses', {
+        const res = await fetch(API_ROUTES.recentCourses, {
           method: 'GET',
           cache: 'no-store',
         });
@@ -203,27 +209,7 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to load recent courses');
         }
 
-        const normalized = Array.isArray(data.courses)
-          ? data.courses.map((course: any) => ({
-              id: course.id,
-              title: course.title,
-              description: course.description,
-              price: Number(course.price || 0),
-              image: course.imageUrl || course.image || '/default-course.jpg',
-              imageUrl: course.imageUrl || course.image || '/default-course.jpg',
-              instructor: course.instructor,
-              duration: `${Number(course.durationWeeks || 0)} Weeks`,
-              students: String(Number(course.students || 0)),
-              enrolled: Boolean(course.enrolled),
-              averageRating:
-                course.averageRating === null || course.averageRating === undefined
-                  ? 0
-                  : Number(course.averageRating),
-              evaluationCount: Number(course.evaluationCount || 0),
-            }))
-          : [];
-
-        setRecentCourses(normalized);
+        setRecentCourses(normalizeCourseList(data.courses));
       } catch (error) {
         console.error('Failed to load recent courses:', error);
         setRecentError('Failed to load recent courses');
@@ -242,7 +228,7 @@ export default function HomePage() {
         return;
       }
       try {
-        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.favoriteIds, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok) {
           setFavoriteIds(new Set((data.ids || []) as string[]));
@@ -273,7 +259,7 @@ export default function HomePage() {
   const trackCourseView = (courseId: string) => {
     if (status !== 'authenticated') return;
     try {
-      fetch('/api/recent-courses', {
+      fetch(API_ROUTES.recentCourses, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
@@ -296,13 +282,7 @@ export default function HomePage() {
   const navItems = isArabic ? navItemsAr : navItemsEn;
   const testimonials =
     feedbacks.length > 0
-      ? feedbacks.map((item) => ({
-          name: item.name,
-          role: item.role,
-          content: item.content,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=2563eb&color=fff`,
-          rating: Number(item.rating || 0),
-        }))
+      ? feedbacks.map((item) => toTestimonialRecord(item))
       : isArabic
         ? testimonialsAr
         : testimonialsEn;

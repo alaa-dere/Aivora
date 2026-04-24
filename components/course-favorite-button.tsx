@@ -4,6 +4,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartOutlineIcon } from '@heroicons/react/24/outline';
+import { API_ROUTES } from '@aivora/shared';
 
 type CourseFavoriteButtonProps = {
   courseId: string;
@@ -34,7 +35,7 @@ export default function CourseFavoriteButton({
     setPending(true);
 
     try {
-      const res = await fetch('/api/student/favorites', {
+      const res = await fetch(API_ROUTES.student.favorites, {
         method: favorite ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),

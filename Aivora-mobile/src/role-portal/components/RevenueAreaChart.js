@@ -5,12 +5,50 @@ import { portalStyles } from '../styles';
 const CHART_HEIGHT = 220;
 const PADDING = { top: 16, right: 12, bottom: 34, left: 8 };
 
+const interpolateCatmullRom = (p0, p1, p2, p3, t) => {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const x =
+    0.5 *
+    (2 * p1.x +
+      (-p0.x + p2.x) * t +
+      (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+      (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+  const y =
+    0.5 *
+    (2 * p1.y +
+      (-p0.y + p2.y) * t +
+      (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+      (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+  return { x, y };
+};
+
+const buildSmoothLinePoints = (points) => {
+  if (points.length <= 2) return points;
+
+  const smooth = [];
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const steps = 18;
+
+    for (let s = 0; s <= steps; s += 1) {
+      const t = s / steps;
+      smooth.push(interpolateCatmullRom(p0, p1, p2, p3, t));
+    }
+  }
+
+  return smooth;
+};
+
 export default function RevenueAreaChart({ trend = [] }) {
   const [width, setWidth] = useState(0);
 
-  const { points, xLabels, yTicks, baseY, linePoints } = useMemo(() => {
+  const { points, xLabels, yTicks, baseY, linePoints, lineSegments } = useMemo(() => {
     if (!width || trend.length === 0) {
-      return { points: [], xLabels: [], yTicks: [], baseY: 0, linePoints: [] };
+      return { points: [], xLabels: [], yTicks: [], baseY: 0, linePoints: [], lineSegments: [] };
     }
 
     const chartWidth = Math.max(1, width - PADDING.left - PADDING.right);
@@ -34,18 +72,21 @@ export default function RevenueAreaChart({ trend = [] }) {
       return { y };
     });
 
-    const interpolatedLinePoints = [];
-    for (let i = 0; i < computedPoints.length - 1; i += 1) {
-      const start = computedPoints[i];
-      const end = computedPoints[i + 1];
-      const steps = 16;
-      for (let s = 0; s <= steps; s += 1) {
-        const t = s / steps;
-        interpolatedLinePoints.push({
-          x: start.x + (end.x - start.x) * t,
-          y: start.y + (end.y - start.y) * t,
-        });
-      }
+    const interpolatedLinePoints = buildSmoothLinePoints(computedPoints);
+    const interpolatedLineSegments = [];
+    for (let i = 0; i < interpolatedLinePoints.length - 1; i += 1) {
+      const start = interpolatedLinePoints[i];
+      const end = interpolatedLinePoints[i + 1];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length <= 0.01) continue;
+      interpolatedLineSegments.push({
+        x: (start.x + end.x) / 2,
+        y: (start.y + end.y) / 2,
+        length: length + 0.6,
+        angle: Math.atan2(dy, dx),
+      });
     }
 
     return {
@@ -54,6 +95,7 @@ export default function RevenueAreaChart({ trend = [] }) {
       yTicks: ticks,
       baseY: PADDING.top + chartHeight,
       linePoints: interpolatedLinePoints,
+      lineSegments: interpolatedLineSegments,
     };
   }, [trend, width]);
 
@@ -86,14 +128,16 @@ export default function RevenueAreaChart({ trend = [] }) {
           />
         ))}
 
-        {linePoints.map((point, idx) => (
+        {lineSegments.map((segment, idx) => (
           <View
-            key={`line-point-${idx}`}
+            key={`line-segment-${idx}`}
             style={[
-              portalStyles.linePoint,
+              portalStyles.chartLineSegment,
               {
-                left: point.x - 1.5,
-                top: point.y - 1.5,
+                width: segment.length,
+                left: segment.x - segment.length / 2,
+                top: segment.y - 1,
+                transform: [{ rotateZ: `${segment.angle}rad` }],
               },
             ]}
           />

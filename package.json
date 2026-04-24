@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aivora/shared": "file:packages/shared",
     "@heroicons/react": "^2.2.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",

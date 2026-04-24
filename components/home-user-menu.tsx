@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { API_ROUTES, normalizeSessionProfileResponse } from "@aivora/shared";
 
 const roleRoute: Record<string, string> = {
   admin: "/dashboard",
@@ -13,31 +14,26 @@ const roleRoute: Record<string, string> = {
 export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
-
-  if (status !== "authenticated") return null;
-
-  const name = session.user?.name || session.user?.email || "User";
+  const name = session?.user?.name || session?.user?.email || "User";
   const initial = name.trim().charAt(0).toUpperCase();
   const sessionImageUrl =
-    (session.user as { image?: string; imageUrl?: string | null } | undefined)?.image ||
-    (session.user as { imageUrl?: string | null } | undefined)?.imageUrl ||
+    (session?.user as { image?: string; imageUrl?: string | null } | undefined)?.image ||
+    (session?.user as { imageUrl?: string | null } | undefined)?.imageUrl ||
     null;
-  const [imageUrl, setImageUrl] = useState<string | null>(sessionImageUrl);
-  const role = session.user?.role?.toLowerCase() || "student";
+  const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
+  const role = session?.user?.role?.toLowerCase() || "student";
   const dashboard = roleRoute[role] || "/student";
+  const imageUrl = sessionImageUrl || fetchedImageUrl;
 
   useEffect(() => {
     let mounted = true;
-    if (sessionImageUrl) {
-      setImageUrl(sessionImageUrl);
-      return;
-    }
+    if (sessionImageUrl) return;
     const loadProfile = async () => {
       try {
-        const res = await fetch('/api/profile/me', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.profileMe, { cache: 'no-store' });
         const data = await res.json();
         if (mounted && res.ok) {
-          setImageUrl(data?.user?.imageUrl || null);
+          setFetchedImageUrl(normalizeSessionProfileResponse(data).imageUrl);
         }
       } catch {
         // ignore
@@ -48,6 +44,8 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
       mounted = false;
     };
   }, [sessionImageUrl]);
+
+  if (status !== "authenticated") return null;
 
   return (
     <div className="relative">
@@ -61,7 +59,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               src={imageUrl}
               alt="Profile"
               className="h-full w-full object-cover"
-              onError={() => setImageUrl(null)}
+              onError={() => setFetchedImageUrl(null)}
             />
           ) : (
             initial

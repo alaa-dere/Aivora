@@ -2,9 +2,34 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { OkPacket, RowDataPacket } from 'mysql2';
 import { requirePermission } from '@/lib/request-auth';
+import { ensureLearningPathSchema } from '@/lib/ensure-learning-path-schema';
 
 export async function GET() {
   try {
+    await ensureLearningPathSchema();
+
+    const [tableRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'learning_path'
+      LIMIT 1
+      `
+    );
+    const hasLearningPathTable = tableRows.length > 0;
+    const [courseCategoryColumnRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'course'
+        AND COLUMN_NAME = 'categoryId'
+      LIMIT 1
+      `
+    );
+    const hasCourseCategoryColumn = courseCategoryColumnRows.length > 0;
+
     const [rows] = await pool.query<RowDataPacket[]>(
       `
       SELECT
@@ -13,16 +38,16 @@ export async function GET() {
         c.description,
         c.status,
         DATE_FORMAT(c.createdAt, '%Y-%m-%d') AS createdAt,
-        (
+        ${hasCourseCategoryColumn ? `(
           SELECT COUNT(*)
           FROM course crs
           WHERE crs.categoryId = c.id
-        ) AS coursesCount,
-        (
+        )` : '0'} AS coursesCount,
+        ${hasLearningPathTable ? `(
           SELECT COUNT(*)
           FROM learning_path lp
           WHERE lp.categoryId = c.id
-        ) AS pathsCount
+        )` : '0'} AS pathsCount
       FROM category c
       ORDER BY c.createdAt DESC
       `
@@ -56,6 +81,8 @@ export async function POST(req: Request) {
   if (authError) return authError;
 
   try {
+    await ensureLearningPathSchema();
+
     const body = await req.json().catch(() => ({}));
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     const description =

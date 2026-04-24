@@ -20,6 +20,18 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  API_ROUTES,
+  buildLoginPayload,
+  buildRegisterPayload,
+  isValidEmail,
+  normalizeCourseList,
+  normalizeFeedbackList,
+  normalizeEmail,
+  normalizeSessionProfileResponse,
+  toTestimonialRecord,
+  validateAuthInput,
+} from '@aivora/shared';
 import RolePortalScreen from './RolePortalScreen';
 import {
   apiFetch,
@@ -136,8 +148,14 @@ const sampleCourses = [
   },
 ];
 
-function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
-  const [isDark, setIsDark] = useState(false);
+function HomeScreen({
+  onLoginPress,
+  onLogoutPress,
+  onWorkspacePress,
+  user,
+  isDark,
+  onToggleTheme,
+}) {
   const [language, setLanguage] = useState('en');
   const [courses, setCourses] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -147,15 +165,7 @@ function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
   const navItems = isArabic ? navItemsAr : navItemsEn;
   const testimonials =
     feedbacks.length > 0
-      ? feedbacks.map((item) => ({
-          name: item.name,
-          role: item.role,
-          content: item.content,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-            item.name || 'Student'
-          )}&background=2563eb&color=fff`,
-          rating: Number(item.rating || 0),
-        }))
+      ? feedbacks.map((item) => toTestimonialRecord(item))
       : isArabic
       ? testimonialsAr
       : testimonialsEn;
@@ -167,7 +177,7 @@ function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
       try {
         setCoursesLoading(true);
         setCoursesError('');
-        const res = await apiFetch('/api/home', {
+        const res = await apiFetch(API_ROUTES.home, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -176,8 +186,8 @@ function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
         if (!res.ok || !data?.success) {
           throw new Error(data?.message || 'Failed to fetch courses');
         }
-        setCourses(Array.isArray(data.data) ? data.data : []);
-        setFeedbacks(Array.isArray(data.feedbacks) ? data.feedbacks : []);
+        setCourses(normalizeCourseList(data.data));
+        setFeedbacks(normalizeFeedbackList(data.feedbacks));
       } catch (error) {
         setCoursesError(`Failed to load courses (${getActiveApiBaseUrl()})`);
       } finally {
@@ -253,7 +263,7 @@ function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
             />
             <View style={homeStyles.headerActions}>
               <Pressable
-                onPress={() => setIsDark((prev) => !prev)}
+                onPress={onToggleTheme}
                 style={[
                   homeStyles.headerButton,
                   isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
@@ -346,27 +356,29 @@ function HomeScreen({ onLoginPress, onLogoutPress, onWorkspacePress, user }) {
                   </Pressable>
                 </>
               ) : (
-                <Pressable
-                  onPress={onLoginPress}
-                  style={[
-                    homeStyles.headerButton,
-                    isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
-                  ]}
-                >
-                  <Ionicons
-                    name="log-in-outline"
-                    size={18}
-                    color={isDark ? '#ffffff' : '#000000'}
-                  />
-                  <Text
+                <>
+                  <Pressable
+                    onPress={onLoginPress}
                     style={[
-                      homeStyles.headerButtonText,
-                      isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                      homeStyles.headerButton,
+                      isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
                     ]}
                   >
-                    {isArabic ? 'Login' : 'Login'}
-                  </Text>
-                </Pressable>
+                    <Ionicons
+                      name="log-in-outline"
+                      size={18}
+                      color={isDark ? '#ffffff' : '#000000'}
+                    />
+                    <Text
+                      style={[
+                        homeStyles.headerButtonText,
+                        isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
+                      ]}
+                    >
+                      {isArabic ? 'Login' : 'Login'}
+                    </Text>
+                  </Pressable>
+                </>
               )}
             </View>
           </View>
@@ -660,13 +672,19 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [user, setUser] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [themeMode, setThemeMode] = useState('light');
+  const isDark = themeMode === 'dark';
+
+  const toggleThemeMode = () => {
+    setThemeMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   useEffect(() => {
     let isMounted = true;
 
     const restoreSession = async () => {
       try {
-        const profileRes = await apiFetch('/api/profile/me', {
+        const profileRes = await apiFetch(API_ROUTES.profileMe, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -677,7 +695,7 @@ export default function App() {
         const email = profileData?.user?.email;
         if (!email) return;
 
-        const roleRes = await apiFetch(`/api/auth/check?email=${encodeURIComponent(email)}`, {
+        const roleRes = await apiFetch(API_ROUTES.auth.checkByEmail(email), {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -686,7 +704,7 @@ export default function App() {
 
         if (!isMounted) return;
         setUser({
-          ...profileData.user,
+          ...normalizeSessionProfileResponse(profileData),
           role: roleData?.role || 'student',
         });
         setScreen('portal');
@@ -706,7 +724,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await apiFetch('/api/auth/logout', {
+      await apiFetch(API_ROUTES.auth.logout, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -737,6 +755,8 @@ export default function App() {
       {screen === 'home' ? (
         <HomeScreen
           user={user}
+          isDark={isDark}
+          onToggleTheme={toggleThemeMode}
           onLoginPress={() => setScreen('auth')}
           onWorkspacePress={() => setScreen('portal')}
           onLogoutPress={handleLogout}
@@ -744,6 +764,8 @@ export default function App() {
       ) : screen === 'portal' ? (
         <RolePortalScreen
           user={user}
+          themeMode={themeMode}
+          onToggleTheme={toggleThemeMode}
           onBackHome={() => setScreen('home')}
           onLogout={handleLogout}
           apiFetch={apiFetch}
@@ -796,19 +818,17 @@ function AuthScreen({ onBack, onAuthSuccess }) {
   const handleSubmit = async () => {
     setErr('');
     setSuccess('');
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPassword = password.trim();
 
-    if (!normalizedEmail || !normalizedPassword) {
-      setErr('Please enter your email and password.');
-      return;
-    }
-    if (!isLogin && fullName.trim().length < 3) {
-      setErr('Please enter your full name.');
-      return;
-    }
-    if (!isLogin && normalizedPassword.length < 6) {
-      setErr('Password must be at least 6 characters.');
+    const inputValidation = validateAuthInput({
+      email,
+      password,
+      fullName,
+      requireFullName: !isLogin,
+    });
+    const { normalizedEmail, normalizedPassword } = inputValidation.values;
+
+    if (!inputValidation.ok) {
+      setErr(inputValidation.message);
       return;
     }
 
@@ -816,14 +836,16 @@ function AuthScreen({ onBack, onAuthSuccess }) {
       setLoading(true);
 
       if (isLogin) {
-        const loginRes = await apiFetch('/api/auth/login', {
+        const loginRes = await apiFetch(API_ROUTES.auth.login, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            email: normalizedEmail,
-            password: normalizedPassword,
-          }),
+          body: JSON.stringify(
+            buildLoginPayload({
+              email: normalizedEmail,
+              password: normalizedPassword,
+            })
+          ),
         });
         const loginData = await loginRes.json();
 
@@ -837,15 +859,17 @@ function AuthScreen({ onBack, onAuthSuccess }) {
         return;
       }
 
-      const registerRes = await apiFetch('/api/auth/register', {
+      const registerRes = await apiFetch(API_ROUTES.auth.register, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: normalizedEmail,
-          password: normalizedPassword,
-        }),
+        body: JSON.stringify(
+          buildRegisterPayload({
+            fullName,
+            email: normalizedEmail,
+            password: normalizedPassword,
+          })
+        ),
       });
       const registerData = await registerRes.json();
 
@@ -854,14 +878,16 @@ function AuthScreen({ onBack, onAuthSuccess }) {
         return;
       }
 
-      const loginAfterSignUpRes = await apiFetch('/api/auth/login', {
+      const loginAfterSignUpRes = await apiFetch(API_ROUTES.auth.login, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password: normalizedPassword,
-        }),
+        body: JSON.stringify(
+          buildLoginPayload({
+            email: normalizedEmail,
+            password: normalizedPassword,
+          })
+        ),
       });
       const loginAfterSignUpData = await loginAfterSignUpRes.json();
 
@@ -885,9 +911,13 @@ function AuthScreen({ onBack, onAuthSuccess }) {
   };
 
   const handleForgotPassword = async () => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
       setErr('Enter your email first to reset password.');
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      setErr('Please enter a valid email address.');
       return;
     }
 
@@ -896,7 +926,7 @@ function AuthScreen({ onBack, onAuthSuccess }) {
       setSuccess('');
       setLoading(true);
 
-      const response = await apiFetch('/api/auth/forgot-password', {
+      const response = await apiFetch(API_ROUTES.auth.forgotPassword, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

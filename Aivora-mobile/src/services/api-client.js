@@ -1,21 +1,8 @@
+import { buildHostCandidateUrl, extractHost, normalizeBaseUrl } from '@aivora/shared';
+
 const EXPLICIT_ENV_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || '';
 let manualApiBaseUrl = '';
 let activeApiBaseUrl = '';
-
-const normalizeBaseUrl = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
-  return withProtocol.replace(/\/+$/, '');
-};
-
-const extractHost = (value) => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  const withoutProtocol = raw.replace(/^https?:\/\//i, '');
-  const firstChunk = withoutProtocol.split('/')[0];
-  return firstChunk.split(':')[0];
-};
 
 const collectRuntimeApiCandidates = () => {
   const candidates = [];
@@ -40,7 +27,8 @@ const collectRuntimeApiCandidates = () => {
     runtimeHostCandidates.forEach((candidate) => {
       const host = extractHost(candidate);
       if (host && host !== 'exp.direct' && host !== 'u.expo.dev') {
-        candidates.push(`http://${host}:3000`);
+        const hostCandidate = buildHostCandidateUrl(host);
+        if (hostCandidate) candidates.push(hostCandidate);
       }
     });
   } catch (error) {

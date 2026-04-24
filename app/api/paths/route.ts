@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2';
 import { getRequestUser, requirePermission } from '@/lib/request-auth';
+import { ensureLearningPathSchema } from '@/lib/ensure-learning-path-schema';
 
 type PathLevel = 'beginner' | 'intermediate' | 'advanced' | 'all_levels';
 type PathStatus = 'draft' | 'published' | 'archived';
 
 export async function GET(req: Request) {
+  await ensureLearningPathSchema();
+
   const user = await getRequestUser(req);
   const isAdminView = user?.role === 'admin' || user?.role === 'teacher';
 
@@ -82,6 +85,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const authError = await requirePermission(req, 'course:create');
   if (authError) return authError;
+  await ensureLearningPathSchema();
   const user = await getRequestUser(req);
 
   const conn = await pool.getConnection();

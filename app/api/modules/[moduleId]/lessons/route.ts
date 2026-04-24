@@ -9,6 +9,16 @@ interface Params {
 
 const validTypes = ['text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed'];
 
+function normalizeLessonContent(content: string | null) {
+  if (!content) return content;
+  return content
+    .replace(/\\`/g, '`')
+    .replace(
+      /```[ \t]*([a-zA-Z0-9_+-]+)[ \t]*\r?\n([\s\S]*?)```/g,
+      (_match, _lang, codeBody: string) => `\`\`\`${codeBody}\`\`\``
+    );
+}
+
 function inferType(textContent: string | null, codeContent: string | null, videoUrl: string | null) {
   const hasText = Boolean(textContent && textContent.trim());
   const hasCode = Boolean(codeContent && codeContent.trim());
@@ -31,7 +41,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const title = String(body?.title ?? '').trim();
     const description = body?.description ? String(body.description).trim() : null;
-    const content = body?.content ? String(body.content) : null;
+    const content = normalizeLessonContent(body?.content ? String(body.content) : null);
     const codeContent = body?.codeContent ? String(body.codeContent) : null;
     const videoUrl = body?.videoUrl ? String(body.videoUrl).trim() : null;
     const durationMinutes = Number(body?.durationMinutes ?? 0);

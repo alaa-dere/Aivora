@@ -33,7 +33,12 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
-import { BrainCircuit } from 'lucide-react'; // احتفظنا بـ lucide لهذه الأيقونة فقط
+import { BrainCircuit } from 'lucide-react';
+import {
+  API_ROUTES,
+  normalizeNotificationList,
+  normalizeTeacherProfileResponse,
+} from '@aivora/shared';
 
 const menuItems = [
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
@@ -67,12 +72,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   } | null>(null);
   const { theme, setTheme } = useTheme();
 
-  // لتجنب مشكلة hydration مع الثيم
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
@@ -84,9 +83,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const loadCount = async () => {
       try {
         const [notifRes, adminMsgRes, studentMsgRes] = await Promise.all([
-          fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' }),
-          fetch('/api/teacher/messages?unreadCount=1', { cache: 'no-store' }),
-          fetch('/api/teacher/chat/students?unreadCount=1', { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.dashboardNotificationsAll, { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.messagesUnreadCount, { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.chatStudentsUnreadCount, { cache: 'no-store' }),
         ]);
         const notifData = await notifRes.json();
         const adminMsgData = await adminMsgRes.json();
@@ -100,13 +99,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         const deletedSet = new Set<string>(
           JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
         );
-        const unreadNotifications = (notifData.notifications || [])
-          .map((n: any) => ({
+        const unreadNotifications = normalizeNotificationList(notifData.notifications)
+          .map((n) => ({
             id: n.id,
-            read: readSet.has(n.id) || Boolean(n.read),
+            read: readSet.has(n.id) || n.read,
           }))
-          .filter((n: any) => !deletedSet.has(n.id))
-          .filter((n: any) => !n.read).length;
+          .filter((n) => !deletedSet.has(n.id))
+          .filter((n) => !n.read).length;
         if (mounted) {
           setNotificationCount(Number(unreadNotifications || 0));
           setMessageCount(totalMessages);
@@ -132,14 +131,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
     const loadProfile = async () => {
       try {
-        const res = await fetch('/api/teacher/profile', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.teacher.profile, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok && mounted) {
-          setProfile({
-            fullName: data?.teacher?.fullName || 'Teacher User',
-            email: data?.teacher?.email || 'teacher@aivora.com',
-            imageUrl: data?.teacher?.imageUrl || null,
-          });
+          setProfile(normalizeTeacherProfileResponse(data));
         }
       } catch {
         if (mounted) {
@@ -165,17 +160,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   const loadNotifications = async () => {
     try {
-      const res = await fetch('/api/teacher/dashboard?notifications=1', { cache: 'no-store' });
+      const res = await fetch(API_ROUTES.teacher.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      const items = (data.notifications || []).map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        createdAt: n.createdAt,
-        read: Boolean(n.read),
-      }));
-      setNotificationItems(items);
+      setNotificationItems(normalizeNotificationList(data.notifications));
     } catch (error) {
       console.error('Failed to load teacher notifications', error);
     }
@@ -185,7 +173,7 @@ const router = useRouter();
 const handleLogout = async () => {
   try {
     await Promise.all([
-      fetch('/api/auth/logout', { method: 'POST' }),
+      fetch(API_ROUTES.auth.logout, { method: 'POST' }),
       signOut({ redirect: false }),
     ]);
     router.replace('/login');
@@ -194,10 +182,6 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   }
 };
-
-  if (!mounted) {
-    return null; // أو skeleton loader إذا حابب
-  }
 
   return (
     <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
@@ -577,3 +561,5 @@ const handleLogout = async () => {
     </div>
   );
 }
+
+

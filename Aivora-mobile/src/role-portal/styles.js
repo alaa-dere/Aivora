@@ -47,9 +47,12 @@ export const portalStyles = StyleSheet.create({
     backgroundColor: '#0f2740',
   },
   adminLogo: {
-    width: 58,
+    width: 70,
     height: 44,
-    tintColor: '#003153',
+  },
+  adminLogoWrap: {
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
   adminBrandTextWrap: {
     minWidth: 0,
@@ -102,38 +105,53 @@ export const portalStyles = StyleSheet.create({
   adminMenuBackdrop: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 30,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingBottom: 0,
   },
   adminMenuBackdropTouch: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(2, 6, 23, 0.38)',
+    backgroundColor: 'rgba(15, 23, 42, 0.30)',
   },
   adminDrawerMobile: {
-    width: 250,
-    height: '100%',
-    backgroundColor: '#0f2740',
-    borderRightWidth: 1,
-    borderRightColor: '#1e3a5f',
+    width: '96%',
+    maxWidth: 420,
+    maxHeight: '70%',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#dbe4ef',
+    backgroundColor: '#ffffff',
     paddingTop: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 3, height: 0 },
-    elevation: 16,
+    paddingBottom: 8,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 18,
   },
   adminDrawerScroll: {
-    flex: 1,
+    maxHeight: '100%',
   },
   adminSidebarContent: {
     padding: 10,
     gap: 6,
+  },
+  adminSidebarContentMobile: {
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    gap: 12,
   },
   adminSidebarUser: {
     color: '#dbeafe',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
+  },
+  adminSidebarUserMobile: {
+    color: '#0f172a',
+    fontSize: 14,
+    marginBottom: 4,
   },
   adminNavItem: {
     borderRadius: 9,
@@ -159,23 +177,60 @@ export const portalStyles = StyleSheet.create({
     marginBottom: 2,
     gap: 4,
   },
+  adminSubmenuWrapMobile: {
+    marginLeft: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    gap: 8,
+  },
+  adminSubmenuGroupTitle: {
+    color: '#93c5fd',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
+    paddingHorizontal: 2,
+  },
+  adminSubmenuGroupTitleMobile: {
+    color: '#334155',
+    fontSize: 12,
+    marginBottom: 0,
+    paddingHorizontal: 2,
+  },
   adminSubmenuItem: {
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
+  adminSubmenuItemMobile: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
   adminSubmenuItemActive: {
     backgroundColor: '#dbeafe',
+  },
+  adminSubmenuItemActiveMobile: {
+    borderColor: '#60a5fa',
+    backgroundColor: '#eff6ff',
   },
   adminSubmenuText: {
     color: '#cbd5e1',
     fontSize: 11,
     fontWeight: '600',
   },
+  adminSubmenuTextMobile: {
+    color: '#334155',
+    fontSize: 12,
+  },
   adminSubmenuTextActive: {
     color: '#0f2740',
     fontWeight: '700',
+  },
+  adminSubmenuTextActiveMobile: {
+    color: '#1d4ed8',
   },
   adminContent: {
     flex: 1,
@@ -196,7 +251,7 @@ export const portalStyles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 52,
     marginBottom: 10,
-    gap: 8,
+    gap: 6,
   },
   topBtn: {
     minWidth: 72,
@@ -210,9 +265,36 @@ export const portalStyles = StyleSheet.create({
     color: '#0f3b82',
     fontWeight: '700',
   },
+  topIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e2e8f0',
+  },
   topInfo: {
     flex: 1,
     minWidth: 0,
+  },
+  topBarSpacer: {
+    flex: 1,
+  },
+  topLogoWrap: {
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+  },
+  topLogo: {
+    width: 62,
+    height: 34,
+  },
+  themeToggleBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   topName: {
     color: '#0f172a',
@@ -221,7 +303,13 @@ export const portalStyles = StyleSheet.create({
   },
   topRole: {
     color: '#475569',
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  topContextTiny: {
+    color: '#94a3b8',
+    fontSize: 10,
     marginTop: 1,
   },
   logoutBtn: {
@@ -234,6 +322,83 @@ export const portalStyles = StyleSheet.create({
   },
   logoutText: {
     color: '#b91c1c',
+    fontWeight: '700',
+  },
+  logoutBtnCompact: {
+    minWidth: 72,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#fee2e2',
+    alignItems: 'center',
+  },
+  secondaryTopBtn: {
+    minWidth: 66,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  secondaryTopBtnText: {
+    color: '#334155',
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  userAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0d3b66',
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  mobileSearchWrap: {
+    marginBottom: 10,
+  },
+  tabScroll: {
+    maxHeight: 46,
+    marginBottom: 8,
+  },
+  tabRow: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#cbd5e1',
+  },
+  tabPillActive: {
+    backgroundColor: '#0d3b66',
+  },
+  tabText: {
+    color: '#0f172a',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  tabTextActive: {
+    color: '#ffffff',
+  },
+  tabBadge: {
+    minWidth: 18,
+    paddingHorizontal: 5,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: '#b91c1c',
+  },
+  tabBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
     fontWeight: '700',
   },
   featureScroll: {
@@ -260,6 +425,31 @@ export const portalStyles = StyleSheet.create({
   },
   featureTextActive: {
     color: '#ffffff',
+  },
+  toolList: {
+    gap: 8,
+    marginTop: 8,
+  },
+  toolItem: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dbe4ef',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  toolItemActive: {
+    borderColor: '#0d3b66',
+    backgroundColor: '#e6f0fa',
+  },
+  toolItemText: {
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  toolItemTextActive: {
+    color: '#0d3b66',
+    fontWeight: '700',
   },
   panel: {
     backgroundColor: '#ffffff',
@@ -297,21 +487,6 @@ export const portalStyles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-  loadBtn: {
-    flex: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: '#0d3b66',
-  },
-  loadBtnDisabled: {
-    opacity: 0.6,
-  },
-  loadText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 12,
-  },
   secondaryBtn: {
     borderRadius: 10,
     paddingHorizontal: 10,
@@ -322,6 +497,15 @@ export const portalStyles = StyleSheet.create({
     color: '#1d4ed8',
     fontWeight: '700',
     fontSize: 12,
+  },
+  financeFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  financeFilterActive: {
+    backgroundColor: '#bfdbfe',
   },
   notice: {
     color: '#9a3412',
@@ -366,17 +550,6 @@ export const portalStyles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 20,
     fontWeight: '800',
-  },
-  adminRefreshBtn: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  adminRefreshText: {
-    color: '#1d4ed8',
-    fontSize: 12,
-    fontWeight: '700',
   },
   adminSubTitle: {
     color: '#64748b',
@@ -451,6 +624,12 @@ export const portalStyles = StyleSheet.create({
     height: 3,
     width: 3,
     borderRadius: 999,
+    backgroundColor: '#2563eb',
+  },
+  chartLineSegment: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 2,
     backgroundColor: '#2563eb',
   },
   chartDot: {
@@ -530,6 +709,88 @@ export const portalStyles = StyleSheet.create({
   listItemMeta: {
     color: '#64748b',
     fontSize: 12,
+  },
+  financeTransactionTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  financeTypePill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+  },
+  financeTypePillEnrollment: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  financeTypePillRefund: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  financeTypePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  financeTypePillTextEnrollment: {
+    color: '#1d4ed8',
+  },
+  financeTypePillTextRefund: {
+    color: '#334155',
+  },
+  financeTransactionStatsRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  financeTransactionStatCell: {
+    minWidth: 90,
+    flexGrow: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  financeTransactionStatLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  financeTransactionStatValue: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  notificationMetaRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notificationMetaText: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  notificationLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  notificationActionBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#dbeafe',
+  },
+  notificationActionText: {
+    color: '#1d4ed8',
+    fontSize: 11,
+    fontWeight: '700',
   },
   listItemValue: {
     color: '#1e3a8a',
@@ -615,5 +876,192 @@ export const portalStyles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 12,
+  },
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingBottom: 0,
+  },
+  menuOverlayTouch: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.30)',
+  },
+  menuDrawer: {
+    width: '96%',
+    maxWidth: 420,
+    maxHeight: '70%',
+    borderWidth: 1,
+    borderColor: '#dbe4ef',
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 18,
+  },
+  menuDrawerScroll: {
+    maxHeight: '100%',
+  },
+  menuDrawerContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 14,
+  },
+  dialogOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  dialogOverlayTouch: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+  },
+  dialogCard: {
+    width: '96%',
+    maxWidth: 430,
+    maxHeight: '78%',
+    borderWidth: 1,
+    borderColor: '#dbe4ef',
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 20,
+  },
+  dialogCardCompact: {
+    maxHeight: undefined,
+  },
+  dialogScroll: {
+    maxHeight: '100%',
+  },
+  dialogContent: {
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 14,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#cbd5e1',
+  },
+  modalSheetHeader: {
+    gap: 2,
+  },
+  modalSheetTitle: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalSheetSubtitle: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  menuSection: {
+    gap: 8,
+  },
+  menuSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  menuSectionTitle: {
+    color: '#0f172a',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  menuSectionBadge: {
+    minWidth: 18,
+    paddingHorizontal: 5,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: '#b91c1c',
+  },
+  menuSectionBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  menuItem: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  menuItemActive: {
+    borderColor: '#60a5fa',
+    backgroundColor: '#eff6ff',
+  },
+  menuItemText: {
+    color: '#334155',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  menuItemTextActive: {
+    color: '#1d4ed8',
+    fontWeight: '700',
+  },
+  bottomNav: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: 0,
+    borderWidth: 1,
+    borderColor: '#dbe4ef',
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingHorizontal: 6,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 10,
+  },
+  bottomNavItem: {
+    minWidth: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  bottomNavIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  bottomNavLabel: {
+    color: '#64748b',
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  bottomNavLabelActive: {
+    color: '#0d3b66',
+  },
+  bottomNavBadge: {
+    minWidth: 18,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: '#b91c1c',
+  },
+  bottomNavBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

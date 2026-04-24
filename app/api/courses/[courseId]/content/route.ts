@@ -7,6 +7,16 @@ interface Params {
   params: Promise<{ courseId: string }>;
 }
 
+function normalizeLessonContent(content: string | null) {
+  if (!content) return content;
+  return content
+    .replace(/\\`/g, '`')
+    .replace(
+      /```[ \t]*([a-zA-Z0-9_+-]+)[ \t]*\r?\n([\s\S]*?)```/g,
+      (_match, _lang, codeBody: string) => `\`\`\`${codeBody}\`\`\``
+    );
+}
+
 export async function GET(_req: Request, { params }: Params) {
   const authError = await requirePermission(_req, 'course:view-content');
   if (authError) return authError;
@@ -76,7 +86,7 @@ export async function GET(_req: Request, { params }: Params) {
           enableLiveEditor: Boolean(row.enableLiveEditor),
           liveEditorLanguage: row.liveEditorLanguage || 'python',
           description: row.description,
-          content: row.content,
+          content: normalizeLessonContent(row.content ? String(row.content) : null),
           codeContent: row.codeContent,
           videoUrl: row.videoUrl,
           orderNumber: Number(row.orderNumber || 0),

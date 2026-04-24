@@ -6,6 +6,14 @@ import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import {
+  API_ROUTES,
+  buildLoginPayload,
+  buildRegisterPayload,
+  isValidEmail,
+  normalizeEmail,
+  validateAuthInput,
+} from "@aivora/shared";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -140,7 +148,7 @@ useEffect(() => {
     return;
   }
 
-  fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+  fetch(API_ROUTES.auth.checkByEmail(email))
     .then((r) => r.json())
     .then(async (data) => {
       if (data.exists) {
@@ -172,7 +180,7 @@ useEffect(() => {
       return;
     }
 
-    fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+    fetch(API_ROUTES.auth.checkByEmail(email))
       .then((r) => r.json())
       .then(async (data) => {
         if (!data.exists) {
@@ -206,28 +214,43 @@ useEffect(() => {
     }
   }, [params]);
 
- async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   e.preventDefault();
   setErr("");
   setSuccess("");
   setLoading(true);
 
   try {
+    const fullNameCandidate = fullName.trim() || session?.user?.name || "";
+    const inputValidation = validateAuthInput({
+      email,
+      password,
+      fullName: fullNameCandidate,
+      requireFullName: !isLogin,
+    });
+    const { normalizedEmail, normalizedPassword, normalizedFullName } = inputValidation.values;
+
+    if (!inputValidation.ok) {
+      setErr(inputValidation.message);
+      setLoading(false);
+      return;
+    }
+
     // ─── حالة التسجيل (Sign Up) ───
     if (!isLogin) {
       // 1. جاء المستخدم من OAuth (Google/GitHub) ويُكمل البيانات
       if (social === "true" && session?.user) {
         // نرسل طلب لإكمال الحساب بدون كلمة مرور
-        const completeRes = await fetch("/api/auth/social-complete", {
+        const completeRes = await fetch(API_ROUTES.auth.socialComplete, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName: fullName.trim() || session.user.name || "",
-            password: password.trim(),
-            email: email.trim(),
-            // يمكنك إضافة حقول أخرى إذا أردت (مثل: phone, preferredRole, etc.)
-            // role: selectedRole || "student",
-          }),
+          body: JSON.stringify(
+            buildRegisterPayload({
+              fullName: normalizedFullName,
+              email: normalizedEmail,
+              password: normalizedPassword,
+            })
+          ),
         });
 
         const completeData = await completeRes.json();
@@ -249,14 +272,16 @@ useEffect(() => {
       }
 
       // 2. تسجيل عادي جديد (Credentials) → يحتاج اسم + إيميل + كلمة مرور
-      const registerRes = await fetch("/api/auth/register", {
+      const registerRes = await fetch(API_ROUTES.auth.register, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password: password.trim(),
-        }),
+        body: JSON.stringify(
+          buildRegisterPayload({
+            fullName: normalizedFullName,
+            email: normalizedEmail,
+            password: normalizedPassword,
+          })
+        ),
       });
 
       const registerData = await registerRes.json();
@@ -269,8 +294,8 @@ useEffect(() => {
 
       // بعد التسجيل الناجح → نسجل الدخول تلقائيًا
       const signInResult = await signIn("credentials", {
-        email: email.trim(),
-        password: password.trim(),
+        email: normalizedEmail,
+        password: normalizedPassword,
         redirect: false,
       });
 
@@ -283,21 +308,23 @@ useEffect(() => {
 
       // Ensure legacy session cookie is set for middleware compatibility
       try {
-        await fetch("/api/auth/login", {
+        await fetch(API_ROUTES.auth.login, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+          body: JSON.stringify(
+            buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+          ),
         });
       } catch (err) {
         console.error("Legacy login cookie set failed:", err);
       }
 
       // جلب الجلسة الجديدة لمعرفة الدور
-      const sessionRes = await fetch("/api/auth/session");
+      const sessionRes = await fetch(API_ROUTES.auth.session);
       const currentSession = await sessionRes.json();
       const role = currentSession?.user?.role?.toLowerCase() || "student";
-      saveLocalCredential(email.trim(), password.trim());
-      await saveBrowserCredential(email.trim(), password.trim());
+      saveLocalCredential(normalizedEmail, normalizedPassword);
+      await saveBrowserCredential(normalizedEmail, normalizedPassword);
       setSuccess("Account created successfully. Redirecting...");
       window.setTimeout(() => {
         router.push(getRedirectTarget(role));
@@ -308,8 +335,8 @@ useEffect(() => {
 
     // ─── حالة تسجيل الدخول (Sign In) ───
     const result = await signIn("credentials", {
-      email: email.trim(),
-      password: password.trim(),
+      email: normalizedEmail,
+      password: normalizedPassword,
       redirect: false,
     });
 
@@ -325,21 +352,23 @@ useEffect(() => {
 
     // Ensure legacy session cookie is set for middleware compatibility
     try {
-      await fetch("/api/auth/login", {
+      await fetch(API_ROUTES.auth.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify(
+          buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+        ),
       });
     } catch (err) {
       console.error("Legacy login cookie set failed:", err);
     }
 
     // جلب الجلسة بعد تسجيل الدخول الناجح
-    const sessionRes = await fetch("/api/auth/session");
+    const sessionRes = await fetch(API_ROUTES.auth.session);
     const currentSession = await sessionRes.json();
     const role = currentSession?.user?.role?.toLowerCase() || "student";
-    saveLocalCredential(email.trim(), password.trim());
-    await saveBrowserCredential(email.trim(), password.trim());
+    saveLocalCredential(normalizedEmail, normalizedPassword);
+    await saveBrowserCredential(normalizedEmail, normalizedPassword);
     setSuccess("Login successful. Redirecting...");
     window.setTimeout(() => {
       router.push(getRedirectTarget(role));
@@ -591,17 +620,22 @@ useEffect(() => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!email) {
+                        const normalizedEmail = normalizeEmail(email);
+                        if (!normalizedEmail) {
                           alert("Please enter your email to receive reset link");
+                          return;
+                        }
+                        if (!isValidEmail(normalizedEmail)) {
+                          alert("Please enter a valid email address");
                           return;
                         }
 
                         try {
                           setLoading(true);
-                          const res = await fetch('/api/auth/forgot-password', {
+                          const res = await fetch(API_ROUTES.auth.forgotPassword, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: email.trim() }),
+                            body: JSON.stringify({ email: normalizedEmail }),
                           });
 
                           const data = await res.json();
