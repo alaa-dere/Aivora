@@ -3,7 +3,13 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
@@ -180,6 +186,9 @@ export default function CoursePlayerPage() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
   const [showCertPrompt, setShowCertPrompt] = useState(false);
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [showModulePicker, setShowModulePicker] = useState(false);
+  const [showLessonPicker, setShowLessonPicker] = useState(false);
   const [liveSubmissionByLesson, setLiveSubmissionByLesson] = useState<
     Record<string, LiveEditorSubmission>
   >({});
@@ -245,6 +254,17 @@ export default function CoursePlayerPage() {
       setSelectedLessonId(remembered?.id || firstUnlocked?.id || null);
     }
   }, [allLessons, requestedLessonId, lastActiveLessonId]);
+
+  useEffect(() => {
+    if (!modules.length || !selectedLessonId) return;
+    const selectedLessonModule = modules.find((m) =>
+      m.lessons.some((lesson) => lesson.id === selectedLessonId)
+    );
+    if (!selectedLessonModule) return;
+    setExpandedModuleIds((prev) =>
+      prev.includes(selectedLessonModule.id) ? prev : [...prev, selectedLessonModule.id]
+    );
+  }, [modules, selectedLessonId]);
 
   useEffect(() => {
     if (!selectedLessonId) return;
@@ -484,38 +504,89 @@ export default function CoursePlayerPage() {
               </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-                <select
-                  value={selectedModuleId}
-                  onChange={(e) => {
-                    const nextModule = modules.find((m) => m.id === e.target.value);
-                    if (!nextModule) return;
-                    const firstUnlockedLesson = nextModule.lessons.find((l) => l.unlocked);
-                    const firstLesson = nextModule.lessons[0];
-                    const target = firstUnlockedLesson || firstLesson;
-                    if (target) setSelectedLessonId(target.id);
-                  }}
-                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  {modules.map((m, idx) => (
-                    <option key={m.id} value={m.id}>
-                      {`CH${idx + 1}: ${m.title}`}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex flex-wrap items-start gap-2 justify-start lg:justify-end">
+                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModulePicker((prev) => !prev);
+                      setShowLessonPicker(false);
+                    }}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    aria-expanded={showModulePicker}
+                  >
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Chapters</span>
+                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
+                      {showModulePicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
+                    </span>
+                  </button>
+                  {showModulePicker && (
+                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                      {modules.map((m, idx) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            const firstUnlockedLesson = m.lessons.find((l) => l.unlocked);
+                            const firstLesson = m.lessons[0];
+                            const target = firstUnlockedLesson || firstLesson;
+                            if (target) setSelectedLessonId(target.id);
+                            setShowModulePicker(false);
+                          }}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            m.id === selectedModuleId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                          }`}
+                        >
+                          {`CH${idx + 1}: ${m.title}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                <select
-                  value={selectedLessonId || ''}
-                  onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  {lessonsInSelectedModule.map((lesson, idx) => (
-                    <option key={lesson.id} value={lesson.id} disabled={!lesson.unlocked}>
-                      {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
-                    </option>
-                  ))}
-                </select>
-
+                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLessonPicker((prev) => !prev);
+                      setShowModulePicker(false);
+                    }}
+                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    aria-expanded={showLessonPicker}
+                  >
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Lessons</span>
+                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
+                      {showLessonPicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
+                    </span>
+                  </button>
+                  {showLessonPicker && (
+                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                      {lessonsInSelectedModule.map((lesson, idx) => (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          onClick={() => {
+                            if (!lesson.unlocked) return;
+                            setSelectedLessonId(lesson.id);
+                            setShowLessonPicker(false);
+                          }}
+                          disabled={!lesson.unlocked}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            lesson.id === selectedLessonId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : lesson.unlocked
+                              ? 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             </div>
@@ -527,23 +598,59 @@ export default function CoursePlayerPage() {
           <div className="space-y-4">
             <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
               <h2 className="font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
-              <div className="space-y-2">
-                {allLessons.map((lesson) => (
-                  <button
-                    key={lesson.id}
-                    onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
-                    disabled={!lesson.unlocked}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      lesson.unlocked
-                        ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-gray-800 dark:text-white">{lesson.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {lesson.completed ? 'Completed' : lesson.unlocked ? 'Unlocked' : 'Locked'}
-                    </p>
-                  </button>
+              <div className="space-y-3">
+                {modules.map((module, moduleIndex) => (
+                  <div key={module.id} className="rounded-lg border border-blue-100 dark:border-blue-800">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedModuleIds((prev) =>
+                          prev.includes(module.id)
+                            ? prev.filter((id) => id !== module.id)
+                            : [...prev, module.id]
+                        )
+                      }
+                      className="w-full px-3 py-2 flex items-center justify-between text-left bg-blue-50/40 dark:bg-blue-900/10 rounded-lg"
+                    >
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                        {`CH${moduleIndex + 1}: ${module.title}`}
+                      </span>
+                      {expandedModuleIds.includes(module.id) ? (
+                        <ChevronDownIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      ) : (
+                        <ChevronRightIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      )}
+                    </button>
+                    {expandedModuleIds.includes(module.id) && (
+                      <div className="p-2 space-y-2">
+                        {module.lessons.map((lesson, lessonIndex) => {
+                          const active = lesson.id === selectedLessonId;
+                          return (
+                            <button
+                              key={lesson.id}
+                              onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
+                              disabled={!lesson.unlocked}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                active
+                                  ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                                  : lesson.unlocked
+                                  ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <p className="text-sm font-medium text-gray-800 dark:text-white">
+                                {`L${lessonIndex + 1}: ${lesson.title}`}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
+                                {!lesson.unlocked && <LockClosedIcon className="w-3 h-3" />}
+                                {lesson.completed ? 'Completed' : lesson.unlocked ? 'Click to open' : 'Locked'}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

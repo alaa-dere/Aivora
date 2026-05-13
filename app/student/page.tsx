@@ -31,28 +31,42 @@ export default function StudentDashboard() {
   const [studyData, setStudyData] = useState<{ day: string; minutes: number }[]>([]);
   const [continueLearning, setContinueLearning] = useState<any[]>([]);
   const [recentQuizzes, setRecentQuizzes] = useState<any[]>([]);
+  const totalStudyMinutes = studyData.reduce((sum, item) => sum + Number(item?.minutes || 0), 0);
+  const todayMinutes = Number(studyData[studyData.length - 1]?.minutes || 0);
 
   useEffect(() => {
+    let cancelled = false;
     const loadDashboard = async () => {
       try {
-        setLoading(true);
+        if (!cancelled) setLoading(true);
         const res = await fetch('/api/student/dashboard', { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.message || 'Failed to load dashboard');
         }
+        if (cancelled) return;
         setStats(data.stats);
         setStudyData(data.studyData || []);
         setContinueLearning(data.continueLearning || []);
         setRecentQuizzes(data.recentQuizzes || []);
       } catch (err: any) {
-        setError(err.message || 'Failed to load dashboard');
+        if (!cancelled) setError(err.message || 'Failed to load dashboard');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadDashboard();
+    const refreshTimer = setInterval(loadDashboard, 30000);
+    const onFocus = () => loadDashboard();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(refreshTimer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, []);
 
   return (
@@ -123,38 +137,67 @@ export default function StudentDashboard() {
             </h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">Last 7 days</span>
           </div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 px-3 py-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Today</p>
+              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{todayMinutes} min</p>
+            </div>
+            <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 px-3 py-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">This week</p>
+              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{totalStudyMinutes} min</p>
+            </div>
+          </div>
 
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={studyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="studyGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+            {loading ? (
+              <div className="h-full w-full rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 flex items-center justify-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading study trend...</p>
+              </div>
+            ) : error ? (
+              <div className="h-full w-full rounded-lg border border-red-100 dark:border-red-900/40 bg-red-50/40 dark:bg-red-900/10 flex items-center justify-center">
+                <p className="text-sm text-red-500">{error}</p>
+              </div>
+            ) : studyData.length === 0 || totalStudyMinutes === 0 ? (
+              <div className="h-full w-full rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 flex items-center justify-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No study activity yet.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={studyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="studyGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
 
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bfdbfe" />
-                <XAxis dataKey="day" tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
-                <YAxis tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}
-                  labelStyle={{ color: '#1e293b' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="minutes"
-                  stroke="#3b82f6"
-                  strokeWidth={3}
-                  fill="url(#studyGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bfdbfe" />
+                  <XAxis dataKey="day" tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
+                  <YAxis tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}
+                    labelStyle={{ color: '#1e293b' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="minutes"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fill="url(#studyGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
             Tip: Aim for 45-60 minutes daily for steady progress.
           </p>
+          {!loading && !error ? (
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              Total this week: {totalStudyMinutes} minutes
+            </p>
+          ) : null}
         </div>
       </div>
 

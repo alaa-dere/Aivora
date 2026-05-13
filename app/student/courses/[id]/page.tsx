@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   ArrowLeftIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   CreditCardIcon,
   PlayCircleIcon,
   LockClosedIcon,
@@ -22,6 +24,20 @@ type CourseData = {
   durationWeeks: number;
   imageUrl?: string | null;
   enrolled: boolean;
+};
+
+type CourseLesson = {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  unlocked: boolean;
+};
+
+type CourseModule = {
+  id: string;
+  title: string;
+  description?: string;
+  lessons: CourseLesson[];
 };
 
 export default function CourseDetailsPage() {
@@ -43,6 +59,10 @@ export default function CourseDetailsPage() {
     paypalEmail: '',
     paypalTxnId: '',
   });
+  const [modules, setModules] = useState<CourseModule[]>([]);
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -63,6 +83,32 @@ export default function CourseDetailsPage() {
 
     if (params.id) loadCourse();
   }, [params.id]);
+
+  useEffect(() => {
+    const loadCourseContent = async () => {
+      if (!course?.enrolled) return;
+      try {
+        setContentLoading(true);
+        setContentError(null);
+        const res = await fetch(`/api/student/my-courses/${params.id}/content`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load course content');
+        }
+        const nextModules = (data.modules || []) as CourseModule[];
+        setModules(nextModules);
+        if (nextModules.length > 0) {
+          setExpandedModuleIds([nextModules[0].id]);
+        }
+      } catch (err: unknown) {
+        setContentError(err instanceof Error ? err.message : 'Failed to load course content');
+      } finally {
+        setContentLoading(false);
+      }
+    };
+
+    loadCourseContent();
+  }, [course?.enrolled, params.id]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -216,8 +262,84 @@ export default function CourseDetailsPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <PlayCircleIcon className="w-5 h-5" />
-                  Go to Course
+                  Open Full Course
                 </button>
+
+                <div className="mt-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white/80 dark:bg-gray-900/40 p-3">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
+                    Course Content
+                  </p>
+                  {contentLoading ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Loading chapters...</p>
+                  ) : contentError ? (
+                    <p className="text-xs text-red-500">{contentError}</p>
+                  ) : modules.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">No chapters available yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {modules.map((module, moduleIndex) => (
+                        <div key={module.id} className="rounded-lg border border-emerald-100 dark:border-emerald-800">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedModuleIds((prev) =>
+                                prev.includes(module.id)
+                                  ? prev.filter((id) => id !== module.id)
+                                  : [...prev, module.id]
+                              )
+                            }
+                            className="w-full px-3 py-2 flex items-center justify-between text-left bg-emerald-50 dark:bg-emerald-900/20 rounded-lg"
+                          >
+                            <span className="text-sm font-medium text-gray-800 dark:text-white">
+                              {`CH${moduleIndex + 1}: ${module.title}`}
+                            </span>
+                            {expandedModuleIds.includes(module.id) ? (
+                              <ChevronDownIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                            ) : (
+                              <ChevronRightIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+                            )}
+                          </button>
+                          {expandedModuleIds.includes(module.id) && (
+                            <div className="p-2 space-y-2">
+                              {module.lessons.map((lesson, lessonIndex) => (
+                                <div
+                                  key={lesson.id}
+                                  className="flex items-center justify-between gap-2 rounded-md border border-emerald-100 dark:border-emerald-900 px-2 py-2"
+                                >
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-800 dark:text-gray-100">
+                                      {`L${lessonIndex + 1}: ${lesson.title}`}
+                                    </p>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                      {lesson.durationMinutes} min
+                                    </p>
+                                  </div>
+                                  {lesson.unlocked ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        router.push(`/student/my-courses/${course.id}/player?lesson=${lesson.id}`)
+                                      }
+                                      className="inline-flex items-center gap-1 rounded-md border border-emerald-300 dark:border-emerald-700 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30"
+                                    >
+                                      <PlayCircleIcon className="w-4 h-4" />
+                                      Go to lesson
+                                    </button>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                                      <LockClosedIcon className="w-3.5 h-3.5" />
+                                      Locked
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="rounded-xl border border-blue-100 dark:border-blue-800 p-5">

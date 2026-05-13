@@ -30,6 +30,13 @@ const formatMinutes = (value: number) => {
   return `${mins} min`;
 };
 
+const rankStyle = (rank: number) => {
+  if (rank === 1) return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700';
+  if (rank === 2) return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600';
+  if (rank === 3) return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700';
+  return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700';
+};
+
 export default function StudentLeaderboardPage() {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,19 +118,13 @@ export default function StudentLeaderboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Improvement</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? `${data.current.improvement >= 0 ? '+' : ''}${data.current.improvement}` : '—'} min
+                    {data.current ? `${data.current.improvement >= 0 ? '+' : ''}${data.current.improvement}` : '-'} min
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Last 7 days</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? formatMinutes(data.current.minutesLast7) : '—'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Previous 7 days</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? formatMinutes(data.current.minutesPrev7) : '—'}
+                    {data.current ? formatMinutes(data.current.minutesLast7) : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -148,6 +149,20 @@ export default function StudentLeaderboardPage() {
           </div>
 
           <div className="lg:col-span-2">
+            {data.top.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                {data.top.slice(0, 3).map((row) => (
+                  <div key={`podium-${row.id}`} className="portal-surface bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/30 dark:to-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold border ${rankStyle(row.rank)}`}>#{row.rank}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-300">{row.improvement >= 0 ? '+' : ''}{row.improvement} min</span>
+                    </div>
+                    <p className="mt-2 font-bold text-gray-900 dark:text-white">{row.fullName || 'Student'}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">Last 7 days: {formatMinutes(row.minutesLast7)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -164,13 +179,12 @@ export default function StudentLeaderboardPage() {
                       <th className="px-4 py-3 font-medium">Student</th>
                       <th className="px-4 py-3 font-medium">Improvement</th>
                       <th className="px-4 py-3 font-medium">Last 7 Days</th>
-                      <th className="px-4 py-3 font-medium">Prev 7 Days</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {data.top.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
                           No leaderboard data yet.
                         </td>
                       </tr>
@@ -188,7 +202,7 @@ export default function StudentLeaderboardPage() {
                             }`}
                           >
                             <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">
-                              #{row.rank}
+                              <span className={`inline-flex px-2 py-1 rounded-full border text-xs font-bold ${rankStyle(row.rank)}`}>#{row.rank}</span>
                             </td>
                             <td className="px-4 py-3">
                               <div className="font-semibold text-gray-900 dark:text-white">
@@ -219,9 +233,6 @@ export default function StudentLeaderboardPage() {
                             </td>
                             <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
                               {formatMinutes(row.minutesLast7)}
-                            </td>
-                            <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
-                              {formatMinutes(row.minutesPrev7)}
                             </td>
                           </tr>
                         );

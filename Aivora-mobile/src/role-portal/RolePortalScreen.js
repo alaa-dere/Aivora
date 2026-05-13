@@ -20,9 +20,12 @@ import StudentDashboardView from './components/StudentDashboardView';
 import StudentChatView from './components/StudentChatView';
 import StudentProfileView from './components/StudentProfileView';
 import StudentExploreCoursesView from './components/StudentExploreCoursesView';
+import StudentCourseDetailView from './components/StudentCourseDetailView';
 import StudentMyCoursesView from './components/StudentMyCoursesView';
 import StudentMyCourseContentView from './components/StudentMyCourseContentView';
 import StudentMyCoursePlayerView from './components/StudentMyCoursePlayerView';
+import StudentCertificateQuizView from './components/StudentCertificateQuizView';
+import StudentLeaderboardView from './components/StudentLeaderboardView';
 import CertificatePreviewCard from './components/CertificatePreviewCard';
 import { MOBILE_TABS } from './config/mobile-tabs';
 import { ROLE_FEATURES } from './config/role-features';
@@ -579,11 +582,22 @@ function GeneralRolePortal({
   const isStudentChatFeature = role === 'student' && activeFeature?.id === 'student-chat';
   const isStudentProfileFeature = role === 'student' && activeFeature?.id === 'student-profile';
   const isStudentCoursesFeature = role === 'student' && activeFeature?.id === 'student-courses';
+  const isStudentCourseDetailFeature = role === 'student' && activeFeature?.id === 'student-course-detail';
   const isStudentMyCoursesFeature = role === 'student' && activeFeature?.id === 'student-my-courses';
   const isStudentMyCourseContentFeature =
     role === 'student' && activeFeature?.id === 'student-my-course-content';
   const isStudentMyCoursePlayerFeature =
     role === 'student' && activeFeature?.id === 'student-my-course-player';
+  const isStudentCertificateQuizzesFeature =
+    role === 'student' && activeFeature?.id === 'student-certificate-quizzes';
+  const isStudentLeaderboardFeature = role === 'student' && activeFeature?.id === 'student-leaderboard';
+  const certificateQuizCourseId = useMemo(() => {
+    const explicitCourseId = String(paramValues?.courseId || '').trim();
+    if (explicitCourseId) return explicitCourseId;
+    if (!isStudentCertificateQuizzesFeature) return '';
+    const courses = Array.isArray(rawData?.courses) ? rawData.courses : [];
+    return String(courses[0]?.courseId || '').trim();
+  }, [isStudentCertificateQuizzesFeature, paramValues?.courseId, rawData]);
 
   const handleViewCertificate = async (item) => {
     if (!activeFeature || !isCertificatesFeature || !canViewCertificateItem(item)) return;
@@ -694,8 +708,11 @@ function GeneralRolePortal({
       !isStudentChatFeature &&
       !isStudentProfileFeature &&
       !isStudentCoursesFeature &&
+      !isStudentCourseDetailFeature &&
       !isStudentMyCourseContentFeature &&
-      !isStudentMyCoursePlayerFeature ? (
+      !isStudentMyCoursePlayerFeature &&
+      !isStudentCertificateQuizzesFeature &&
+      !isStudentLeaderboardFeature ? (
       <View style={[portalStyles.panel, { backgroundColor: theme.panelBg, borderColor: theme.panelBorder }]}>
         <Text style={[portalStyles.panelTitle, { color: theme.textPrimary }]}>{activeFeature?.title}</Text>
 
@@ -745,8 +762,10 @@ function GeneralRolePortal({
       !isStudentChatFeature &&
       !isStudentProfileFeature &&
       !isStudentCoursesFeature &&
+      !isStudentCourseDetailFeature &&
       !isStudentMyCourseContentFeature &&
       !isStudentMyCoursePlayerFeature &&
+      !isStudentCertificateQuizzesFeature &&
       summaryStats.length > 0 ? (
         <View style={portalStyles.statsGrid}>
           {summaryStats.map((stat) => (
@@ -777,6 +796,15 @@ function GeneralRolePortal({
               theme={theme}
               onRefresh={loadFeature}
               onOpenMyCourses={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!course?.enrolled && courseId) {
+                  setParamValues((prev) => ({ ...prev, courseId }));
+                  setActiveTabId('student-learn');
+                  setActiveFeatureId('student-course-detail');
+                  setRawData(null);
+                  setError('');
+                  return;
+                }
                 setContinueCoursePreview(course || null);
                 setActiveTabId('student-learn');
                 setActiveFeatureId('student-my-courses');
@@ -786,6 +814,33 @@ function GeneralRolePortal({
             />
           ) : null}
         </ScrollView>
+      ) : isStudentCourseDetailFeature ? (
+        <>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentCourseDetailView
+              data={rawData}
+              theme={theme}
+              apiFetch={apiFetch}
+              onBack={() => {
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-courses');
+                setRawData(null);
+                setError('');
+              }}
+              onEnrollSuccess={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!courseId) return;
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-course-content');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
+        </>
       ) : isStudentMyCoursesFeature ? (
         <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
           {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
@@ -850,6 +905,76 @@ function GeneralRolePortal({
               data={rawData}
               theme={theme}
               lessonId={activeLessonId}
+              onStartLesson={async ({ lessonId }) => {
+                const courseId = String(paramValues?.courseId || '').trim();
+                if (!courseId || !lessonId) {
+                  return { ok: false };
+                }
+                try {
+                  const response = await apiFetch(`/api/student/my-courses/${encodeURIComponent(courseId)}/progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lessonId, event: 'start' }),
+                  });
+                  if (!response.ok) return { ok: false };
+                  return { ok: true };
+                } catch {
+                  return { ok: false };
+                }
+              }}
+              onCompleteLesson={async ({ lessonId, liveEditorSubmission }) => {
+                const courseId = String(paramValues?.courseId || '').trim();
+                if (!courseId || !lessonId) {
+                  return { ok: false, message: 'Missing course or lesson id.' };
+                }
+                try {
+                  const response = await apiFetch(`/api/student/my-courses/${encodeURIComponent(courseId)}/progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      lessonId,
+                      liveEditorSubmission,
+                    }),
+                  });
+                  const payload = await response.json().catch(() => ({}));
+                  if (!response.ok) {
+                    return { ok: false, message: String(payload?.message || 'Failed to update progress.') };
+                  }
+
+                  if (payload?.needsCertificateChoice) {
+                    Alert.alert(
+                      'Course Completed',
+                      'You completed all lessons. Take the quiz now to unlock your certificate.',
+                      [
+                        {
+                          text: 'Later',
+                          style: 'cancel',
+                          onPress: () => {
+                            setActiveTabId('student-learn');
+                            setActiveFeatureId('student-my-course-content');
+                            setRawData(null);
+                            setError('');
+                          },
+                        },
+                        {
+                          text: 'Take Quiz Now',
+                          onPress: () => {
+                            setActiveTabId('student-more');
+                            setActiveFeatureId('student-certificate-quizzes');
+                            setRawData(null);
+                            setError('');
+                          },
+                        },
+                      ]
+                    );
+                  }
+
+                  await loadFeature();
+                  return { ok: true };
+                } catch (err) {
+                  return { ok: false, message: String(err?.message || 'Failed to update progress.') };
+                }
+              }}
               onBack={() => {
                 setActiveTabId('student-learn');
                 setActiveFeatureId('student-my-course-content');
@@ -861,6 +986,32 @@ function GeneralRolePortal({
               }}
             />
           ) : null}
+        </ScrollView>
+      ) : isStudentCertificateQuizzesFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          <StudentCertificateQuizView
+            apiFetch={apiFetch}
+            theme={theme}
+            courseId={certificateQuizCourseId}
+            onBackToCourse={() => {
+              setActiveTabId('student-learn');
+              setActiveFeatureId(certificateQuizCourseId ? 'student-my-course-content' : 'student-my-courses');
+              setRawData(null);
+              setError('');
+            }}
+            onOpenCertificates={() => {
+              setActiveTabId('student-more');
+              setActiveFeatureId('student-certificates');
+              setRawData(null);
+              setError('');
+            }}
+          />
+        </ScrollView>
+      ) : isStudentLeaderboardFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? <StudentLeaderboardView data={rawData} theme={theme} /> : null}
         </ScrollView>
       ) : isStudentChatFeature ? (
         <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>

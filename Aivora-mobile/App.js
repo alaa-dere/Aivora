@@ -39,6 +39,14 @@ import {
   toImageSource,
 } from './src/services/api-client';
 
+let OptionalWebBrowser = null;
+try {
+  // eslint-disable-next-line global-require
+  OptionalWebBrowser = require('expo-web-browser');
+} catch {
+  OptionalWebBrowser = null;
+}
+
 const navItemsEn = [
   { name: 'Home', id: 'home' },
   { name: 'About', id: 'about' },
@@ -937,6 +945,106 @@ function AuthScreen({ onBack, onAuthSuccess }) {
     }
   };
 
+  const parseUrlParams = (urlString) => {
+    const out = {};
+    try {
+      const url = new URL(urlString);
+      for (const [k, v] of url.searchParams.entries()) out[k] = v;
+      const hash = String(url.hash || '').replace(/^#/, '');
+      if (hash) {
+        hash.split('&').forEach((pair) => {
+          const [rawKey, rawVal] = pair.split('=');
+          const key = decodeURIComponent(String(rawKey || '').trim());
+          if (!key) return;
+          out[key] = decodeURIComponent(String(rawVal || '').trim());
+        });
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return out;
+  };
+
+  const handleSocialAuth = async (provider) => {
+    if (!OptionalWebBrowser?.openAuthSessionAsync) {
+      setErr('Social sign-in requires expo-web-browser. Please install dependencies and restart the app.');
+      return;
+    }
+
+    const providerName = provider === 'google' ? 'Google' : 'GitHub';
+    const redirectUri = 'aivora://auth';
+    const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
+    const githubClientId = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
+    const baseApi = getActiveApiBaseUrl();
+
+    try {
+      setErr('');
+      setSuccess('');
+      setLoading(true);
+
+      let authUrl = '';
+      if (provider === 'google') {
+        if (!googleClientId) {
+          throw new Error('Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID');
+        }
+        const scope = encodeURIComponent('openid profile email');
+        authUrl =
+          `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&response_type=token&scope=${scope}&prompt=select_account`;
+      } else {
+        if (!githubClientId) {
+          throw new Error('Missing EXPO_PUBLIC_GITHUB_CLIENT_ID');
+        }
+        authUrl =
+          `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(githubClientId)}` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&scope=${encodeURIComponent('read:user user:email')}`;
+      }
+
+      const result = await OptionalWebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      if (result?.type !== 'success' || !result?.url) {
+        setErr(`${providerName} sign-in was cancelled.`);
+        return;
+      }
+
+      const params = parseUrlParams(result.url);
+      const accessToken = String(params.access_token || '').trim();
+      const code = String(params.code || '').trim();
+
+      if (provider === 'google' && !accessToken) {
+        throw new Error('Google did not return an access token.');
+      }
+      if (provider === 'github' && !code) {
+        throw new Error('GitHub did not return an authorization code.');
+      }
+
+      const socialRes = await apiFetch(API_ROUTES.auth.mobileSocial, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          provider,
+          accessToken,
+          code,
+          redirectUri,
+          baseApi,
+        }),
+      });
+      const socialData = await socialRes.json().catch(() => ({}));
+      if (!socialRes.ok || !socialData?.success || !socialData?.user) {
+        throw new Error(socialData?.message || `${providerName} sign-in failed.`);
+      }
+
+      setSuccess(`${providerName} sign-in successful. Redirecting...`);
+      onAuthSuccess?.(socialData.user);
+    } catch (error) {
+      setErr(String(error?.message || `${providerName} sign-in failed.`));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -1143,13 +1251,15 @@ function AuthScreen({ onBack, onAuthSuccess }) {
 
               <Pressable
                 style={styles.secondaryButton}
-                onPress={() => setErr('Google sign in is currently available on web app only.')}
+                onPress={() => handleSocialAuth('google')}
+                disabled={loading}
               >
                 <Text style={styles.secondaryButtonText}>Continue with Google</Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryButton}
-                onPress={() => setErr('GitHub sign in is currently available on web app only.')}
+                onPress={() => handleSocialAuth('github')}
+                disabled={loading}
               >
                 <Text style={styles.secondaryButtonText}>Continue with GitHub</Text>
               </Pressable>

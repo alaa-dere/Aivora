@@ -10,6 +10,46 @@ type EnrollmentRow = {
   progressPercentage: number;
 };
 
+type StudyRow = RowDataPacket & {
+  day: string;
+  minutes: number;
+};
+
+type RecentQuizRow = RowDataPacket & {
+  id: string;
+  course: string;
+  score: number;
+  date: string | Date;
+};
+
+async function ensureStudySessionTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lesson_study_session (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      enrollmentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      lessonId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      startedAt DATETIME NOT NULL,
+      endedAt DATETIME NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_lss_enrollment (enrollmentId),
+      INDEX idx_lss_lesson (lessonId),
+      INDEX idx_lss_started (startedAt),
+      INDEX idx_lss_ended (endedAt),
+      CONSTRAINT fk_lss_enrollment FOREIGN KEY (enrollmentId) REFERENCES enrollment(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT fk_lss_lesson FOREIGN KEY (lessonId) REFERENCES lesson(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+}
+
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'student') {
@@ -17,6 +57,7 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureStudySessionTable();
     const { searchParams } = new URL(req.url);
     const notifications = searchParams.get('notifications');
 
@@ -102,49 +143,55 @@ export async function GET(req: Request) {
           )
         : 0;
 
-    // Study time: last 7 days from completed lessons (minutes)
-    const [studyRows] = await pool.query<RowDataPacket[]>(
+    // Study time: last 7 days from lesson sessions (minutes)
+    // Session minutes are capped to avoid runaway values from abandoned sessions.
+    const [studyRows] = await pool.query<StudyRow[]>(
       `
       SELECT
-        DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d') AS day,
+        DATE_FORMAT(s.startedAt, '%Y-%m-%d') AS day,
         COALESCE(
           SUM(
-            GREATEST(
-              TIMESTAMPDIFF(
-                MINUTE,
-                lp.startedAt,
-                CASE
-                  WHEN lp.completed = 1 AND lp.completedAt IS NOT NULL THEN lp.completedAt
-                  ELSE NOW()
-                END
+            LEAST(
+              GREATEST(
+                TIMESTAMPDIFF(
+                  MINUTE,
+                  s.startedAt,
+                  CASE
+                    WHEN s.endedAt IS NOT NULL AND s.endedAt >= s.startedAt THEN s.endedAt
+                    ELSE NOW()
+                  END
+                ),
+                0
               ),
-              0
+              180
             )
           ),
           0
         ) AS minutes
-      FROM lessonprogress lp
-      JOIN lesson l ON l.id = lp.lessonId
-      JOIN enrollment e ON e.id = lp.enrollmentId
+      FROM lesson_study_session s
+      JOIN enrollment e ON e.id = s.enrollmentId
       WHERE e.studentId = ?
-        AND lp.startedAt IS NOT NULL
-        AND COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-      GROUP BY DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d')
-      ORDER BY DATE_FORMAT(COALESCE(lp.completedAt, lp.startedAt), '%Y-%m-%d')
+        AND s.startedAt >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY DATE_FORMAT(s.startedAt, '%Y-%m-%d')
+      ORDER BY DATE_FORMAT(s.startedAt, '%Y-%m-%d')
       `,
       [user.id]
     );
+
+    const studyByDay = new Map<string, number>();
+    for (const row of studyRows) {
+      studyByDay.set(String(row.day), Number(row.minutes || 0));
+    }
 
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const last7: { day: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString('en-CA'); // YYYY-MM-DD in server local time
-      const match = studyRows.find((r: any) => String(r.day) === key);
+      const key = formatDateKey(d);
       last7.push({
         day: days[d.getDay()],
-        minutes: Number(match?.minutes || 0),
+        minutes: Number(studyByDay.get(key) || 0),
       });
     }
 
@@ -192,6 +239,22 @@ export async function GET(req: Request) {
       });
     }
 
+    const [recentQuizRows] = await pool.query<RecentQuizRow[]>(
+      `
+      SELECT
+        qa.id,
+        c.title AS course,
+        qa.scorePercentage AS score,
+        qa.createdAt AS date
+      FROM course_quiz_attempt qa
+      JOIN course c ON c.id = qa.courseId
+      WHERE qa.studentId = ?
+      ORDER BY qa.createdAt DESC
+      LIMIT 5
+      `,
+      [user.id]
+    );
+
     return NextResponse.json({
       stats: {
         enrolledCourses,
@@ -201,7 +264,12 @@ export async function GET(req: Request) {
       },
       studyData: last7,
       continueLearning,
-      recentQuizzes: [],
+      recentQuizzes: recentQuizRows.map((row) => ({
+        id: row.id,
+        course: row.course,
+        score: Math.round(Number(row.score || 0)),
+        date: row.date ? new Date(row.date).toLocaleDateString() : '-',
+      })),
     });
   } catch (error: any) {
     console.error('Student dashboard error:', error);

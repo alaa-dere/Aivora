@@ -10,6 +10,7 @@ export const API_ROUTES = {
     session: '/api/auth/session',
     socialComplete: '/api/auth/social-complete',
     forgotPassword: '/api/auth/forgot-password',
+    mobileSocial: '/api/auth/mobile-social',
   },
   student: {
     dashboard: '/api/student/dashboard',

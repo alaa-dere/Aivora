@@ -37,15 +37,13 @@ export const MOBILE_TABS = {
     {
       id: 'student-more',
       label: 'More',
-      title: 'Profile',
+      title: 'More',
       icon: 'dots-horizontal-circle',
       featureIds: [
         'student-my-courses',
-        'student-paths',
         'student-leaderboard',
         'student-certificates',
         'student-certificate-quizzes',
-        'student-profile',
       ],
     },
   ],

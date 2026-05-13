@@ -33,6 +33,8 @@ export default function StudentMyCourseContentView({
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [expandedModules, setExpandedModules] = useState({});
+  const [showChaptersList, setShowChaptersList] = useState(false);
+  const [showLessonsList, setShowLessonsList] = useState(false);
 
   const selectedModule = useMemo(
     () => modules.find((moduleItem) => String(moduleItem?.id || '') === String(selectedModuleId || '')) || modules[0] || null,
@@ -78,6 +80,7 @@ export default function StudentMyCourseContentView({
     if (ownerModule?.id) {
       setSelectedModuleId(String(ownerModule.id));
     }
+    onOpenLessonPage(lesson);
   };
 
 
@@ -159,32 +162,47 @@ export default function StudentMyCourseContentView({
             },
           ]}
         >
-          <Text style={[portalStyles.listItemTitle, { color: theme.textPrimary, fontSize: 16 }]}>Chapters</Text>
-          {modules.map((moduleItem, moduleIndex) => {
-            const active = String(moduleItem?.id || '') === String(selectedModule?.id || '');
-            return (
-              <Pressable
-                key={`chapter-list-${moduleItem?.id || moduleIndex}`}
-                onPress={() => {
-                  setSelectedModuleId(String(moduleItem?.id || ''));
-                  const firstUnlocked = (Array.isArray(moduleItem?.lessons) ? moduleItem.lessons : []).find((lesson) => lesson?.unlocked) || (Array.isArray(moduleItem?.lessons) ? moduleItem.lessons[0] : null);
-                  if (firstUnlocked?.id) setSelectedLessonId(String(firstUnlocked.id));
-                }}
-                style={{
-                  borderWidth: 1,
-                  borderColor: active ? '#93c5fd' : '#dbe4ef',
-                  backgroundColor: active ? '#eff6ff' : '#ffffff',
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 9,
-                }}
-              >
-                <Text style={{ color: active ? '#1d4ed8' : '#334155', fontWeight: '700' }}>
-                  {`CH${moduleIndex + 1}: ${moduleItem?.title || 'Module'}`}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <Pressable
+            onPress={() => {
+              setShowChaptersList((prev) => !prev);
+              if (!showChaptersList) setShowLessonsList(false);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+          >
+            <Text style={[portalStyles.listItemTitle, { color: theme.textPrimary, fontSize: 16 }]}>Chapters</Text>
+            <MaterialCommunityIcons
+              name={showChaptersList ? 'chevron-up' : 'chevron-down'}
+              size={22}
+              color="#2563eb"
+            />
+          </Pressable>
+          {showChaptersList
+            ? modules.map((moduleItem, moduleIndex) => {
+                const active = String(moduleItem?.id || '') === String(selectedModule?.id || '');
+                return (
+                  <Pressable
+                    key={`chapter-list-${moduleItem?.id || moduleIndex}`}
+                    onPress={() => {
+                      setSelectedModuleId(String(moduleItem?.id || ''));
+                      const firstUnlocked = (Array.isArray(moduleItem?.lessons) ? moduleItem.lessons : []).find((lesson) => lesson?.unlocked) || (Array.isArray(moduleItem?.lessons) ? moduleItem.lessons[0] : null);
+                      if (firstUnlocked?.id) setSelectedLessonId(String(firstUnlocked.id));
+                    }}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: active ? '#93c5fd' : '#dbe4ef',
+                      backgroundColor: active ? '#eff6ff' : '#ffffff',
+                      borderRadius: 10,
+                      paddingHorizontal: 10,
+                      paddingVertical: 9,
+                    }}
+                  >
+                    <Text style={{ color: active ? '#1d4ed8' : '#334155', fontWeight: '700' }}>
+                      {`CH${moduleIndex + 1}: ${moduleItem?.title || 'Module'}`}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            : null}
         </View>
 
         <View
@@ -197,42 +215,57 @@ export default function StudentMyCourseContentView({
             },
           ]}
         >
-          <Text style={[portalStyles.listItemTitle, { color: theme.textPrimary, fontSize: 16 }]}>Lessons</Text>
-          {lessonsInSelectedModule.length === 0 ? (
+          <Pressable
+            onPress={() => {
+              setShowLessonsList((prev) => !prev);
+              if (!showLessonsList) setShowChaptersList(false);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+          >
+            <Text style={[portalStyles.listItemTitle, { color: theme.textPrimary, fontSize: 16 }]}>Lessons</Text>
+            <MaterialCommunityIcons
+              name={showLessonsList ? 'chevron-up' : 'chevron-down'}
+              size={22}
+              color="#2563eb"
+            />
+          </Pressable>
+          {showLessonsList && lessonsInSelectedModule.length === 0 ? (
             <Text style={[portalStyles.listItemMeta, { color: theme.textMuted }]}>No lessons in this chapter.</Text>
           ) : null}
-          {lessonsInSelectedModule.map((lesson, lessonIndex) => {
-            const active = String(lesson?.id || '') === String(selectedLessonId || '');
-            return (
-              <Pressable
-                key={`chapter-lesson-${lesson?.id || lessonIndex}`}
-                onPress={() => lesson?.unlocked && handleOpenLesson(lesson)}
-                disabled={!lesson?.unlocked}
-                style={{
-                  borderWidth: 1,
-                  borderColor: active ? '#93c5fd' : '#dbe4ef',
-                  backgroundColor: active ? '#eff6ff' : '#ffffff',
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 9,
-                  opacity: lesson?.unlocked ? 1 : 0.55,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                }}
-              >
-                <Text style={{ color: active ? '#1d4ed8' : '#334155', fontWeight: '700', flex: 1 }}>
-                  {`L${lessonIndex + 1}: ${lesson?.title || 'Lesson'}`}
-                </Text>
-                <MaterialCommunityIcons
-                  name={lesson?.unlocked ? 'play-circle-outline' : 'lock-outline'}
-                  size={17}
-                  color={lesson?.unlocked ? '#2563eb' : '#94a3b8'}
-                />
-              </Pressable>
-            );
-          })}
+          {showLessonsList
+            ? lessonsInSelectedModule.map((lesson, lessonIndex) => {
+                const active = String(lesson?.id || '') === String(selectedLessonId || '');
+                return (
+                  <Pressable
+                    key={`chapter-lesson-${lesson?.id || lessonIndex}`}
+                    onPress={() => lesson?.unlocked && handleOpenLesson(lesson)}
+                    disabled={!lesson?.unlocked}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: active ? '#93c5fd' : '#dbe4ef',
+                      backgroundColor: active ? '#eff6ff' : '#ffffff',
+                      borderRadius: 10,
+                      paddingHorizontal: 10,
+                      paddingVertical: 9,
+                      opacity: lesson?.unlocked ? 1 : 0.55,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <Text style={{ color: active ? '#1d4ed8' : '#334155', fontWeight: '700', flex: 1 }}>
+                      {`L${lessonIndex + 1}: ${lesson?.title || 'Lesson'}`}
+                    </Text>
+                    <MaterialCommunityIcons
+                      name={lesson?.unlocked ? 'play-circle-outline' : 'lock-outline'}
+                      size={17}
+                      color={lesson?.unlocked ? '#2563eb' : '#94a3b8'}
+                    />
+                  </Pressable>
+                );
+              })
+            : null}
         </View>
 
         {modules.length === 0 ? <Text style={portalStyles.empty}>No modules found.</Text> : null}

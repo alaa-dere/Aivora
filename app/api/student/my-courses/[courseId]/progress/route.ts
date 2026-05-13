@@ -50,6 +50,27 @@ async function ensureTeacherNotificationTable() {
   `);
 }
 
+async function ensureStudySessionTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS lesson_study_session (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      enrollmentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      lessonId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      startedAt DATETIME NOT NULL,
+      endedAt DATETIME NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_lss_enrollment (enrollmentId),
+      INDEX idx_lss_lesson (lessonId),
+      INDEX idx_lss_started (startedAt),
+      INDEX idx_lss_ended (endedAt),
+      CONSTRAINT fk_lss_enrollment FOREIGN KEY (enrollmentId) REFERENCES enrollment(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT fk_lss_lesson FOREIGN KEY (lessonId) REFERENCES lesson(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+}
+
 export async function POST(req: Request, { params }: Params) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'student') {
@@ -57,6 +78,7 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   try {
+    await ensureStudySessionTable();
     const { courseId } = await params;
     const id = decodeURIComponent(courseId).trim();
     const body = await req.json();
@@ -102,6 +124,28 @@ export async function POST(req: Request, { params }: Params) {
     const lesson = lessonRows[0];
 
     if (event === 'start') {
+      await pool.query<ResultSetHeader>(
+        `
+        UPDATE lesson_study_session
+        SET endedAt = NOW()
+        WHERE enrollmentId = ?
+          AND endedAt IS NULL
+        `,
+        [enrollmentId]
+      );
+
+      const [sessionIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+      const sessionId = sessionIdRows[0].id as string;
+      await pool.query<ResultSetHeader>(
+        `
+        INSERT INTO lesson_study_session
+          (id, enrollmentId, lessonId, startedAt, endedAt)
+        VALUES
+          (?, ?, ?, NOW(), NULL)
+        `,
+        [sessionId, enrollmentId, lessonId]
+      );
+
       if (existing.length === 0) {
         const [idRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
         const progressId = idRows[0].id as string;
@@ -321,6 +365,17 @@ export async function POST(req: Request, { params }: Params) {
         [existing[0].id]
       );
     }
+
+    await pool.query<ResultSetHeader>(
+      `
+      UPDATE lesson_study_session
+      SET endedAt = NOW()
+      WHERE enrollmentId = ?
+        AND lessonId = ?
+        AND endedAt IS NULL
+      `,
+      [enrollmentId, lessonId]
+    );
 
     const [totalRows] = await pool.query<RowDataPacket[]>(
       `
