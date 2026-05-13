@@ -13,6 +13,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Aivora to use your camera to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Allow Aivora to access your photos to choose a profile photo.",
+        "NSPhotoLibraryAddUsageDescription": "Allow Aivora to save selected profile photos when needed."
+      },
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
@@ -20,6 +25,11 @@
       }
     },
     "android": {
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ],
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
@@ -32,6 +42,15 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Aivora to access your photos to choose a profile photo.",
+          "cameraPermission": "Allow Aivora to use your camera to take a profile photo."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

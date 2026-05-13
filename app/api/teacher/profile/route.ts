@@ -76,6 +76,8 @@ export async function PUT(req: Request) {
     const currentPassword =
       typeof body.currentPassword === 'string' ? body.currentPassword : '';
     const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    const imageUrl =
+      typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
 
     if (!fullName || !email) {
       return NextResponse.json({ message: 'Full name and email are required' }, { status: 400 });
@@ -124,6 +126,11 @@ export async function PUT(req: Request) {
 
     const updates: string[] = ['fullName = ?', 'email = ?', 'updatedAt = NOW()'];
     const params: any[] = [fullName, email];
+
+    if (imageUrl) {
+      updates.push('imageUrl = ?');
+      params.push(imageUrl);
+    }
 
     if (passwordHashToSet) {
       updates.push('passwordHash = ?');

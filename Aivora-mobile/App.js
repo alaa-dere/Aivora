@@ -298,31 +298,21 @@ function HomeScreen({
                 <>
                   <Pressable
                     onPress={onWorkspacePress}
-                    style={[
-                      homeStyles.headerButton,
-                      isDark ? homeStyles.headerButtonDark : homeStyles.headerButtonLight,
-                    ]}
+                    style={homeStyles.userChip}
                   >
-                    <Ionicons
-                      name="grid-outline"
-                      size={18}
-                      color={isDark ? '#ffffff' : '#000000'}
-                    />
-                    <Text
-                      style={[
-                        homeStyles.headerButtonText,
-                        isDark ? homeStyles.headerTextDark : homeStyles.headerTextLight,
-                      ]}
-                    >
-                      Workspace
-                    </Text>
-                  </Pressable>
-                  <View style={homeStyles.userChip}>
-                    <Ionicons
-                      name="person-circle-outline"
-                      size={18}
-                      color={isDark ? '#ffffff' : '#0b1e2d'}
-                    />
+                    {String(user?.imageUrl || '').trim() ? (
+                      <Image
+                        source={toImageSource(String(user.imageUrl), require('./assets/icon.png'))}
+                        style={homeStyles.userChipAvatar}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={18}
+                        color={isDark ? '#ffffff' : '#0b1e2d'}
+                      />
+                    )}
                     <Text
                       style={[
                         homeStyles.userChipText,
@@ -330,9 +320,9 @@ function HomeScreen({
                       ]}
                       numberOfLines={1}
                     >
-                      {user.fullName || user.email}
+                      {String(user?.fullName || user?.email || 'User').trim().split(/\s+/)[0] || 'User'}
                     </Text>
-                  </View>
+                  </Pressable>
                   <Pressable
                     onPress={onLogoutPress}
                     style={[
@@ -1510,16 +1500,21 @@ const homeStyles = StyleSheet.create({
   userChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    maxWidth: 130,
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 10,
+    maxWidth: 92,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 9,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   userChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
+  },
+  userChipAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
   },
   headerButton: {
     paddingHorizontal: 10,

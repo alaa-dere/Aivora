@@ -5,12 +5,6 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { API_ROUTES, normalizeSessionProfileResponse } from "@aivora/shared";
 
-const roleRoute: Record<string, string> = {
-  admin: "/dashboard",
-  teacher: "/teacher",
-  student: "/student",
-};
-
 export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
@@ -22,7 +16,6 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     null;
   const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
   const role = session?.user?.role?.toLowerCase() || "student";
-  const dashboard = roleRoute[role] || "/student";
   const imageUrl = sessionImageUrl || fetchedImageUrl;
 
   useEffect(() => {
@@ -30,7 +23,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     if (sessionImageUrl) return;
     const loadProfile = async () => {
       try {
-        const res = await fetch(API_ROUTES.profileMe, { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.profileMe, { cache: "no-store" });
         const data = await res.json();
         if (mounted && res.ok) {
           setFetchedImageUrl(normalizeSessionProfileResponse(data).imageUrl);
@@ -51,7 +44,8 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white max-w-[170px] sm:max-w-[220px]"
+        title={name}
       >
         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold overflow-hidden">
           {imageUrl ? (
@@ -65,18 +59,13 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
             initial
           )}
         </div>
-        <span className="hidden sm:inline text-sm">{name}</span>
+        <span className="hidden sm:inline text-sm truncate max-w-[95px] md:max-w-[130px] lg:max-w-[170px]">
+          {name}
+        </span>
       </button>
 
       {open && (
         <div className="absolute right-0 mt-2 w-48 rounded-xl border border-stone-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 shadow-lg overflow-hidden z-50">
-          <Link
-            href={dashboard}
-            onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
-          >
-            {isArabic ? "لوحة التحكم" : "Dashboard"}
-          </Link>
           <Link
             href={`/${role}/profile`}
             onClick={() => setOpen(false)}
@@ -104,3 +93,4 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     </div>
   );
 }
+

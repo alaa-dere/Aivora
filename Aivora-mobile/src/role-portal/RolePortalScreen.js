@@ -12,9 +12,17 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_ROUTES } from '@aivora/shared';
-import { getActiveApiBaseUrl } from '../services/api-client';
+import { getActiveApiBaseUrl, toImageSource } from '../services/api-client';
 import { downloadCertificatePdfNative } from '../services/certificate-download';
 import AdminWorkspace from './components/AdminWorkspace';
+import TeacherWorkspace from './components/TeacherWorkspace';
+import StudentDashboardView from './components/StudentDashboardView';
+import StudentChatView from './components/StudentChatView';
+import StudentProfileView from './components/StudentProfileView';
+import StudentExploreCoursesView from './components/StudentExploreCoursesView';
+import StudentMyCoursesView from './components/StudentMyCoursesView';
+import StudentMyCourseContentView from './components/StudentMyCourseContentView';
+import StudentMyCoursePlayerView from './components/StudentMyCoursePlayerView';
 import CertificatePreviewCard from './components/CertificatePreviewCard';
 import { MOBILE_TABS } from './config/mobile-tabs';
 import { ROLE_FEATURES } from './config/role-features';
@@ -254,6 +262,26 @@ const getThemeColors = (mode) => {
 };
 
 const isMoreTab = (tabId) => String(tabId || '').endsWith('-more');
+const FEATURE_MENU_ICON_MAP = {
+  'student-my-courses': 'book-open-page-variant',
+  'student-paths': 'map-marker-path',
+  'student-leaderboard': 'trophy-outline',
+  'student-certificates': 'certificate-outline',
+  'student-certificate-quizzes': 'clipboard-text-outline',
+  'student-profile': 'account-circle-outline',
+  'teacher-profile': 'account-circle-outline',
+  'teacher-earnings': 'cash-multiple',
+  'teacher-messages': 'message-text-outline',
+  'teacher-live-sessions': 'video-wireless-outline',
+  'teacher-students': 'account-group-outline',
+  'teacher-question-bank': 'help-circle-outline',
+  'teacher-certificates': 'certificate-outline',
+  'admin-certificates': 'certificate-outline',
+  'admin-students': 'account-school-outline',
+  'admin-teachers': 'account-tie-outline',
+  'admin-transactions': 'cash-register',
+  'admin-reports': 'file-chart-outline',
+};
 
 const canViewCertificateItem = (item) => {
   if (!item || typeof item !== 'object') return false;
@@ -273,6 +301,19 @@ export default function RolePortalScreen({
   if (role === 'admin') {
     return (
       <AdminWorkspace
+        user={user}
+        onBackHome={onBackHome}
+        onLogout={onLogout}
+        apiFetch={apiFetch}
+        themeMode={themeMode}
+        onToggleTheme={onToggleTheme}
+      />
+    );
+  }
+
+  if (role === 'teacher') {
+    return (
+      <TeacherWorkspace
         user={user}
         onBackHome={onBackHome}
         onLogout={onLogout}
@@ -306,6 +347,7 @@ function GeneralRolePortal({
   onToggleTheme,
 }) {
   const insets = useSafeAreaInsets();
+  const [currentUser, setCurrentUser] = useState(user || null);
   const features = useMemo(() => {
     const byRole = ROLE_FEATURES[role];
     if (Array.isArray(byRole)) return byRole;
@@ -326,6 +368,8 @@ function GeneralRolePortal({
   const [expandedNotifications, setExpandedNotifications] = useState({});
   const [viewingCertificateId, setViewingCertificateId] = useState('');
   const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [continueCoursePreview, setContinueCoursePreview] = useState(null);
+  const [activeLessonId, setActiveLessonId] = useState('');
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -367,7 +411,8 @@ function GeneralRolePortal({
       }
       return;
     }
-    const containsActiveFeature = activeTab?.featureIds?.includes(activeFeatureId);
+    const allowDetachedStudentProfile = role === 'student' && activeFeatureId === 'student-profile';
+    const containsActiveFeature = allowDetachedStudentProfile || activeTab?.featureIds?.includes(activeFeatureId);
     if (!containsActiveFeature) {
       const nextFeatureId = activeTab?.featureIds?.[0] || features[0]?.id || '';
       if (nextFeatureId && nextFeatureId !== activeFeatureId) {
@@ -386,6 +431,10 @@ function GeneralRolePortal({
 
   const hasMissingParams =
     !!activeFeature?.params?.some((param) => !String(paramValues[param] || '').trim());
+
+  useEffect(() => {
+    setCurrentUser(user || null);
+  }, [user]);
 
   const loadBadges = useCallback(async () => {
     const loaders = getRoleBadgeLoaders(role);
@@ -526,6 +575,15 @@ function GeneralRolePortal({
   const summaryStats = pickSummaryStats(rawData);
   const isNotificationsFeature = isNotificationsFeatureId(activeFeature?.id);
   const isCertificatesFeature = isCertificatesFeatureId(activeFeature?.id);
+  const isStudentDashboardFeature = activeFeature?.id === 'student-dashboard';
+  const isStudentChatFeature = role === 'student' && activeFeature?.id === 'student-chat';
+  const isStudentProfileFeature = role === 'student' && activeFeature?.id === 'student-profile';
+  const isStudentCoursesFeature = role === 'student' && activeFeature?.id === 'student-courses';
+  const isStudentMyCoursesFeature = role === 'student' && activeFeature?.id === 'student-my-courses';
+  const isStudentMyCourseContentFeature =
+    role === 'student' && activeFeature?.id === 'student-my-course-content';
+  const isStudentMyCoursePlayerFeature =
+    role === 'student' && activeFeature?.id === 'student-my-course-player';
 
   const handleViewCertificate = async (item) => {
     if (!activeFeature || !isCertificatesFeature || !canViewCertificateItem(item)) return;
@@ -604,16 +662,40 @@ function GeneralRolePortal({
             color={theme.isDark ? '#fbbf24' : '#334155'}
           />
         </Pressable>
-        <View style={portalStyles.userAvatar}>
-          <Text style={portalStyles.userAvatarText}>
-            {String(user?.fullName || user?.email || 'U').trim().charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => {
+            if (role === 'student') {
+              setActiveTabId('student-more');
+              setActiveFeatureId('student-profile');
+              setRawData(null);
+              setError('');
+            }
+          }}
+          style={portalStyles.userAvatar}
+        >
+          {String(currentUser?.imageUrl || '').trim() ? (
+            <Image
+              source={toImageSource(String(currentUser.imageUrl), require('../../assets/icon.png'))}
+              style={{ width: 30, height: 30, borderRadius: 999 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={portalStyles.userAvatarText}>
+              {String(currentUser?.fullName || currentUser?.email || 'U').trim().charAt(0).toUpperCase() || 'U'}
+            </Text>
+          )}
+        </Pressable>
         <Pressable onPress={onLogout} style={portalStyles.themeToggleBtn}>
           <MaterialCommunityIcons name="logout" size={20} color={theme.isDark ? '#fecaca' : '#b91c1c'} />
         </Pressable>
       </View>
 
+      {!isStudentDashboardFeature &&
+      !isStudentChatFeature &&
+      !isStudentProfileFeature &&
+      !isStudentCoursesFeature &&
+      !isStudentMyCourseContentFeature &&
+      !isStudentMyCoursePlayerFeature ? (
       <View style={[portalStyles.panel, { backgroundColor: theme.panelBg, borderColor: theme.panelBorder }]}>
         <Text style={[portalStyles.panelTitle, { color: theme.textPrimary }]}>{activeFeature?.title}</Text>
 
@@ -657,8 +739,15 @@ function GeneralRolePortal({
           <Text style={portalStyles.summary}>Loaded: {normalized.summary}</Text>
         ) : null}
       </View>
+      ) : null}
 
-      {summaryStats.length > 0 ? (
+      {!isStudentDashboardFeature &&
+      !isStudentChatFeature &&
+      !isStudentProfileFeature &&
+      !isStudentCoursesFeature &&
+      !isStudentMyCourseContentFeature &&
+      !isStudentMyCoursePlayerFeature &&
+      summaryStats.length > 0 ? (
         <View style={portalStyles.statsGrid}>
           {summaryStats.map((stat) => (
             <View
@@ -672,6 +761,122 @@ function GeneralRolePortal({
         </View>
       ) : null}
 
+      {isStudentDashboardFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? <StudentDashboardView data={rawData} theme={theme} /> : null}
+        </ScrollView>
+      ) : isStudentCoursesFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentExploreCoursesView
+              data={rawData}
+              theme={theme}
+              onRefresh={loadFeature}
+              onOpenMyCourses={(course) => {
+                setContinueCoursePreview(course || null);
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-courses');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentMyCoursesFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentMyCoursesView
+              data={rawData}
+              theme={theme}
+              initialView="in_progress"
+              onOpenCourse={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!courseId) return;
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-course-content');
+                setRawData(null);
+                setError('');
+              }}
+              onTakeCertificateQuiz={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!courseId) return;
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-more');
+                setActiveFeatureId('student-certificate-quizzes');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentMyCourseContentFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentMyCourseContentView
+              data={rawData}
+              theme={theme}
+              onBackToMyCourses={() => {
+                setActiveTabId('student-more');
+                setActiveFeatureId('student-my-courses');
+                setRawData(null);
+                setError('');
+              }}
+              onOpenLessonPage={(lesson) => {
+                const lessonId = String(lesson?.id || '').trim();
+                setActiveLessonId(lessonId);
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-course-player');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentMyCoursePlayerFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentMyCoursePlayerView
+              data={rawData}
+              theme={theme}
+              lessonId={activeLessonId}
+              onBack={() => {
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-course-content');
+                setRawData(null);
+                setError('');
+              }}
+              onOpenLesson={(lesson) => {
+                setActiveLessonId(String(lesson?.id || ''));
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentChatFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          <StudentChatView apiFetch={apiFetch} theme={theme} />
+        </ScrollView>
+      ) : isStudentProfileFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          <StudentProfileView
+            apiFetch={apiFetch}
+            theme={theme}
+            onProfileUpdated={(nextProfile) =>
+              setCurrentUser((prev) => ({ ...(prev || {}), ...(nextProfile || {}) }))
+            }
+          />
+        </ScrollView>
+      ) : (
       <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
         {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
         {!loading && !selectedCertificate && rawData && featureItems.length === 0 ? (
@@ -722,6 +927,7 @@ function GeneralRolePortal({
             );
           })}
       </ScrollView>
+      )}
 
       <View
         style={[
@@ -822,9 +1028,16 @@ function GeneralRolePortal({
                               setMenuOpen(false);
                             }}
                           >
-                            <Text style={[portalStyles.menuItemText, active && portalStyles.menuItemTextActive]}>
-                              {feature.title}
-                            </Text>
+                            <View style={portalStyles.menuItemRow}>
+                              <MaterialCommunityIcons
+                                name={FEATURE_MENU_ICON_MAP[feature.id] || 'chevron-right-circle-outline'}
+                                size={18}
+                                color={active ? '#1d4ed8' : '#475569'}
+                              />
+                              <Text style={[portalStyles.menuItemText, active && portalStyles.menuItemTextActive]}>
+                                {feature.title}
+                              </Text>
+                            </View>
                           </Pressable>
                         );
                       })}
@@ -938,3 +1151,4 @@ function NotificationEntityCard({
     </View>
   );
 }
+

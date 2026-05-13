@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@aivora/shared": "file:../packages/shared",
+    "@react-native-community/datetimepicker": "^9.1.0",
     "expo": "~54.0.0",
+    "expo-clipboard": "~8.0.7",
     "expo-file-system": "~19.0.21",
+    "expo-image-picker": "^55.0.20",
     "expo-linear-gradient": "~15.0.8",
     "expo-print": "~15.0.8",
     "expo-sharing": "~14.0.8",

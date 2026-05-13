@@ -329,7 +329,7 @@ export default function HomePage() {
               />
             </Link>
 
-            <div className="hidden md:flex items-center justify-center gap-2">
+            <div className="hidden lg:flex items-center justify-center gap-2">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -382,7 +382,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-3 flex md:hidden overflow-x-auto gap-2 pb-1">
+          <div className="mt-3 flex lg:hidden overflow-x-auto gap-2 pb-1">
             {navItems.map((item) => (
               <button
                 key={item.id}

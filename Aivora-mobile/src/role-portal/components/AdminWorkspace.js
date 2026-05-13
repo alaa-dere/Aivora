@@ -44,7 +44,7 @@ const getThemeColors = (mode) => {
 };
 
 const FEATURE_ICON_MAP = {
-  'admin-stats': 'chart-bar',
+  'admin-stats': 'view-dashboard',
   'admin-recent-activity': 'history',
   'admin-revenue-trend': 'chart-line',
   'admin-courses': 'book-open-page-variant',

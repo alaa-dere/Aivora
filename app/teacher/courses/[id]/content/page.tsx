@@ -5,9 +5,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircle, MoreVertical, X } from 'lucide-react';
-import LivePythonEditor from '@/components/live-python-editor';
-import LiveJsEditor from '@/components/live-js-editor';
-import LiveHtmlPreview from '@/components/live-html-preview';
 import LessonContentView from '@/components/lesson-content-view';
 
 type Lesson = {
@@ -59,6 +56,7 @@ export default function CourseContentPage() {
   });
   const [openModuleMenuId, setOpenModuleMenuId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [contentViewMode, setContentViewMode] = useState<'preview' | 'manage'>('manage');
 
   const fetchContent = async () => {
     try {
@@ -409,6 +407,67 @@ export default function CourseContentPage() {
     return null;
   };
 
+  const parseBooleanLike = (value: string) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (['true', 'yes', 'on', 'enabled', '1'].includes(normalized)) return true;
+    if (['false', 'no', 'off', 'disabled', '0'].includes(normalized)) return false;
+    return null;
+  };
+
+  const normalizePreviewLine = (lineText: string) =>
+    String(lineText || '')
+      .replace(/^#{1,6}\s*/, '')
+      .replace(/[*_~`]/g, '')
+      .trim();
+
+  const parseLessonPreviewMeta = (rawContent: string) => {
+    const lines = String(rawContent || '').replace(/\r\n/g, '\n').split('\n');
+    let enableLiveEditor: boolean | null = null;
+    let liveEditorLanguage = '';
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = normalizePreviewLine(lines[index]);
+      if (!line) continue;
+
+      const liveCompilerMatch = line.match(/^live\s*compiler\s*:\s*(.+)$/i);
+      if (liveCompilerMatch?.[1]) {
+        const parsed = parseBooleanLike(liveCompilerMatch[1]);
+        if (parsed !== null) enableLiveEditor = parsed;
+        continue;
+      }
+
+      const liveEditorMatch = line.match(/^(?:live\s*editor|enable\s*live\s*editor)\s*:\s*(.+)$/i);
+      if (liveEditorMatch?.[1]) {
+        const parsed = parseBooleanLike(liveEditorMatch[1]);
+        if (parsed !== null) enableLiveEditor = parsed;
+        continue;
+      }
+
+      const languageMatch = line.match(/^live\s*editor\s*language\s*:\s*(.+)$/i);
+      if (languageMatch?.[1]) {
+        liveEditorLanguage = String(languageMatch[1]).trim().toLowerCase();
+      }
+    }
+
+    return {
+      enableLiveEditor,
+      liveEditorLanguage,
+    };
+  };
+
+  const getPreviewLessonContent = (lesson: Lesson) => {
+    if (String(lesson.content || '').trim()) return String(lesson.content);
+    const fallbackParts: string[] = [];
+    if (String(lesson.codeContent || '').trim()) {
+      fallbackParts.push(`\`\`\`code\n${String(lesson.codeContent).trim()}\n\`\`\``);
+    }
+    if (String(lesson.videoUrl || '').trim()) {
+      fallbackParts.push(`{{video:${String(lesson.videoUrl).trim()}}}`);
+    }
+    return fallbackParts.join('\n\n');
+  };
+
   const parseLessonContent = (content: string) => {
     const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
     const tokenRegex = /```|\{\{\s*video\s*:|\{\{\s*starter\s*:/gi;
@@ -622,9 +681,34 @@ export default function CourseContentPage() {
               Manage your course content and structure
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setContentViewMode('preview')}
+              className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                contentViewMode === 'preview'
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
+                  : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+              }`}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setContentViewMode('manage')}
+              className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                contentViewMode === 'manage'
+                  ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
+                  : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+              }`}
+            >
+              Manage
+            </button>
+          </div>
         </div>
 
         {/* Quick Actions */}
+        {contentViewMode === 'manage' ? (
         <div className="mb-4 portal-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
@@ -684,6 +768,7 @@ export default function CourseContentPage() {
             ))}
           </div>
         </div>
+        ) : null}
 
         {/* Lesson Modal */}
         {showLessonModal && (
@@ -1118,11 +1203,27 @@ export default function CourseContentPage() {
                       <div className="px-6 py-3 bg-white/50 dark:bg-gray-900/50">
                         <button
                           type="button"
-                          onClick={() => openCreateLesson(module.id)}
+                          onClick={() => openCreateLesson(module.id, 'text')}
                           className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center"
                         >
                           <Plus className="w-4 h-4 mr-1" />
-                          Add Lesson
+                          Add Text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCreateLesson(module.id, 'code_example')}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center"
+                        >
+                          <Code className="w-4 h-4 mr-1" />
+                          Add Code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCreateLesson(module.id, 'video_embed')}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center"
+                        >
+                          <Video className="w-4 h-4 mr-1" />
+                          Add Video
                         </button>
                       </div>
                     </div>
@@ -1164,12 +1265,25 @@ export default function CourseContentPage() {
                         </p>
                       )}
                     </div>
-                    <LessonContentView
-                      content={lesson.content || ''}
-                      enableLiveEditor={lesson.enableLiveEditor}
-                      liveEditorLanguage={lesson.liveEditorLanguage || 'python'}
-                      starterDisabledMessage="Starter code found, but Live Editor is disabled for this lesson."
-                    />
+                    {(() => {
+                      const previewContent = getPreviewLessonContent(lesson);
+                      const previewMeta = parseLessonPreviewMeta(previewContent);
+                      const effectiveEnable =
+                        typeof previewMeta.enableLiveEditor === 'boolean'
+                          ? previewMeta.enableLiveEditor
+                          : Boolean(lesson.enableLiveEditor);
+                      const effectiveLanguage = (previewMeta.liveEditorLanguage ||
+                        lesson.liveEditorLanguage ||
+                        'python') as NonNullable<Lesson['liveEditorLanguage']>;
+                      return (
+                        <LessonContentView
+                          content={previewContent}
+                          enableLiveEditor={effectiveEnable}
+                          liveEditorLanguage={effectiveLanguage}
+                          starterDisabledMessage="Starter code found, but Live Editor is disabled for this lesson."
+                        />
+                      );
+                    })()}
                   </div>
                 );
               })()}
