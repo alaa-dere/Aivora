@@ -19,7 +19,7 @@ import {
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
   AcademicCapIcon,
-  BanknotesIcon,
+  CurrencyDollarIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
@@ -40,8 +40,8 @@ const menuItems = [
   { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
   { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
   { href: '/teacher/students', name: 'Students', icon: UsersIcon },
+  { href: '/teacher/earnings', name: 'Earnings', icon: CurrencyDollarIcon },
   { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
-  { href: '/teacher/earnings', name: 'Earnings', icon: BanknotesIcon },
   { href: '/teacher/certificates', name: 'Certificates', icon: AcademicCapIcon },
 ];
 
@@ -200,7 +200,7 @@ const handleLogout = async () => {
   }
 
   return (
-    <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
+    <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
       {/* ──────────────── Topbar ──────────────── */}
       <header className="sticky top-0 z-30 px-4 pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -243,7 +243,7 @@ const handleLogout = async () => {
             </button>
 
             {notificationOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Notifications
@@ -340,7 +340,7 @@ const handleLogout = async () => {
             </button>
 
             {accountOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
                 <Link
                   href="/teacher/profile"
                   onClick={() => setAccountOpen(false)}
@@ -369,7 +369,7 @@ const handleLogout = async () => {
         {/* Sidebar */}
         <aside
           className={`
-            fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
+            admin-sidebar fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             w-64
@@ -475,7 +475,7 @@ const handleLogout = async () => {
       )}
 
       <style jsx global>{`
-        .portal-surface {
+        .admin-surface {
           background: #ffffff !important;
           border: 1px solid rgba(148, 163, 184, 0.35) !important;
           box-shadow:
@@ -483,7 +483,7 @@ const handleLogout = async () => {
             0 2px 6px rgba(15, 23, 42, 0.08) !important;
         }
 
-        .dark .portal-surface {
+        .dark .admin-surface {
           background: #0f172a !important;
           border: 1px solid rgba(71, 85, 105, 0.5) !important;
           box-shadow:
@@ -491,12 +491,12 @@ const handleLogout = async () => {
             0 2px 6px rgba(0, 0, 0, 0.28) !important;
         }
 
-        .portal-shell table {
+        .admin-shell table {
           border-collapse: collapse;
           width: 100%;
         }
 
-        .portal-shell table thead th {
+        .admin-shell table thead th {
           text-transform: uppercase;
           letter-spacing: 0.06em;
           font-size: 0.7rem;
@@ -506,69 +506,69 @@ const handleLogout = async () => {
           border-bottom: 1px solid rgba(148, 163, 184, 0.45);
         }
 
-        .dark .portal-shell table thead th {
+        .dark .admin-shell table thead th {
           background: rgba(15, 23, 42, 0.7);
           color: #e2e8f0;
           border-bottom: 1px solid rgba(51, 65, 85, 0.7);
         }
 
-        .portal-shell table tbody tr {
+        .admin-shell table tbody tr {
           background: transparent;
           transition: background-color 140ms ease;
         }
 
-        .portal-shell table tbody tr:hover {
+        .admin-shell table tbody tr:hover {
           background: rgba(226, 232, 240, 0.55);
         }
 
-        .dark .portal-shell table tbody tr:hover {
+        .dark .admin-shell table tbody tr:hover {
           background: rgba(30, 41, 59, 0.45);
         }
 
-        .portal-shell table tbody td {
+        .admin-shell table tbody td {
           padding: 0.95rem 1rem !important;
           border-bottom: 1px solid rgba(226, 232, 240, 0.9);
           color: inherit;
         }
 
-        .dark .portal-shell table tbody td {
+        .dark .admin-shell table tbody td {
           border-bottom: 1px solid rgba(51, 65, 85, 0.6);
         }
 
-        .portal-shell .portal-surface button[class*='bg-blue'],
-        .portal-shell .portal-surface a[class*='bg-blue'] {
+        .admin-shell .admin-surface button[class*='bg-blue'],
+        .admin-shell .admin-surface a[class*='bg-blue'] {
           background: #e0f2fe !important;
           border: 1px solid #bae6fd !important;
           color: #075985 !important;
         }
 
-        .portal-shell .portal-surface button[class*='bg-indigo'],
-        .portal-shell .portal-surface a[class*='bg-indigo'] {
+        .admin-shell .admin-surface button[class*='bg-indigo'],
+        .admin-shell .admin-surface a[class*='bg-indigo'] {
           background: #e0e7ff !important;
           border: 1px solid #c7d2fe !important;
           color: #3730a3 !important;
         }
 
-        .portal-shell .portal-surface button[class*='bg-emerald'],
-        .portal-shell .portal-surface a[class*='bg-emerald'],
-        .portal-shell .portal-surface button[class*='bg-green'],
-        .portal-shell .portal-surface a[class*='bg-green'] {
+        .admin-shell .admin-surface button[class*='bg-emerald'],
+        .admin-shell .admin-surface a[class*='bg-emerald'],
+        .admin-shell .admin-surface button[class*='bg-green'],
+        .admin-shell .admin-surface a[class*='bg-green'] {
           background: #dcfce7 !important;
           border: 1px solid #bbf7d0 !important;
           color: #166534 !important;
         }
 
-        .portal-shell .portal-surface button[class*='bg-amber'],
-        .portal-shell .portal-surface a[class*='bg-amber'],
-        .portal-shell .portal-surface button[class*='bg-yellow'],
-        .portal-shell .portal-surface a[class*='bg-yellow'] {
+        .admin-shell .admin-surface button[class*='bg-amber'],
+        .admin-shell .admin-surface a[class*='bg-amber'],
+        .admin-shell .admin-surface button[class*='bg-yellow'],
+        .admin-shell .admin-surface a[class*='bg-yellow'] {
           background: #fef3c7 !important;
           border: 1px solid #fde68a !important;
           color: #92400e !important;
         }
 
-        .portal-shell .portal-surface button[class*='bg-red'],
-        .portal-shell .portal-surface a[class*='bg-red'] {
+        .admin-shell .admin-surface button[class*='bg-red'],
+        .admin-shell .admin-surface a[class*='bg-red'] {
           background: #fee2e2 !important;
           border: 1px solid #fecaca !important;
           color: #991b1b !important;
@@ -577,3 +577,4 @@ const handleLogout = async () => {
     </div>
   );
 }
+

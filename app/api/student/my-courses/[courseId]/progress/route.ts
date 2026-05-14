@@ -4,6 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 import { randomUUID } from 'crypto';
+import { createAdminNotification, createTeacherNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -225,26 +226,23 @@ export async function POST(req: Request, { params }: Params) {
         const message = `${studentName} unlocked the certificate for ${courseTitle}.`;
 
         if (teacherId) {
-          await pool.query<ResultSetHeader>(
-            `
-            INSERT INTO teacher_notification
-              (id, teacherId, studentId, courseId, type, title, message, createdAt)
-            VALUES
-              (?, ?, ?, ?, 'quiz_certificate', ?, ?, NOW())
-            `,
-            [randomUUID(), teacherId, user.id, id, title, message]
-          );
+          await createTeacherNotification({
+            teacherId,
+            studentId: user.id,
+            courseId: id,
+            type: 'quiz_certificate',
+            title,
+            message,
+          });
         }
 
-        await pool.query<ResultSetHeader>(
-          `
-          INSERT INTO admin_notification
-            (id, type, title, message, studentId, courseId, createdAt)
-          VALUES
-            (?, 'course_enroll', ?, ?, ?, ?, NOW())
-          `,
-          [randomUUID(), title, message, user.id, id]
-        );
+        await createAdminNotification({
+          type: 'course_enroll',
+          title,
+          message,
+          studentId: user.id,
+          courseId: id,
+        });
 
         return NextResponse.json({ success: true, certificateId: certId });
       }

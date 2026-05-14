@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import pool from "@/lib/db";
 import { cookies } from "next/headers";
 import { RowDataPacket } from "mysql2";
+import { createAdminNotification } from "@/lib/notifications-write";
 
 export async function POST(req: Request) {
   try {
@@ -82,21 +83,12 @@ export async function POST(req: Request) {
 
     if (user.role === "student") {
       try {
-        const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
-        const notifId = notifIdRows[0].id as string;
-        await pool.query(
-          `
-          INSERT INTO admin_notification
-            (id, type, title, message, studentId, createdAt)
-          VALUES
-            (?, 'student_signup', 'New Student Account', ?, ?, NOW())
-          `,
-          [
-            notifId,
-            `${user.fullName} created a student account.`,
-            user.id,
-          ]
-        );
+        await createAdminNotification({
+          type: "student_signup",
+          title: "New Student Account",
+          message: `${user.fullName} created a student account.`,
+          studentId: user.id,
+        });
       } catch (notifError: any) {
         if (notifError?.code === "ER_NO_SUCH_TABLE") {
           console.warn("admin_notification table missing; skipping admin notification insert.");

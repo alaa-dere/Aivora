@@ -47,7 +47,8 @@ export default function AdminCertificatesPage() {
         </p>
       </div>
 
-      <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur shadow-md overflow-hidden">
+      <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
         {loading ? (
           <p className="p-4 text-sm text-slate-500 dark:text-slate-400">Loading certificates...</p>
         ) : error ? (

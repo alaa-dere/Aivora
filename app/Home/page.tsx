@@ -110,7 +110,7 @@ type FeedbackItem = {
 
 export default function HomePage() {
   const { theme, setTheme } = useTheme();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
@@ -269,6 +269,8 @@ export default function HomePage() {
 
   const isDark = mounted && theme === 'dark';
   const isArabic = language === 'ar';
+  const role = session?.user?.role?.toLowerCase() || '';
+  const isAdmin = role === 'admin';
 
   const trackCourseView = (courseId: string) => {
     if (status !== 'authenticated') return;
@@ -531,7 +533,7 @@ export default function HomePage() {
         </section>
 
         {/* Enrolled Courses Section */}
-        {status === 'authenticated' && (
+        {status === 'authenticated' && !isAdmin && (
           <section className="px-5 sm:px-6 lg:px-8 py-16">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
@@ -655,7 +657,7 @@ export default function HomePage() {
         )}
 
         {/* Recent Courses Section */}
-        {status === 'authenticated' && (
+        {status === 'authenticated' && !isAdmin && (
           <section className="px-5 sm:px-6 lg:px-8 pb-20">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">

@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import bcrypt from 'bcrypt';
 import { RowDataPacket, OkPacket } from 'mysql2';
+import { requireAdmin } from '@/lib/request-auth';
 
 export async function GET(req: Request) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
   try {
     const { searchParams } = new URL(req.url);
     const teacherId = searchParams.get('id');
@@ -16,6 +19,7 @@ export async function GET(req: Request) {
             u.id,
             u.fullName,
             u.email,
+            u.imageUrl,
             u.status,
             r.name AS role,
             u.createdAt,
@@ -199,6 +203,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
   try {
     const body = await req.json();
     const { fullName, email, password, status = 'active' } = body;
@@ -237,7 +243,6 @@ export async function POST(req: Request) {
       status,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-
     return NextResponse.json({ success: true, teacher: newTeacher }, { status: 201 });
   } catch (error) {
     console.error('Error adding teacher:', error);
@@ -246,6 +251,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
   try {
     const body = await req.json();
     const { id, fullName, email, status } = body;
@@ -277,7 +284,6 @@ export async function PUT(req: Request) {
       status,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-
     return NextResponse.json({ success: true, teacher: updatedTeacher }, { status: 200 });
   } catch (error) {
     console.error('Error updating teacher:', error);
@@ -286,6 +292,8 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const { error } = await requireAdmin(req);
+  if (error) return error;
   try {
     const { id } = await req.json();
 
@@ -314,7 +322,6 @@ export async function DELETE(req: Request) {
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Teacher not found' }, { status: 404 });
     }
-
     return NextResponse.json({ success: true, message: 'Teacher deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('Error deleting teacher:', error);

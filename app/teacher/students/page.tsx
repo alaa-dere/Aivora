@@ -99,7 +99,7 @@ export default function StudentsPage() {
   const atRiskCount = filteredStudents.filter((s) => Number(s.progress || 0) < 40).length;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="space-y-6">
         <div className="flex items-start sm:items-center justify-between gap-3">
           <div>

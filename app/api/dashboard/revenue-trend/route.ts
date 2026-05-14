@@ -7,16 +7,38 @@ type TrendRow = RowDataPacket & {
   revenue: number;
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const month = String(searchParams.get('month') || '').trim();
+    const validMonth = /^\d{4}-\d{2}$/.test(month);
+
+    const now = new Date();
+    let anchorDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+
+    if (validMonth) {
+      const [yearStr, monthStr] = month.split('-');
+      const y = Number(yearStr);
+      const m = Number(monthStr);
+      if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
+        const endOfMonth = new Date(y, m, 0);
+        anchorDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(
+          2,
+          '0'
+        )}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+      }
+    }
+
     const [rows] = await pool.query<TrendRow[]>(
       `
       WITH RECURSIVE weeks AS (
-        SELECT DATE_SUB(CURDATE(), INTERVAL 11 WEEK) AS week_start
+        SELECT DATE_SUB(DATE_SUB(?, INTERVAL WEEKDAY(?) DAY), INTERVAL 11 WEEK) AS week_start
         UNION ALL
         SELECT DATE_ADD(week_start, INTERVAL 1 WEEK)
         FROM weeks
-        WHERE week_start < CURDATE()
+        WHERE week_start < DATE_SUB(?, INTERVAL WEEKDAY(?) DAY)
       )
       SELECT
         DATE_FORMAT(weeks.week_start, '%Y-%u') AS weekKey,
@@ -30,6 +52,8 @@ export async function GET() {
       GROUP BY weekKey, week
       ORDER BY weekKey ASC
       `
+      ,
+      [anchorDate, anchorDate, anchorDate, anchorDate]
     );
 
     return NextResponse.json({ trend: rows });

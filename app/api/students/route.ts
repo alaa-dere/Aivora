@@ -16,6 +16,7 @@ export async function GET(req: Request) {
             u.id,
             u.fullName,
             u.email,
+            u.imageUrl,
             u.status,
             r.name AS role,
             u.createdAt,

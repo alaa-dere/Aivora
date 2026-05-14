@@ -3,26 +3,23 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 
-type TxRow = {
-  transactionDate: string;
-  amount: number;
-  courseId?: string | null;
-  courseTitle?: string | null;
+type Insight = {
+  type: 'forecast' | 'trend' | 'recommendation';
+  title: string;
+  description: string;
 };
 
-type CourseAgg = { title: string; revenue: number; count: number };
+type CourseProgressRow = RowDataPacket & {
+  title: string;
+  students: number;
+  avgProgress: number | null;
+};
 
-function startOfWeek(date: Date) {
-  const d = new Date(date);
-  const day = (d.getDay() + 6) % 7; // Monday = 0
-  d.setDate(d.getDate() - day);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function toKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+type StudentRiskRow = RowDataPacket & {
+  fullName: string;
+  progressPercentage: number;
+  courseTitle: string;
+};
 
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
@@ -32,239 +29,109 @@ export async function GET(req: Request) {
 
   try {
     const teacherId = user.id;
-    const [rows] = await pool.query<RowDataPacket[]>(
+
+    const [courseRows] = await pool.query<CourseProgressRow[]>(
       `
       SELECT
-        ft.transactionDate,
-        ft.amount,
-        ft.courseId,
-        c.title AS courseTitle
-      FROM finance_transaction ft
-      JOIN course c ON c.id = ft.courseId
-      WHERE ft.status = 'success'
-        AND ft.type = 'enrollment'
-        AND c.teacherId = ?
-        AND ft.transactionDate >= DATE_SUB(NOW(), INTERVAL 120 DAY)
-      ORDER BY ft.transactionDate DESC
+        c.title,
+        COUNT(e.id) AS students,
+        AVG(e.progressPercentage) AS avgProgress
+      FROM course c
+      LEFT JOIN enrollment e ON e.courseId = c.id
+      WHERE c.teacherId = ?
+      GROUP BY c.id, c.title
+      ORDER BY students DESC
       `,
       [teacherId]
     );
 
-    const tx = rows.map((row) => ({
-      transactionDate: String(row.transactionDate),
-      amount: Number(row.amount || 0),
-      courseId: row.courseId ? String(row.courseId) : null,
-      courseTitle: row.courseTitle ? String(row.courseTitle) : null,
-    })) as TxRow[];
+    const [riskRows] = await pool.query<StudentRiskRow[]>(
+      `
+      SELECT
+        u.fullName,
+        e.progressPercentage,
+        c.title AS courseTitle
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
+      WHERE c.teacherId = ?
+        AND e.status IN ('enrolled', 'in_progress')
+        AND e.progressPercentage < 40
+      ORDER BY e.progressPercentage ASC
+      LIMIT 5
+      `,
+      [teacherId]
+    );
 
-    const weeklyMap = new Map<string, number>();
-    const courseMap = new Map<string, CourseAgg>();
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const totalCourses = courseRows.length;
+    const totalStudents = courseRows.reduce((sum, row) => sum + Number(row.students || 0), 0);
+    const avgProgressAll =
+      totalCourses > 0
+        ? courseRows.reduce((sum, row) => sum + Number(row.avgProgress || 0), 0) / totalCourses
+        : 0;
 
-    for (const item of tx) {
-      const date = new Date(item.transactionDate);
-      if (Number.isNaN(date.getTime())) continue;
+    const topCourse = courseRows[0];
+    const weakCourse = [...courseRows]
+      .filter((row) => Number(row.students || 0) > 0)
+      .sort((a, b) => Number(a.avgProgress || 0) - Number(b.avgProgress || 0))[0];
 
-      const weekStart = startOfWeek(date);
-      const key = toKey(weekStart);
-      weeklyMap.set(key, (weeklyMap.get(key) || 0) + item.amount);
+    const atRiskCount = riskRows.length;
+    const atRiskPct = totalStudents > 0 ? (atRiskCount / totalStudents) * 100 : 0;
 
-      if (date >= thirtyDaysAgo && item.courseTitle) {
-        const prev = courseMap.get(item.courseTitle) || {
-          title: item.courseTitle,
-          revenue: 0,
-          count: 0,
-        };
-        prev.revenue += item.amount;
-        prev.count += 1;
-        courseMap.set(item.courseTitle, prev);
-      }
-    }
-
-    const weeks = Array.from(weeklyMap.entries())
-      .map(([week, revenue]) => ({ week, revenue }))
-      .sort((a, b) => a.week.localeCompare(b.week));
-
-    const last8 = weeks.slice(-8);
-    const last4 = last8.slice(-4);
-    const prev4 = last8.slice(0, Math.max(0, last8.length - 4));
-
-    const sum = (list: { revenue: number }[]) =>
-      list.reduce((acc, cur) => acc + Number(cur.revenue || 0), 0);
-
-    const last4Total = sum(last4);
-    const prev4Total = sum(prev4);
-    const weeklyAvg = last4.length ? last4Total / last4.length : 0;
-    const trendPct = prev4Total > 0 ? (last4Total - prev4Total) / prev4Total : 0;
-    const trendAdj = 1 + Math.max(-0.25, Math.min(0.25, trendPct * 0.5));
-    const forecastMonthly = weeklyAvg * 4 * trendAdj;
-
-    const topCourses = Array.from(courseMap.values())
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 3);
-
-    const topCourse = topCourses[0];
-    const topCourseShare =
-      topCourse && last4Total > 0 ? Math.round((topCourse.revenue / last4Total) * 100) : 0;
-
-    const insights = [
+    const insights: Insight[] = [
       {
         type: 'forecast',
-        title: 'Forecast',
-        description: `Projected next-month revenue: $${forecastMonthly.toFixed(0)}`,
+        title: 'Class Progress Outlook',
+        description:
+          avgProgressAll >= 70
+            ? `Overall learner progress is strong (${avgProgressAll.toFixed(0)}%).`
+            : `Overall learner progress is moderate (${avgProgressAll.toFixed(0)}%). Focus on completion support.`,
       },
       {
         type: 'trend',
-        title: trendPct >= 0 ? 'Growth' : 'Slowdown',
-        description: `Last 4 weeks ${trendPct >= 0 ? 'up' : 'down'} ${Math.abs(
-          Math.round(trendPct * 100)
-        )}% vs previous 4 weeks.`,
+        title: 'Learner Risk Trend',
+        description:
+          atRiskCount === 0
+            ? 'No students are currently flagged as at-risk by progress.'
+            : `${atRiskCount} students are below 40% progress (${atRiskPct.toFixed(0)}% of active learners).`,
       },
       {
         type: 'recommendation',
-        title: 'Recommendation',
-        description: topCourse
-          ? `Focus on "${topCourse.title}" - it drives ${topCourseShare}% of recent revenue.`
-          : 'Increase enrollments with promo campaigns on top-performing courses.',
+        title: 'Teaching Recommendation',
+        description:
+          weakCourse && topCourse
+            ? `Prioritize support in "${weakCourse.title}" and replicate engagement patterns from "${topCourse.title}".`
+            : 'Run a short weekly check-in and add one quick formative quiz per active course.',
       },
     ];
 
-    let source: 'rule-based' | 'openai' = 'rule-based';
-    let finalForecast = forecastMonthly;
-    let finalTrend = trendPct;
-    let finalInsights = insights;
-    let openaiDebug: { status?: number; code?: string; message?: string } | null = null;
-
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1';
-
-    if (openaiKey) {
-      const jsonSchema = {
-        name: 'ai_insights',
-        schema: {
-          type: 'object',
-          additionalProperties: false,
-          properties: {
-            forecastMonthly: { type: 'number' },
-            trendPct: { type: 'number' },
-            insights: {
-              type: 'array',
-              minItems: 3,
-              maxItems: 3,
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  type: { type: 'string' },
-                  title: { type: 'string' },
-                  description: { type: 'string' },
-                },
-                required: ['type', 'title', 'description'],
-              },
-            },
-          },
-          required: ['forecastMonthly', 'trendPct', 'insights'],
-        },
-      };
-
-      const extractOutputText = (data: any) => {
-        if (typeof data?.output_text === 'string') return data.output_text;
-        const fromOutput =
-          data?.output
-            ?.flatMap((item: any) => item.content || [])
-            ?.find((item: any) => item.type === 'output_text')?.text || '';
-        if (fromOutput) return fromOutput;
-        return data?.output?.[0]?.content?.[0]?.text || '';
-      };
-
-      try {
-        const payload = {
-          model,
-          text: { format: { type: 'json_schema', name: jsonSchema.name, schema: jsonSchema.schema } },
-          input: [
-            {
-              role: 'system',
-              content: [
-                {
-                  type: 'input_text',
-                  text:
-                    'You are a data analyst for an education platform. ' +
-                    'Return JSON only with keys: forecastMonthly, trendPct, insights. ' +
-                    'insights must be an array of 3 items with type, title, description. ' +
-                    'Use USD amounts without commas and keep descriptions short.',
-                },
-              ],
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: JSON.stringify({
-                    last8Weeks: last8,
-                    last4Total,
-                    prev4Total,
-                    weeklyAvg,
-                    trendPct,
-                    topCourses,
-                    ruleBased: { forecastMonthly, trendPct, insights },
-                  }),
-                },
-              ],
-            },
-          ],
-        };
-
-        const res = await fetch('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiKey}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await res.json();
-        const outputText = extractOutputText(data);
-
-        if (res.ok && outputText) {
-          try {
-            const parsed = JSON.parse(outputText);
-            if (parsed && Array.isArray(parsed.insights)) {
-              finalForecast = Number(parsed.forecastMonthly || finalForecast);
-              finalTrend = Number(parsed.trendPct || finalTrend);
-              finalInsights = parsed.insights;
-              source = 'openai';
-            } else {
-              openaiDebug = { message: 'OpenAI returned invalid insights shape' };
-            }
-          } catch {
-            openaiDebug = { message: 'OpenAI returned non-JSON output' };
-          }
-        } else if (!res.ok) {
-          openaiDebug = {
-            status: res.status,
-            code: data?.error?.code,
-            message: data?.error?.message || 'OpenAI request failed',
-          };
-        }
-      } catch (error) {
-        console.error('OpenAI forecast fallback to rule-based:', error);
-        openaiDebug = { message: error instanceof Error ? error.message : 'OpenAI request failed' };
-      }
-    }
-
     return NextResponse.json({
-      forecastMonthly: finalForecast,
-      trendPct: finalTrend,
-      last4Total,
-      prev4Total,
-      topCourses,
-      insights: finalInsights,
-      source,
-      openaiDebug,
+      insights,
+      source: 'rule-based',
+      context: {
+        totalCourses,
+        totalStudents,
+        avgProgressAll: Number(avgProgressAll.toFixed(2)),
+        topCourse: topCourse
+          ? {
+              title: topCourse.title,
+              students: Number(topCourse.students || 0),
+              avgProgress: Number(topCourse.avgProgress || 0),
+            }
+          : null,
+        weakCourse: weakCourse
+          ? {
+              title: weakCourse.title,
+              students: Number(weakCourse.students || 0),
+              avgProgress: Number(weakCourse.avgProgress || 0),
+            }
+          : null,
+        atRiskStudents: riskRows.map((row) => ({
+          fullName: String(row.fullName || 'Unknown'),
+          progressPercentage: Number(row.progressPercentage || 0),
+          courseTitle: String(row.courseTitle || 'Course'),
+        })),
+      },
     });
   } catch (error: unknown) {
     console.error('Teacher AI insights error:', error);
@@ -277,3 +144,4 @@ export async function GET(req: Request) {
     );
   }
 }
+

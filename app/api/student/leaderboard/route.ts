@@ -15,6 +15,35 @@ type RankedRow = LeaderboardRow & {
   rank: number;
 };
 
+function computeRankedRows(rows: LeaderboardRow[]): RankedRow[] {
+  const sorted = rows
+    .map((row) => ({
+      ...row,
+      improvement: row.minutesLast7 - row.minutesPrev7,
+    }))
+    .sort((a, b) => {
+      if (b.improvement !== a.improvement) return b.improvement - a.improvement;
+      if (b.minutesLast7 !== a.minutesLast7) return b.minutesLast7 - a.minutesLast7;
+      return a.fullName.localeCompare(b.fullName);
+    });
+
+  let previousKey = '';
+  let currentRank = 0;
+
+  return sorted.map((row, index) => {
+    const tieKey = `${row.improvement}|${row.minutesLast7}`;
+    if (tieKey !== previousKey) {
+      currentRank = index + 1;
+      previousKey = tieKey;
+    }
+
+    return {
+      ...row,
+      rank: currentRank,
+    };
+  });
+}
+
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'student') {
@@ -28,20 +57,28 @@ export async function GET(req: Request) {
           u.id,
           u.fullName,
           COALESCE(SUM(CASE
-            WHEN lp.completed = 1
-             AND lp.startedAt IS NOT NULL
-             AND lp.completedAt IS NOT NULL
-             AND lp.completedAt >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-            THEN GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0)
+            WHEN COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            THEN COALESCE(
+              NULLIF(lesson.durationMinutes, 0),
+              LEAST(
+                GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
+                180
+              ),
+              0
+            )
             ELSE 0
           END), 0) AS minutesLast7,
           COALESCE(SUM(CASE
-            WHEN lp.completed = 1
-             AND lp.startedAt IS NOT NULL
-             AND lp.completedAt IS NOT NULL
-             AND lp.completedAt >= DATE_SUB(CURDATE(), INTERVAL 13 DAY)
-             AND lp.completedAt < DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-            THEN GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0)
+            WHEN COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+             AND COALESCE(lp.completedAt, lp.startedAt) < DATE_SUB(NOW(), INTERVAL 7 DAY)
+            THEN COALESCE(
+              NULLIF(lesson.durationMinutes, 0),
+              LEAST(
+                GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
+                180
+              ),
+              0
+            )
             ELSE 0
           END), 0) AS minutesPrev7
         FROM user u
@@ -49,6 +86,8 @@ export async function GET(req: Request) {
         LEFT JOIN enrollment e ON e.studentId = u.id
         LEFT JOIN lessonprogress lp
           ON lp.enrollmentId = e.id
+        LEFT JOIN lesson
+          ON lesson.id = lp.lessonId
         GROUP BY u.id, u.fullName
       `
     );
@@ -60,20 +99,7 @@ export async function GET(req: Request) {
       minutesPrev7: Number(row.minutesPrev7 || 0),
     }));
 
-    const ranked = mapped
-      .map((row) => ({
-        ...row,
-        improvement: row.minutesLast7 - row.minutesPrev7,
-      }))
-      .sort((a, b) => {
-        if (b.improvement !== a.improvement) return b.improvement - a.improvement;
-        if (b.minutesLast7 !== a.minutesLast7) return b.minutesLast7 - a.minutesLast7;
-        return a.fullName.localeCompare(b.fullName);
-      })
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-      }));
+    const ranked = computeRankedRows(mapped);
 
     const top = ranked.slice(0, 10);
     const current = ranked.find((row) => row.id === user.id) || null;
@@ -82,7 +108,7 @@ export async function GET(req: Request) {
       top,
       current,
       totalStudents: ranked.length,
-      metric: 'Time spent (last 7 days vs previous 7 days)',
+      metric: 'Learning minutes (last 7 days vs previous 7 days)',
     });
   } catch (error) {
     console.error('Leaderboard error:', error);

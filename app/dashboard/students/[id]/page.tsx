@@ -2,20 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   AcademicCapIcon,
   TrophyIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
   ArrowTrendingUpIcon,
-  ClipboardDocumentListIcon,
+  UserCircleIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 
 type StudentProfile = {
   id: string;
   fullName: string;
   email: string;
+  imageUrl?: string | null;
   status: 'active' | 'inactive';
   role: string;
   createdAt: string;
@@ -97,9 +99,13 @@ const formatDateTime = (value?: string | null) => {
 
 export default function StudentProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const studentId = (params?.id as string) || '';
-
-  const [tab, setTab] = useState<'overview' | 'courses' | 'transactions'>('overview');
+  const tabParam = (searchParams.get('tab') || 'overview').toLowerCase();
+  const tab: 'overview' | 'courses' | 'transactions' =
+    tabParam === 'courses' || tabParam === 'transactions'
+      ? (tabParam as 'courses' | 'transactions')
+      : 'overview';
   const [data, setData] = useState<StudentProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -164,66 +170,64 @@ export default function StudentProfilePage() {
   }, [stats]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6">
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Student Profile</h1>
-            <p className="text-sm text-gray-500 mt-2">
-              Name:{' '}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
+      <div className="min-h-screen bg-transparent p-4 md:p-6">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="h-11 w-11 rounded-xl bg-sky-50 dark:bg-white/10 border border-sky-100 dark:border-white/20 flex items-center justify-center overflow-hidden">
+              {data?.student.imageUrl ? (
+                <img
+                  src={data.student.imageUrl}
+                  alt={data.student.fullName || 'Student'}
+                  className="h-full w-full rounded-xl object-cover"
+                />
+              ) : (
+                <UserCircleIcon className="h-7 w-7 text-sky-700 dark:text-white" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Student Profile</h1>
+              <p className="text-sm text-slate-700 dark:text-blue-100 mt-1 font-medium">
                 {data?.student.fullName || '-'}
-              </span>
-            </p>
+              </p>
+              <p className="text-xs text-slate-500 dark:text-blue-200 mt-1 inline-flex items-center gap-1.5">
+                <EnvelopeIcon className="w-4 h-4" />
+                {data?.student.email || '-'}
+              </p>
+              <div className="mt-3">
+                <div className="flex items-center gap-6 text-sm font-semibold">
+                  {[
+                    { key: 'overview', label: 'Overview' },
+                    { key: 'courses', label: 'Courses' },
+                    { key: 'transactions', label: 'Transactions' },
+                  ].map((item) => (
+                    <Link
+                      key={item.key}
+                      href={`/dashboard/students/${studentId}?tab=${item.key}`}
+                      className={`transition-colors ${
+                        tab === item.key
+                          ? 'text-blue-700 dark:text-blue-300'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-2 h-px w-full bg-gradient-to-r from-blue-300 via-sky-300 to-cyan-300 dark:from-blue-800 dark:via-sky-800 dark:to-cyan-800" />
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/dashboard/students"
-              className="admin-surface inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
-            >
-              Back to all students
-            </Link>
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                data?.student.status === 'inactive'
-                  ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800'
-                  : 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800'
-              }`}
-            >
-              {data?.student.status === 'inactive' ? 'Inactive' : 'Active'}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
-              {data?.student.role || 'Student'}
-            </span>
-          </div>
+          <div />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6">
-        {[
-          { key: 'overview', label: 'Overview' },
-          { key: 'courses', label: 'Courses' },
-          { key: 'transactions', label: 'Transactions' },
-        ].map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === t.key
-                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
-                : 'bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {loading && (
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
-          Loading student profile...
-        </div>
-      )}
+        {loading && (
+          <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
+            Loading student profile...
+          </div>
+        )}
 
       {!loading && error && (
         <div className="bg-red-50 dark:bg-red-900/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 text-center text-red-700 dark:text-red-200">
@@ -231,10 +235,10 @@ export default function StudentProfilePage() {
         </div>
       )}
 
-      {!loading && !error && data && (
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-md">
-          {tab === 'overview' && (
-            <div className="space-y-6">
+        {!loading && !error && data && (
+          <div className="space-y-6">
+            {tab === 'overview' && (
+              <div className="space-y-6">
               <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 {overviewCards.map((card) => (
                   <InfoCard key={card.title} title={card.title} value={card.value} icon={card.icon} />
@@ -242,7 +246,7 @@ export default function StudentProfilePage() {
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -272,7 +276,7 @@ export default function StudentProfilePage() {
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Payment Snapshot</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
@@ -408,12 +412,15 @@ export default function StudentProfilePage() {
 
 function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 hover:-translate-y-1 transition-all">
-      <div className="flex justify-between mb-2">
-        <Icon className="w-6 h-6 text-blue-600" />
+    <div className="group relative overflow-hidden h-full min-h-[150px] bg-white dark:bg-slate-900/70 p-5 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
+      <div className="flex justify-between mb-3">
+        <span className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+        </span>
       </div>
       <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
-      <p className="text-sm text-gray-500">{title}</p>
+      <p className="text-sm text-gray-500 mt-1">{title}</p>
     </div>
   );
 }

@@ -64,7 +64,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         <div className="grid md:grid-cols-3 gap-8">
           {/* Main Content - Description */}
           <div className="md:col-span-2 space-y-6">
-            <section className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+            <section className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
               <h2 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
                 Description
               </h2>
@@ -78,7 +79,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
           {/* Sidebar - General Info */}
           <div className="space-y-6">
-            <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+            <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
               <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">
                 General Information
               </h3>

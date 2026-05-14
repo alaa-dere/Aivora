@@ -5,6 +5,7 @@ import { authOptions } from "../[...nextauth]/route";
 import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 import bcrypt from "bcryptjs";
+import { createAdminNotification } from "@/lib/notifications-write";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -71,21 +72,12 @@ export async function POST(req: Request) {
       );
       if (newUserRows.length > 0) {
         const newUser = newUserRows[0];
-        const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
-        const notifId = notifIdRows[0].id as string;
-        await pool.query(
-          `
-          INSERT INTO admin_notification
-            (id, type, title, message, studentId, createdAt)
-          VALUES
-            (?, 'student_signup', 'New Student Account', ?, ?, NOW())
-          `,
-          [
-            notifId,
-            `${newUser.fullName} created a student account.`,
-            newUser.id,
-          ]
-        );
+        await createAdminNotification({
+          type: "student_signup",
+          title: "New Student Account",
+          message: `${newUser.fullName} created a student account.`,
+          studentId: newUser.id,
+        });
       }
       return NextResponse.json({ success: true });
     }

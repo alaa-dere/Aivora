@@ -4,6 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { randomUUID } from 'crypto';
 import { getRequestUser } from '@/lib/request-auth';
 import { ensureCourseEvaluationSchema } from '@/lib/ensure-course-evaluation-schema';
+import { createAdminNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -163,21 +164,13 @@ export async function POST(req: Request, { params }: Params) {
     const feedbackPreview = feedback ? ` Feedback: "${feedback.slice(0, 180)}"` : '';
 
     try {
-      await pool.query<ResultSetHeader>(
-        `
-        INSERT INTO admin_notification
-          (id, type, title, message, studentId, courseId, createdAt)
-        VALUES
-          (?, 'course_enroll', ?, ?, ?, ?, NOW())
-        `,
-        [
-          randomUUID(),
-          'New course evaluation',
-          `${studentName} rated "${courseTitle}" ${rating}/5.${feedbackPreview}`,
-          user.id,
-          id,
-        ]
-      );
+      await createAdminNotification({
+        type: 'course_enroll',
+        title: 'New course evaluation',
+        message: `${studentName} rated "${courseTitle}" ${rating}/5.${feedbackPreview}`,
+        studentId: user.id,
+        courseId: id,
+      });
     } catch (notifyErr) {
       console.warn('Admin evaluation notification skipped:', notifyErr);
     }

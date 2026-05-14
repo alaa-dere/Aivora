@@ -44,6 +44,7 @@ export default function AdminStudentsPage() {
   // Delete modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<StudentRow | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     async function fetchStudents() {
@@ -103,6 +104,7 @@ export default function AdminStudentsPage() {
   // Open delete modal
   function openDeleteModal(student: StudentRow) {
     setStudentToDelete(student);
+    setDeleteError('');
     setIsDeleteModalOpen(true);
   }
 
@@ -178,7 +180,7 @@ export default function AdminStudentsPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.message || 'Failed to delete student');
+        setDeleteError(data.message || 'Failed to delete student. Please try again.');
         return;
       }
 
@@ -186,8 +188,9 @@ export default function AdminStudentsPage() {
 
       setIsDeleteModalOpen(false);
       setStudentToDelete(null);
+      setDeleteError('');
     } catch (err) {
-      alert('Server connection error');
+      setDeleteError('Server connection error. Please try again.');
     }
   }
 
@@ -201,37 +204,36 @@ export default function AdminStudentsPage() {
             Manage student accounts, enrollments, and status.
           </p>
         </div>
-
-        <button
-          onClick={openAddModal}
-          className="
-            group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-2xl
-            bg-gradient-to-r from-blue-600 to-blue-700
-            hover:from-blue-700 hover:to-blue-800
-            text-white font-semibold text-sm
-            shadow-md hover:shadow-md
-            border border-blue-500/50
-            transition-all duration-200
-            active:scale-95
-          "
-        >
-          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
-          Add New Student
-        </button>
       </div>
 
       {/* Search & Filter */}
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name / email..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-            />
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-1 max-w-2xl">
+            <button
+              onClick={openAddModal}
+              className="
+                group inline-flex items-center justify-center gap-2
+                px-4 py-2.5 rounded-xl
+                bg-emerald-600 hover:bg-emerald-700
+                text-white font-semibold text-sm
+                shadow-sm border border-emerald-500/60
+                transition-all duration-200 active:scale-95
+                whitespace-nowrap
+              "
+            >
+              <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+              Add New Student
+            </button>
+            <div className="relative flex-1 min-w-0">
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name / email..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -250,7 +252,8 @@ export default function AdminStudentsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
         {/* Title with filtered count */}
         <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -316,7 +319,7 @@ export default function AdminStudentsPage() {
                       <div className="flex items-center justify-end gap-2 flex-wrap">
                         <Link
                           href={`/dashboard/students/${student.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors"
                         >
                           <EyeIcon className="w-4 h-4" />
                           View
@@ -324,7 +327,7 @@ export default function AdminStudentsPage() {
 
                         <button
                           onClick={() => openEditModal(student)}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors"
                         >
                           <PencilSquareIcon className="w-4 h-4" />
                           Edit
@@ -332,7 +335,7 @@ export default function AdminStudentsPage() {
 
                         <button
                           onClick={() => openDeleteModal(student)}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors"
                         >
                           <TrashIcon className="w-4 h-4" />
                           Delete
@@ -455,7 +458,10 @@ export default function AdminStudentsPage() {
             <div className="px-6 py-4 bg-gradient-to-r bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">Confirm Delete</h2>
               <button
-                onClick={() => setIsDeleteModalOpen(false)}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteError('');
+                }}
                 className="text-white hover:text-gray-200 transition"
               >
                 <XMarkIcon className="w-6 h-6" />
@@ -463,12 +469,20 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="p-6 space-y-6">
+              {deleteError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                  {deleteError}
+                </div>
+              )}
               <p className="text-gray-700 dark:text-gray-300 text-center">
                 Are you sure you want to delete <strong>{studentToDelete.fullName}</strong>?
               </p>
               <div className="flex justify-end gap-4">
                 <button
-                  onClick={() => setIsDeleteModalOpen(false)}
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteError('');
+                  }}
                   className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   Cancel

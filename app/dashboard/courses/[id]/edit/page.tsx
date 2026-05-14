@@ -164,8 +164,18 @@ export default function EditCoursePage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Failed to update course');
+        let err: any = null;
+        try {
+          err = await res.json();
+        } catch {
+          err = null;
+        }
+        const detailedMessage =
+          err?.sqlMessage ||
+          err?.error ||
+          err?.message ||
+          `Failed to update course (HTTP ${res.status})`;
+        throw new Error(detailedMessage);
       }
 
       router.push(`/dashboard/courses/${id}`);
@@ -179,7 +189,7 @@ export default function EditCoursePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
         <div className="p-10 text-center text-gray-600 dark:text-gray-400">
           Loading course data...
         </div>
@@ -188,28 +198,32 @@ export default function EditCoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur p-5 shadow-sm mb-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
+        <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition"
                 aria-label="Back to courses"
                 title="Back to courses"
               >
-                <ArrowLeftIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                <ArrowLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Edit Course</h1>
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Edit Course</h1>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
               Update course details, pricing, and status.
             </p>
           </div>
+          <div />
         </div>
+      </div>
 
+      <div className="w-full">
         {errorMsg && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {errorMsg}
@@ -217,173 +231,183 @@ export default function EditCoursePage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
-            <h2 className="text-lg font-semibold text-white">Course Basics</h2>
-            <p className="text-sm text-blue-200 mt-1">
-              Start with the core details that appear on the course card.
-            </p>
-          </div>
-
-          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Course Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              placeholder="Example: Web Development with Next.js"
-            />
-          </div>
-
-          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={5}
-              value={form.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              placeholder="Short and attractive description of the course..."
-            />
-          </div>
-
-          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Teacher <span className="text-red-500">*</span>
-            </label>
-
-            {loadingTeachers ? (
-              <p className="text-slate-500 dark:text-slate-400">Loading teachers...</p>
-            ) : (
-              <select
-                value={form.teacherId}
-                onChange={(e) => handleChange('teacherId', e.target.value)}
-                required
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="">Not specified</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.fullName}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
-            <h2 className="text-lg font-semibold text-white">Pricing & Duration</h2>
-            <p className="text-sm text-blue-200 mt-1">
-              Set the amount students will pay and the expected time to complete.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Price (USD)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.price}
-                onChange={(e) => handleChange('price', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Duration (Weeks)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.durationWeeks}
-                onChange={(e) => handleChange('durationWeeks', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                placeholder="Example: 8"
-              />
-            </div>
-
-            <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Teacher Share (%)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={form.teacherSharePct}
-                onChange={(e) => handleChange('teacherSharePct', e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-blue-900 bg-blue-950 p-5 shadow-md dark:border-gray-800 dark:bg-gray-950">
-            <h2 className="text-lg font-semibold text-white">Media</h2>
-            <p className="text-sm text-blue-200 mt-1">
-              Add a cover image to make the course stand out.
-            </p>
-          </div>
-
-          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Cover Image (leave empty to keep current)
-            </label>
-
-            {coverPreview && (
-              <div className="mt-4">
-                <div className="aspect-[16/9] w-full max-w-md overflow-hidden rounded-2xl border-2 border-gray-200 bg-gray-100 shadow-md dark:border-gray-700 dark:bg-gray-800">
-                  <img
-                    src={coverPreview}
-                    alt="Current or new course cover"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Current cover (will be replaced only if you upload a new one)
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            <div className="flex flex-col gap-6">
+              <div className="rounded-2xl border border-sky-200 dark:border-sky-900 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-slate-900 dark:to-slate-900 p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Course Basics</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Start with the core details that appear on the course card.
                 </p>
               </div>
-            )}
 
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/jpg"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 transition-all file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-950 dark:file:text-blue-300"
-            />
-          </div>
+              <div className="admin-surface flex-1 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                <div className="space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Course Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      required
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                      placeholder="Example: Web Development with Next.js"
+                    />
+                  </div>
 
-          <div className="admin-surface rounded-2xl border border-blue-200 bg-white p-5 shadow-md dark:border-blue-800 dark:bg-gray-800">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Course Status
-            </label>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={form.description}
+                      onChange={(e) => handleChange('description', e.target.value)}
+                      required
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                      placeholder="Short and attractive description of the course..."
+                    />
+                  </div>
 
-            <select
-              value={form.status}
-              onChange={(e) => handleChange('status', e.target.value as CourseStatus)}
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="draft">Draft (not visible)</option>
-              <option value="published">Published (available for purchase)</option>
-              <option value="archived">Archived (hidden)</option>
-            </select>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Teacher <span className="text-red-500">*</span>
+                    </label>
+
+                    {loadingTeachers ? (
+                      <p className="text-slate-500 dark:text-slate-400">Loading teachers...</p>
+                    ) : (
+                      <select
+                        value={form.teacherId}
+                        onChange={(e) => handleChange('teacherId', e.target.value)}
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                      >
+                        <option value="">Not specified</option>
+                        {teachers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-sky-200 dark:border-sky-900 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-slate-900 dark:to-slate-900 p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Pricing & Duration</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Set the amount students will pay and the expected time to complete.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="admin-surface rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Price (USD)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.price}
+                    onChange={(e) => handleChange('price', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+
+                <div className="admin-surface rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Duration (Weeks)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.durationWeeks}
+                    onChange={(e) => handleChange('durationWeeks', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    placeholder="Example: 8"
+                  />
+                </div>
+
+                <div className="admin-surface rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Teacher Share (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={form.teacherSharePct}
+                    onChange={(e) => handleChange('teacherSharePct', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-sky-200 dark:border-sky-900 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-slate-900 dark:to-slate-900 p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Media</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  Add a cover image to make the course stand out.
+                </p>
+              </div>
+
+              <div className="admin-surface rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Cover Image (leave empty to keep current)
+                </label>
+
+                {coverPreview && (
+                  <div className="mt-4">
+                    <div className="aspect-[16/9] w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                      <img
+                        src={coverPreview}
+                        alt="Current or new course cover"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Current cover (will be replaced only if you upload a new one)
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/jpg"
+                  onChange={handleImageChange}
+                  className="block w-full text-sm text-gray-500 transition-all file:mr-4 file:rounded-xl file:border file:border-sky-200 file:bg-sky-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sky-700 hover:file:bg-sky-100 dark:text-gray-400 dark:file:border-sky-900 dark:file:bg-slate-900 dark:file:text-sky-300"
+                />
+              </div>
+
+              <div className="admin-surface rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Course Status
+                </label>
+
+                <select
+                  value={form.status}
+                  onChange={(e) => handleChange('status', e.target.value as CourseStatus)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="draft">Draft (not visible)</option>
+                  <option value="published">Published (available for purchase)</option>
+                  <option value="archived">Archived (hidden)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={() => router.back()}
-              className="admin-surface px-6 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+              className="admin-surface px-6 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800 transition-colors"
             >
               Cancel
             </button>
@@ -391,7 +415,7 @@ export default function EditCoursePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 shadow-sm hover:bg-blue-100 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-sky-100 text-sky-700 border border-sky-200 shadow-sm hover:bg-sky-200 transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-800 dark:hover:bg-sky-900/60"
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>

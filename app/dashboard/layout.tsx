@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
 import { useTheme } from 'next-themes';
@@ -9,7 +9,6 @@ import { signOut } from 'next-auth/react';
 import {
   HomeIcon,
   ChartBarIcon,
-  PencilSquareIcon,
   UsersIcon,
   BookOpenIcon,
   CurrencyDollarIcon,
@@ -47,9 +46,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+    { id: string; type: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'student_signup' | 'course_enroll' | 'teacher_message'>('all');
   const [messageNotifItems, setMessageNotifItems] = useState<
     { id: string; teacherId: string; title: string; message: string; createdAt: string }[]
   >([]);
@@ -93,11 +94,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  useEffect(() => {
+    if (notificationOpen) {
+      loadNotifications();
+    }
+  }, [notificationTypeFilter, notificationOpen]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!notificationMenuRef.current) return;
+      if (!notificationMenuRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
 
   const loadNotifications = async () => {
     try {
+      const notifUrl =
+        notificationTypeFilter === 'all'
+          ? '/api/admin/notifications'
+          : `/api/admin/notifications?type=${encodeURIComponent(notificationTypeFilter)}`;
       const [notifRes, msgRes] = await Promise.all([
-        fetch('/api/admin/notifications', { cache: 'no-store' }),
+        fetch(notifUrl, { cache: 'no-store' }),
         fetch('/api/admin/messages', { cache: 'no-store' }),
       ]);
       const notifData = await notifRes.json();
@@ -105,6 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!notifRes.ok) return;
       const items = (notifData.notifications || []).slice(0, 5).map((n: any) => ({
         id: n.id,
+        type: n.type,
         title: n.title,
         message: n.message,
         createdAt: n.createdAt,
@@ -125,6 +155,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setMessageNotifItems(messageItems);
     } catch (error) {
       console.error('Failed to load notifications', error);
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      await fetch('/api/admin/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: notificationTypeFilter }),
+      });
+      await loadNotifications();
+      window.dispatchEvent(new Event('notifications:refresh'));
+    } catch (error) {
+      console.error('Failed to mark all notifications read', error);
     }
   };
 
@@ -168,7 +212,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="relative">
+          <div className="relative" ref={notificationMenuRef}>
             <button
               onClick={() => {
                 const next = !notificationOpen;
@@ -191,6 +235,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Notifications
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <select
+                      value={notificationTypeFilter}
+                      onChange={(e) =>
+                        setNotificationTypeFilter(
+                          e.target.value as 'all' | 'student_signup' | 'course_enroll' | 'teacher_message'
+                        )
+                      }
+                      className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="all">All</option>
+                      <option value="student_signup">Signups</option>
+                      <option value="course_enroll">Enrollments</option>
+                      <option value="teacher_message">Teacher Msg</option>
+                    </select>
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   {notificationItems.length === 0 && messageNotifItems.length === 0 ? (
@@ -476,6 +542,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     Reports
                   </Link>
+
+                  <Link
+                    href="/dashboard/finance/forecast"
+                    onClick={() => {
+                      setFinanceOpen(false);
+                      setSidebarOpen(false);
+                    }}
+                    className={`block px-4 py-2 text-sm rounded-lg ${
+                      isActive('/dashboard/finance/forecast')
+                        ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    Forecast
+                  </Link>
                 </div>
               )}
 
@@ -491,6 +572,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <AcademicCapIcon className="w-5 h-5 mr-3" />
                 Certificates
+              </Link>
+
+              <Link
+                href="/dashboard/chatbot"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isActive('/dashboard/chatbot')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <ChatBubbleLeftRightIcon className="w-5 h-5 mr-3" />
+                Admin Chatbot
               </Link>
 
             </nav>
@@ -522,7 +616,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* MAIN */}
         <main className="flex-1">
-          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+          <div className="p-3 sm:p-4 lg:p-5">{children}</div>
         </main>
       </div>
 
@@ -538,16 +632,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           background: #ffffff !important;
           border: 1px solid rgba(148, 163, 184, 0.35) !important;
           box-shadow:
-            0 14px 32px rgba(15, 23, 42, 0.12),
-            0 2px 6px rgba(15, 23, 42, 0.08) !important;
+            0 10px 22px rgba(15, 23, 42, 0.1),
+            0 2px 5px rgba(15, 23, 42, 0.06) !important;
         }
 
         .dark .admin-surface {
           background: #0f172a !important;
           border: 1px solid rgba(71, 85, 105, 0.5) !important;
           box-shadow:
-            0 16px 34px rgba(0, 0, 0, 0.38),
-            0 2px 6px rgba(0, 0, 0, 0.28) !important;
+            0 12px 24px rgba(0, 0, 0, 0.34),
+            0 2px 5px rgba(0, 0, 0, 0.24) !important;
         }
 
         .admin-topbar {
@@ -575,7 +669,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           text-transform: uppercase;
           letter-spacing: 0.06em;
           font-size: 0.7rem;
-          padding: 0.9rem 1rem !important;
+          padding: 0.72rem 0.85rem !important;
           background: rgba(241, 245, 249, 0.9);
           color: #0f172a;
           border-bottom: 1px solid rgba(148, 163, 184, 0.45);
@@ -601,9 +695,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
 
         .admin-shell table tbody td {
-          padding: 0.95rem 1rem !important;
+          padding: 0.72rem 0.85rem !important;
           border-bottom: 1px solid rgba(226, 232, 240, 0.9);
           color: inherit;
+        }
+
+        .admin-shell h1.text-3xl,
+        .admin-shell h1.text-2xl {
+          font-size: 1.5rem !important;
+          line-height: 2rem !important;
+        }
+
+        @media (min-width: 768px) {
+          .admin-shell h1.text-3xl,
+          .admin-shell h1.text-2xl {
+            font-size: 1.875rem !important;
+            line-height: 2.25rem !important;
+          }
+        }
+
+        .admin-shell .admin-surface[class~='p-6'] {
+          padding: 1rem !important;
+        }
+
+        .admin-shell .admin-surface[class~='p-5'] {
+          padding: 0.9rem !important;
+        }
+
+        .admin-shell .admin-surface[class~='p-4'] {
+          padding: 0.78rem !important;
         }
 
         .dark .admin-shell table tbody td {

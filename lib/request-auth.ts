@@ -82,3 +82,15 @@ export async function requirePermission(req: Request, permission: Permission) {
 
   return null;
 }
+
+export async function requireAdmin(req: Request) {
+  const user = await getRequestUser(req);
+  if (!user || user.role !== 'admin') {
+    return {
+      user: null as null,
+      error: NextResponse.json({ message: 'Forbidden' }, { status: 403 }),
+    };
+  }
+
+  return { user, error: null as null };
+}

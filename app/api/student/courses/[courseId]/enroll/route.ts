@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { createAdminNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -188,22 +189,13 @@ export async function POST(req: Request, { params }: Params) {
       ]
     );
 
-    const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
-    const notifId = notifIdRows[0].id as string;
-    await pool.query(
-      `
-      INSERT INTO admin_notification
-        (id, type, title, message, studentId, courseId, createdAt)
-      VALUES
-        (?, 'course_enroll', 'New Enrollment', ?, ?, ?, NOW())
-      `,
-      [
-        notifId,
-        `Student enrolled in course ${id}.`,
-        user.id,
-        id,
-      ]
-    );
+    await createAdminNotification({
+      type: 'course_enroll',
+      title: 'New Enrollment',
+      message: `Student enrolled in course ${id}.`,
+      studentId: user.id,
+      courseId: id,
+    });
 
 
     return NextResponse.json({ success: true, enrollmentId }, { status: 201 });
