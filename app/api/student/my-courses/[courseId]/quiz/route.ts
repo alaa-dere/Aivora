@@ -4,6 +4,11 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
+import {
+  createAdminNotification,
+  createStudentNotification,
+  createTeacherNotification,
+} from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -150,53 +155,32 @@ async function createQuizNotifications(input: {
     input.passed ? 'passed' : 'failed'
   } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}).`;
 
-  const teacherNotifId = randomUUID();
-  await pool.query<ResultSetHeader>(
-    `
-    INSERT INTO teacher_notification
-      (id, teacherId, studentId, courseId, type, title, message, createdAt)
-    VALUES
-      (?, ?, ?, ?, 'quiz_result', ?, ?, NOW())
-    `,
-    [
-      teacherNotifId,
-      input.teacherId,
-      input.studentId,
-      input.courseId,
-      baseTitle,
-      baseMessage,
-    ]
-  );
+  await createTeacherNotification({
+    teacherId: input.teacherId,
+    studentId: input.studentId,
+    courseId: input.courseId,
+    type: 'quiz_result',
+    title: baseTitle,
+    message: baseMessage,
+  });
 
-  const adminNotifId = randomUUID();
-  await pool.query<ResultSetHeader>(
-    `
-    INSERT INTO admin_notification
-      (id, type, title, message, studentId, courseId, createdAt)
-    VALUES
-      (?, 'course_enroll', ?, ?, ?, ?, NOW())
-    `,
-    [adminNotifId, baseTitle, baseMessage, input.studentId, input.courseId]
-  );
+  await createAdminNotification({
+    type: 'course_enroll',
+    title: baseTitle,
+    message: baseMessage,
+    studentId: input.studentId,
+    courseId: input.courseId,
+  });
 
   const studentBaseType = input.passed ? 'quiz_passed' : 'quiz_failed';
-  const studentNotifId = randomUUID();
-  await pool.query<ResultSetHeader>(
-    `
-    INSERT INTO student_notification
-      (id, studentId, courseId, type, title, message, createdAt)
-    VALUES
-      (?, ?, ?, ?, ?, ?, NOW())
-    `,
-    [
-      studentNotifId,
-      input.studentId,
-      input.courseId,
-      studentBaseType,
-      baseTitle,
-      baseMessage,
-    ]
-  );
+  await createStudentNotification({
+    studentId: input.studentId,
+    teacherId: input.teacherId,
+    courseId: input.courseId,
+    type: studentBaseType,
+    title: baseTitle,
+    message: baseMessage,
+  });
 
   if (input.issuedCertificateNow) {
     const certTitle = input.issuedCertificateOnRetake
@@ -206,45 +190,31 @@ async function createQuizNotifications(input: {
       ? `${input.studentName} retook the quiz and unlocked the certificate for ${input.courseTitle}.`
       : `${input.studentName} unlocked the certificate for ${input.courseTitle}.`;
 
-    const teacherCertNotifId = randomUUID();
-    await pool.query<ResultSetHeader>(
-      `
-      INSERT INTO teacher_notification
-        (id, teacherId, studentId, courseId, type, title, message, createdAt)
-      VALUES
-        (?, ?, ?, ?, 'quiz_certificate', ?, ?, NOW())
-      `,
-      [
-        teacherCertNotifId,
-        input.teacherId,
-        input.studentId,
-        input.courseId,
-        certTitle,
-        certMessage,
-      ]
-    );
+    await createTeacherNotification({
+      teacherId: input.teacherId,
+      studentId: input.studentId,
+      courseId: input.courseId,
+      type: 'quiz_certificate',
+      title: certTitle,
+      message: certMessage,
+    });
 
-    const adminCertNotifId = randomUUID();
-    await pool.query<ResultSetHeader>(
-      `
-      INSERT INTO admin_notification
-        (id, type, title, message, studentId, courseId, createdAt)
-      VALUES
-        (?, 'course_enroll', ?, ?, ?, ?, NOW())
-      `,
-      [adminCertNotifId, certTitle, certMessage, input.studentId, input.courseId]
-    );
+    await createAdminNotification({
+      type: 'course_enroll',
+      title: certTitle,
+      message: certMessage,
+      studentId: input.studentId,
+      courseId: input.courseId,
+    });
 
-    const studentCertNotifId = randomUUID();
-    await pool.query<ResultSetHeader>(
-      `
-      INSERT INTO student_notification
-        (id, studentId, courseId, type, title, message, createdAt)
-      VALUES
-        (?, ?, ?, 'certificate_earned', ?, ?, NOW())
-      `,
-      [studentCertNotifId, input.studentId, input.courseId, certTitle, certMessage]
-    );
+    await createStudentNotification({
+      studentId: input.studentId,
+      teacherId: input.teacherId,
+      courseId: input.courseId,
+      type: 'certificate_earned',
+      title: certTitle,
+      message: certMessage,
+    });
   }
 }
 

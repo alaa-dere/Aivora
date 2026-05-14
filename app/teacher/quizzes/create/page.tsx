@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle, Sparkles } from "lucide-react";
 
 type CourseOption = { id: string; name: string };
 
@@ -43,6 +43,13 @@ export default function CreateQuizPage() {
   const [savedQuestions, setSavedQuestions] = useState<StoredQuestion[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiCount, setAiCount] = useState<number>(5);
+  const [aiLanguage, setAiLanguage] = useState<"en" | "ar">("en");
+  const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [mcqPct, setMcqPct] = useState<number>(60);
+  const [trueFalsePct, setTrueFalsePct] = useState<number>(20);
+  const [writtenPct, setWrittenPct] = useState<number>(20);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -192,6 +199,57 @@ export default function CreateQuizPage() {
     setQueuedQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const saveSingleQueuedQuestion = async (index: number) => {
+    setError(null);
+    setSuccess(null);
+
+    if (!courseId) {
+      setError("Please select a course");
+      return;
+    }
+
+    const question = queuedQuestions[index];
+    if (!question) return;
+
+    try {
+      setSaving(true);
+      const res = await fetch("/api/teacher/question-bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          questionType: question.questionType,
+          questionText: question.text,
+          options: question.options,
+          writtenAnswer: question.writtenAnswer,
+          correctOptionIndex: Number(question.correctAnswer),
+        }),
+      });
+
+      const data = (await readJsonResponse(res)) as { message?: string };
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to save question");
+      }
+
+      setQueuedQuestions((prev) => prev.filter((_, i) => i !== index));
+
+      const refreshRes = await fetch(
+        `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
+        { cache: "no-store" }
+      );
+      const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
+      if (refreshRes.ok) {
+        setSavedQuestions(refreshData.questions || []);
+      }
+
+      setSuccess("Question saved to question bank");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save question");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteSavedQuestion = async (questionId: string) => {
     try {
       const res = await fetch(`/api/teacher/question-bank/${encodeURIComponent(questionId)}`, {
@@ -206,6 +264,75 @@ export default function CreateQuizPage() {
       setSuccess("Question deleted from bank");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete question");
+    }
+  };
+
+  const generateWithAi = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (!courseId) {
+      setError("Please select a course first");
+      return;
+    }
+
+    try {
+      setGeneratingAi(true);
+      const res = await fetch("/api/teacher/question-bank/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          count: aiCount,
+          language: aiLanguage,
+          difficulty: aiDifficulty,
+          distribution: {
+            mcqPct,
+            trueFalsePct,
+            writtenPct,
+          },
+        }),
+      });
+      const data = (await readJsonResponse(res)) as {
+        message?: string;
+        questions?: Array<{
+          questionType: "multiple_choice" | "written" | "true_false";
+          questionText: string;
+          options: string[];
+          writtenAnswer?: string;
+          correctOptionIndex: number;
+        }>;
+      };
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to generate AI questions");
+      }
+
+      const generated = (data.questions || []).map((q) => ({
+        questionType: q.questionType,
+        text: q.questionText,
+        options: Array.isArray(q.options) ? q.options : [],
+        writtenAnswer:
+          q.questionType === "written" ? (q.writtenAnswer || q.options?.[0] || "") : "",
+        correctAnswer:
+          q.questionType === "written"
+            ? 0
+            : q.questionType === "true_false"
+              ? q.correctOptionIndex === 1
+                ? 1
+                : 0
+              : Number(q.correctOptionIndex),
+      })) as QuestionDraft[];
+
+      if (generated.length === 0) {
+        throw new Error("AI returned no valid questions");
+      }
+
+      setQueuedQuestions((prev) => [...prev, ...generated]);
+      setSuccess(`${generated.length} AI question${generated.length > 1 ? "s" : ""} added to queue`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to generate AI questions");
+    } finally {
+      setGeneratingAi(false);
     }
   };
 
@@ -315,6 +442,117 @@ export default function CreateQuizPage() {
 
           <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Add Question</h2>
+
+            <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Generate Questions with AI</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    AI will create questions from this course modules and lesson content.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={aiCount}
+                    onChange={(e) => setAiCount(Number(e.target.value))}
+                    className="portal-surface p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  >
+                    <option value={3}>3 questions</option>
+                    <option value={5}>5 questions</option>
+                    <option value={8}>8 questions</option>
+                    <option value={10}>10 questions</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={generateWithAi}
+                    disabled={!courseId || generatingAi}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {generatingAi ? "Generating..." : "Generate with AI"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                <div>
+                  <label className="block text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
+                    Generation Language
+                  </label>
+                  <select
+                    value={aiLanguage}
+                    onChange={(e) => setAiLanguage(e.target.value === "ar" ? "ar" : "en")}
+                    className="portal-surface w-full p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  >
+                    <option value="en">English</option>
+                    <option value="ar">Arabic</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
+                    Difficulty
+                  </label>
+                  <select
+                    value={aiDifficulty}
+                    onChange={(e) =>
+                      setAiDifficulty(
+                        e.target.value === "easy" || e.target.value === "hard" ? e.target.value : "medium"
+                      )
+                    }
+                    className="portal-surface w-full p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div className="text-xs text-blue-800 dark:text-blue-200 flex items-end">
+                  Question-type mix (MCQ / T-F / Written)
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
+                    MCQ %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={mcqPct}
+                    onChange={(e) => setMcqPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="portal-surface w-full p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
+                    True/False %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={trueFalsePct}
+                    onChange={(e) => setTrueFalsePct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="portal-surface w-full p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
+                    Written %
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={writtenPct}
+                    onChange={(e) => setWrittenPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="portal-surface w-full p-2.5 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -445,7 +683,7 @@ export default function CreateQuizPage() {
 
           <div className="portal-surface rounded-xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-800 dark:bg-gray-800 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Queued Questions</h2>
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ai Queued Questions</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">{queuedQuestions.length} queued</span>
             </div>
 
@@ -471,6 +709,17 @@ export default function CreateQuizPage() {
                       className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition text-red-600 dark:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => saveSingleQueuedQuestion(idx)}
+                      disabled={saving || !courseId}
+                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save to Question Bank
                     </button>
                   </div>
                 </div>
@@ -533,7 +782,7 @@ export default function CreateQuizPage() {
               className="flex-1 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Save className="w-5 h-5" />
-              {saving ? "Saving..." : "Save Queued Questions"}
+              {saving ? "Saving..." : "Save All Queued Questions"}
             </button>
             <button
               type="button"

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { generateAiInsights } from '@/lib/ai-insights-provider';
 
 type TxRow = {
   transactionDate: string;
@@ -31,6 +32,14 @@ export async function GET(req: Request) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const month = String(searchParams.get('month') || '').trim();
+    const validMonth = /^\d{4}-\d{2}$/.test(month);
+    const monthFilter = validMonth
+      ? "AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?"
+      : "AND ft.transactionDate >= DATE_SUB(NOW(), INTERVAL 120 DAY)";
+    const queryParams: string[] = validMonth ? [month] : [];
+
     const [rows] = await pool.query<RowDataPacket[]>(
       `
       SELECT
@@ -42,9 +51,11 @@ export async function GET(req: Request) {
       LEFT JOIN course c ON c.id = ft.courseId
       WHERE ft.status = 'success'
         AND ft.type = 'enrollment'
-        AND ft.transactionDate >= DATE_SUB(NOW(), INTERVAL 120 DAY)
+        ${monthFilter}
       ORDER BY ft.transactionDate DESC
       `
+      ,
+      queryParams
     );
 
     const tx = rows.map((row) => ({
@@ -68,7 +79,11 @@ export async function GET(req: Request) {
       const key = toKey(weekStart);
       weeklyMap.set(key, (weeklyMap.get(key) || 0) + item.amount);
 
-      if (date >= thirtyDaysAgo && item.courseTitle) {
+      const includeInTopCourses = validMonth
+        ? String(item.transactionDate).slice(0, 7) === month
+        : date >= thirtyDaysAgo;
+
+      if (includeInTopCourses && item.courseTitle) {
         const prev = courseMap.get(item.courseTitle) || {
           title: item.courseTitle,
           revenue: 0,
@@ -132,145 +147,26 @@ let source: 'rule-based' | 'openai' = 'rule-based';
 let finalForecast = forecastMonthly;
 let finalTrend = trendPct;
 let finalInsights = insights;
-let openaiDebug: { status?: number; code?: string; message?: string } | null = null;
+let aiDebug: { provider: 'openai' | 'none'; status?: number; code?: string; message?: string } | null =
+  null;
 
-const openaiKey = process.env.OPENAI_API_KEY;
-const model = process.env.OPENAI_MODEL || 'gpt-4.1';
+const aiResult = await generateAiInsights({
+  last8Weeks: last8,
+  last4Total,
+  prev4Total,
+  weeklyAvg,
+  trendPct,
+  topCourses,
+  ruleBased: { forecastMonthly, trendPct, insights },
+});
 
-if (!openaiKey) {
-  return NextResponse.json(
-    {
-      message: 'OpenAI API key is required to generate AI insights.',
-      source: 'openai',
-      openaiDebug: { message: 'Missing OPENAI_API_KEY' },
-    },
-    { status: 400 }
-  );
-}
-
-const jsonSchema = {
-  name: 'ai_insights',
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      forecastMonthly: { type: 'number' },
-      trendPct: { type: 'number' },
-      insights: {
-        type: 'array',
-        minItems: 3,
-        maxItems: 3,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          properties: {
-            type: { type: 'string' },
-            title: { type: 'string' },
-            description: { type: 'string' },
-          },
-          required: ['type', 'title', 'description'],
-        },
-      },
-    },
-    required: ['forecastMonthly', 'trendPct', 'insights'],
-  },
-};
-
-const extractOutputText = (data: any) => {
-  if (typeof data?.output_text === 'string') return data.output_text;
-  const fromOutput =
-    data?.output
-      ?.flatMap((item: any) => item.content || [])
-      ?.find((item: any) => item.type === 'output_text')?.text || '';
-  if (fromOutput) return fromOutput;
-  return data?.output?.[0]?.content?.[0]?.text || '';
-};
-
-try {
-  const payload = {
-    model,
-    text: { format: { type: 'json_schema', name: jsonSchema.name, schema: jsonSchema.schema } },
-    input: [
-      {
-        role: 'system',
-        content: [
-          {
-            type: 'input_text',
-            text:
-              'You are a data analyst for an education platform. ' +
-              'Return JSON only with keys: forecastMonthly, trendPct, insights. ' +
-              'insights must be an array of 3 items with type, title, description. ' +
-              'Use USD amounts without commas and keep descriptions short.',
-          },
-        ],
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: JSON.stringify({
-              last8Weeks: last8,
-              last4Total,
-              prev4Total,
-              weeklyAvg,
-              trendPct,
-              topCourses,
-              ruleBased: { forecastMonthly, trendPct, insights },
-            }),
-          },
-        ],
-      },
-    ],
-  };
-
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${openaiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-  const outputText = extractOutputText(data);
-
-  if (res.ok && outputText) {
-    try {
-      const parsed = JSON.parse(outputText);
-      if (parsed && Array.isArray(parsed.insights)) {
-        finalForecast = Number(parsed.forecastMonthly || finalForecast);
-        finalTrend = Number(parsed.trendPct || finalTrend);
-        finalInsights = parsed.insights;
-        source = 'openai';
-      } else {
-        openaiDebug = { message: 'OpenAI returned invalid insights shape' };
-      }
-    } catch {
-      openaiDebug = { message: 'OpenAI returned non-JSON output' };
-    }
-  } else if (!res.ok) {
-    openaiDebug = {
-      status: res.status,
-      code: data?.error?.code,
-      message: data?.error?.message || 'OpenAI request failed',
-    };
-  }
-} catch (error) {
-  console.error('OpenAI forecast error:', error);
-  openaiDebug = { message: error instanceof Error ? error.message : 'OpenAI request failed' };
-}
-
-if (source !== 'openai') {
-  return NextResponse.json(
-    {
-      message: 'OpenAI did not return valid insights.',
-      source: 'openai',
-      openaiDebug,
-    },
-    { status: 502 }
-  );
+if (aiResult.ok) {
+  finalForecast = Number(aiResult.forecastMonthly || finalForecast);
+  finalTrend = Number(aiResult.trendPct || finalTrend);
+  finalInsights = aiResult.insights;
+  source = aiResult.source;
+} else {
+  aiDebug = aiResult.debug;
 }
 
 return NextResponse.json({
@@ -281,7 +177,7 @@ return NextResponse.json({
   topCourses,
   insights: finalInsights,
   source,
-  openaiDebug,
+  aiDebug,
 });
   } catch (error: unknown) {
     console.error('AI revenue forecast error:', error);

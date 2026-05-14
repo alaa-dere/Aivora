@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MessageSquare, Send, Trash2 } from "lucide-react";
+import { MessageSquare, Search, Send, Trash2 } from "lucide-react";
 
 type Teacher = {
   id: string;
@@ -199,22 +199,24 @@ export default function AdminMessagesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
           <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
               <span className="text-xs text-gray-400">{filteredTeachers.length}</span>
             </div>
-            <div className="mt-3">
+            <div className="mt-3 relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search teacher..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
           </div>
-          <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+          <div className="max-h-[70vh] overflow-y-auto p-2 space-y-2 messages-scroll">
             {filteredTeachers.length === 0 && (
               <div className="p-4 text-sm text-slate-500 dark:text-slate-400">No teachers found.</div>
             )}
@@ -231,8 +233,10 @@ export default function AdminMessagesPage() {
                 <button
                   key={teacher.id}
                   onClick={() => setSelectedTeacherId(teacher.id)}
-                  className={`w-full text-left px-4 py-3 hover:bg-white dark:hover:bg-slate-800/40 transition-colors ${
-                    selectedTeacherId === teacher.id ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
+                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                    selectedTeacherId === teacher.id
+                      ? "bg-sky-50/80 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 shadow-sm"
+                      : "bg-white/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800/50"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -252,7 +256,7 @@ export default function AdminMessagesPage() {
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                           {teacher.fullName}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                           {thread?.lastMessage || "No messages yet"}
                         </p>
                       </div>
@@ -269,14 +273,15 @@ export default function AdminMessagesPage() {
           </div>
         </div>
 
-        <div className="admin-surface lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {selectedTeacher ? `Chat with ${selectedTeacher.fullName}` : "Select a teacher"}
             </p>
           </div>
 
-          <div className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3">
+          <div className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3 messages-scroll">
             {loadingMessages && (
               <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
             )}
@@ -294,10 +299,10 @@ export default function AdminMessagesPage() {
                 className={`flex ${msg.senderRole === "admin" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-md ${
+                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm border ${
                     msg.senderRole === "admin"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100"
+                      ? "bg-blue-600 text-white border-blue-500 shadow-sm"
+                      : "bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100 border-gray-200 dark:border-gray-600"
                   }`}
                 >
                   {msg.senderRole === "admin" && (
@@ -325,7 +330,7 @@ export default function AdminMessagesPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a message..."
-                className="admin-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-surface flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={sendMessage}
@@ -372,6 +377,22 @@ export default function AdminMessagesPage() {
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .messages-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .messages-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.8);
+          border-radius: 999px;
+        }
+        .dark .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(71, 85, 105, 0.9);
+        }
+      `}</style>
     </div>
   );
 }

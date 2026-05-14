@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   CurrencyDollarIcon,
   Squares2X2Icon,
@@ -10,6 +11,18 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 
+type ReportResponse = {
+  income: number;
+  teacherProfit: number;
+  platformProfit: number;
+  byType: Record<string, number>;
+  count: number;
+  aiSource: 'openai' | 'rule-based';
+  aiForecast: number;
+  aiTrendText: string;
+  aiDebug: { provider: 'openai' | 'none'; status?: number; code?: string; message?: string } | null;
+};
+
 function money(n: number) {
   const sign = n < 0 ? '-' : '';
   const abs = Math.abs(n);
@@ -17,12 +30,16 @@ function money(n: number) {
 }
 
 export default function AdminFinanceReportsPage() {
-  const [report, setReport] = useState({
+  const [report, setReport] = useState<ReportResponse>({
     income: 0,
     teacherProfit: 0,
     platformProfit: 0,
-    byType: {} as Record<string, number>,
+    byType: {},
     count: 0,
+    aiSource: 'rule-based',
+    aiForecast: 0,
+    aiTrendText: '',
+    aiDebug: null,
   });
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -33,22 +50,26 @@ export default function AdminFinanceReportsPage() {
       try {
         setLoading(true);
         setErrorMsg('');
+
         const res = await fetch(`/api/finance/reports?month=${encodeURIComponent(month)}`, {
           cache: 'no-store',
         });
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.message || 'Failed to load reports');
-        }
+        if (!res.ok) throw new Error(data.message || 'Failed to load reports');
+
         setReport({
           income: Number(data.income || 0),
           teacherProfit: Number(data.teacherProfit || 0),
           platformProfit: Number(data.platformProfit || 0),
           byType: data.byType || {},
           count: Number(data.count || 0),
+          aiSource: data.aiSource === 'openai' ? 'openai' : 'rule-based',
+          aiForecast: Number(data.aiForecast || 0),
+          aiTrendText: String(data.aiTrendText || ''),
+          aiDebug: data.aiDebug || null,
         });
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to load reports');
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to load reports');
       } finally {
         setLoading(false);
       }
@@ -79,20 +100,18 @@ export default function AdminFinanceReportsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            Reports
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Monthly finance summary with exportable metrics.
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Reports</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Monthly finance summary with exportable metrics.</p>
+          <Link
+            href="/dashboard/finance/forecast"
+            className="inline-flex mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            View Full Forecast
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -100,43 +119,23 @@ export default function AdminFinanceReportsPage() {
             {loading ? 'Loading report...' : errorMsg ? errorMsg : 'Monthly summary'}
           </div>
           <button
-            onClick={handlePrint}
-            className="admin-surface 
-              group inline-flex items-center gap-2
-              px-4 py-2 rounded-2xl
-              bg-white/80 dark:bg-slate-900/70 backdrop-blur
-              text-blue-700 dark:text-blue-300
-              font-semibold text-xs
-              border border-slate-200 dark:border-slate-800
-              shadow-md hover:shadow-md
-              transition-all duration-200
-              active:scale-95
-            "
+            onClick={() => window.print()}
+            className="admin-surface inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-slate-900/70 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-slate-200 dark:border-slate-800 shadow-md transition-all duration-200 active:scale-95"
           >
-            <PrinterIcon className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+            <PrinterIcon className="w-4 h-4" />
             Print
           </button>
           <button
             onClick={exportCSV}
-            className="
-              group inline-flex items-center gap-2
-              px-4 py-2 rounded-2xl
-              bg-gradient-to-r from-blue-600 to-blue-700
-              hover:from-blue-700 hover:to-blue-800
-              text-white font-semibold text-xs
-              shadow-md hover:shadow-md
-              border border-blue-500/50
-              transition-all duration-200
-              active:scale-95
-            "
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-xs shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
           >
-            <ArrowDownTrayIcon className="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+            <ArrowDownTrayIcon className="w-4 h-4" />
             Download
           </button>
         </div>
       </div>
 
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex items-center gap-2">
           <CalendarDaysIcon className="w-5 h-5 text-gray-400" />
           <input
@@ -151,22 +150,15 @@ export default function AdminFinanceReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Income', value: money(stats.income), icon: CurrencyDollarIcon },
-          { label: 'Teacher profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
-          { label: 'Platform profit', value: money(stats.platformProfit), icon: Squares2X2Icon },
-        ].map((card) => (
+          { label: 'Teacher Profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
+          { label: 'Platform Profit', value: money(stats.platformProfit), icon: Squares2X2Icon },
+        ].map((card, idx) => (
           <div
             key={card.label}
-            className="admin-surface 
-              bg-white/80 dark:bg-slate-900/70 backdrop-blur
-              rounded-2xl
-              border border-slate-200 dark:border-slate-800
-              shadow-md
-              p-6
-              min-h-[140px]
-              hover:-translate-y-1 hover:shadow-lg
-              transition-all duration-200
-            "
+            className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-6 min-h-[140px] hover:-translate-y-1 hover:shadow-lg transition-all duration-200 animate-[fadeIn_.4s_ease-out_both]"
+            style={{ animationDelay: `${idx * 80}ms` }}
           >
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
             <div className="flex items-center justify-between mb-2">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
@@ -179,8 +171,9 @@ export default function AdminFinanceReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Transactions by type</p>
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Transactions By Type</p>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-slate-600 dark:text-slate-300">Enrollments</span>
@@ -193,8 +186,9 @@ export default function AdminFinanceReportsPage() {
           </div>
         </div>
 
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Profit split summary</p>
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-cyan-400 to-blue-500" />
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Profit Split Summary</p>
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-slate-600 dark:text-slate-300">Teacher profit</span>
@@ -205,27 +199,30 @@ export default function AdminFinanceReportsPage() {
               <span className="font-semibold text-gray-900 dark:text-white">{money(stats.platformProfit)}</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
-            Connect this to real payments when finance tables are ready.
-          </p>
         </div>
 
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <div className="flex items-center gap-2">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <SparklesIcon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
             </div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">AI forecast</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">AI Forecast</p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-            Auto-generated projection for next month based on recent activity.
+          <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mt-2">
+            Source: {stats.aiSource === 'openai' ? 'OpenAI' : 'Rule-based'}
           </p>
+          {stats.aiSource === 'rule-based' && stats.aiDebug?.message ? (
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">
+              AI fallback reason: {stats.aiDebug.message}
+            </p>
+          ) : null}
           <div className="mt-4 rounded-lg border border-blue-100 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/20 p-3">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Expected revenue: {money(Math.round(stats.income * 1.08))}
+              Expected revenue: {money(Math.round(stats.aiForecast || stats.income))}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Trend: +8% vs current month
+              Trend: {stats.aiTrendText || 'Not enough data yet.'}
             </p>
           </div>
         </div>

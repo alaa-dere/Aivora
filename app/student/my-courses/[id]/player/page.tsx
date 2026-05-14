@@ -41,6 +41,11 @@ type LiveEditorSubmission = {
   error?: string | null;
 };
 
+type AssistantMessage = {
+  role: 'student' | 'assistant';
+  text: string;
+};
+
 const inlineMarkdownToNodes = (text: string): ReactNode[] => {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, idx) => {
@@ -192,6 +197,14 @@ export default function CoursePlayerPage() {
   const [liveSubmissionByLesson, setLiveSubmissionByLesson] = useState<
     Record<string, LiveEditorSubmission>
   >({});
+  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
+    {
+      role: 'assistant',
+      text: 'Ask me anything about this course content and I will explain it step by step.',
+    },
+  ]);
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantLoading, setAssistantLoading] = useState(false);
 
   const handleLiveSubmissionChange = useCallback(
     (submission: LiveEditorSubmission) => {
@@ -435,6 +448,50 @@ export default function CoursePlayerPage() {
     }
   };
 
+  const askAssistant = async () => {
+    const question = assistantInput.trim();
+    if (!question || assistantLoading) return;
+
+    setAssistantMessages((prev) => [...prev, { role: 'student', text: question }]);
+    setAssistantInput('');
+    setAssistantLoading(true);
+
+    try {
+      const res = await fetch(`/api/student/my-courses/${params.id}/assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          lessonId: selectedLesson?.id || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to get assistant response');
+      }
+
+      const answer = String(data?.answer || '').trim();
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: answer || 'I could not find a clear answer in this course content.',
+        },
+      ]);
+    } catch (err: any) {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: err?.message || 'Something went wrong while generating the answer.',
+        },
+      ]);
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       {loading ? (
@@ -661,10 +718,44 @@ export default function CoursePlayerPage() {
                 <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Chatbot coming soon. This space will host the AI helper.
+                Ask about current lessons and course topics.
               </p>
-              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 p-3 text-xs text-blue-700 dark:text-blue-200">
-                Ask questions about the lesson, get hints, and review explanations.
+              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-3 h-64 overflow-y-auto space-y-2">
+                {assistantMessages.map((msg, idx) => (
+                  <div
+                    key={`${msg.role}-${idx}`}
+                    className={`rounded-lg px-3 py-2 text-xs ${
+                      msg.role === 'student'
+                        ? 'bg-blue-600 text-white ml-6'
+                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                ))}
+                {assistantLoading && (
+                  <div className="rounded-lg px-3 py-2 text-xs bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                    Thinking...
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') askAssistant();
+                  }}
+                  placeholder="Ask about this lesson..."
+                  className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <button
+                  onClick={askAssistant}
+                  disabled={assistantLoading || !assistantInput.trim()}
+                  className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 disabled:opacity-60"
+                >
+                  Send
+                </button>
               </div>
             </div>
           </div>

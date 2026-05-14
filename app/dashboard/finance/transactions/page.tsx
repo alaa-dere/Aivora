@@ -147,8 +147,8 @@ export default function AdminFinanceTransactionsPage() {
         ].map((card) => (
           <div
             key={card.label}
-            className="admin-surface 
-              bg-white/80 dark:bg-slate-900/70 backdrop-blur
+            className="admin-surface relative overflow-hidden
+              bg-white/85 dark:bg-slate-900/75 backdrop-blur
               rounded-2xl
               border border-slate-200 dark:border-slate-800
               shadow-md
@@ -158,6 +158,7 @@ export default function AdminFinanceTransactionsPage() {
               transition-all duration-200
             "
           >
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
             <div className="flex items-center justify-between mb-2">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
@@ -169,19 +170,9 @@ export default function AdminFinanceTransactionsPage() {
         ))}
       </div>
 
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <div className="relative">
-              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search by id / student / teacher / course..."
-                className="w-full sm:w-96 pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-              />
-            </div>
-
             <div className="flex items-center gap-2">
               <CalendarDaysIcon className="w-5 h-5 text-gray-400" />
               <input
@@ -189,6 +180,16 @@ export default function AdminFinanceTransactionsPage() {
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
                 className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              />
+            </div>
+
+            <div className="relative">
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by id / student / teacher / course..."
+                className="w-full sm:w-[34rem] pl-10 pr-3 py-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
             </div>
@@ -210,7 +211,8 @@ export default function AdminFinanceTransactionsPage() {
         </div>
       </div>
 
-      <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
         <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Transactions <span className="text-gray-400 font-normal">({filtered.length})</span>

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { getRequestRole } from '@/lib/request-auth';
+import { requireAdmin } from '@/lib/request-auth';
+import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
 
 type NotificationRow = RowDataPacket & {
   id: string;
@@ -16,17 +17,25 @@ type NotificationRow = RowDataPacket & {
 };
 
 export async function GET(req: Request) {
-  const role = await getRequestRole(req);
-  if (role !== 'admin') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  }
+  const { user, error } = await requireAdmin(req);
+  if (error) return error;
 
   try {
     const { searchParams } = new URL(req.url);
     const filter = searchParams.get('filter') || 'all';
+    const type = (searchParams.get('type') || 'all').trim();
 
-    const where =
-      filter === 'unread' ? 'WHERE n.readAt IS NULL' : '';
+    const useUnified = await hasUnifiedNotificationTable();
+    const whereParts: string[] = [];
+    const params: string[] = [];
+    if (filter === 'unread') whereParts.push(useUnified ? 'n.readAt IS NULL AND n.deletedAt IS NULL' : 'n.readAt IS NULL');
+    if (type && type !== 'all') {
+      whereParts.push('n.type = ?');
+      params.push(type);
+    }
+    if (useUnified) whereParts.push("n.recipientRole = 'admin'");
+    else whereParts.push('1=1');
+    const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
     const [rows] = await pool.query<NotificationRow[]>(
       `
@@ -40,15 +49,16 @@ export async function GET(req: Request) {
         n.courseId,
         c.title AS courseTitle,
         cert.id AS certificateId
-      FROM admin_notification n
+      FROM ${useUnified ? 'notification' : 'admin_notification'} n
       LEFT JOIN course c ON c.id = n.courseId
       LEFT JOIN certificate cert
-        ON cert.studentId = n.studentId
+        ON cert.studentId = ${useUnified ? 'n.relatedUserId' : 'n.studentId'}
        AND cert.courseId = n.courseId
       ${where}
       ORDER BY n.createdAt DESC
       LIMIT 100
-      `
+      `,
+      params
     );
 
     const notifications = rows.map((row) => {
@@ -83,18 +93,42 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const role = await getRequestRole(req);
-  if (role !== 'admin') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  }
+  const { error } = await requireAdmin(req);
+  if (error) return error;
 
   try {
-    await pool.query(`UPDATE admin_notification SET readAt = NOW() WHERE readAt IS NULL`);
+    const body = await req.json().catch(() => ({}));
+    const type =
+      typeof body?.type === 'string' && body.type.trim() && body.type !== 'all'
+        ? body.type.trim()
+        : null;
+
+    const useUnified = await hasUnifiedNotificationTable();
+    if (type) {
+      if (useUnified) {
+        await pool.query(
+          `UPDATE notification SET readAt = NOW() WHERE recipientRole = 'admin' AND deletedAt IS NULL AND readAt IS NULL AND type = ?`,
+          [type]
+        );
+      } else {
+        await pool.query(`UPDATE admin_notification SET readAt = NOW() WHERE readAt IS NULL AND type = ?`, [
+          type,
+        ]);
+      }
+    } else {
+      if (useUnified) {
+        await pool.query(
+          `UPDATE notification SET readAt = NOW() WHERE recipientRole = 'admin' AND deletedAt IS NULL AND readAt IS NULL`
+        );
+      } else {
+        await pool.query(`UPDATE admin_notification SET readAt = NOW() WHERE readAt IS NULL`);
+      }
+    }
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Admin notifications mark-all error:', error);
     return NextResponse.json(
-      { message: 'Failed to mark all notifications as read', error: error.message },
+      { message: 'Failed to mark notifications as read', error: error.message },
       { status: 500 }
     );
   }

@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { API_ROUTES, normalizeSessionProfileResponse } from "@aivora/shared";
 
+const roleRoute: Record<string, string> = {
+  admin: "/dashboard",
+  teacher: "/teacher",
+  student: "/student",
+};
+
 export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const name = session?.user?.name || session?.user?.email || "User";
   const initial = name.trim().charAt(0).toUpperCase();
   const sessionImageUrl =
@@ -17,8 +25,10 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
   const role = session?.user?.role?.toLowerCase() || "student";
   const imageUrl = sessionImageUrl || fetchedImageUrl;
+  const dashboard = roleRoute[role] || "/student";
 
   useEffect(() => {
+    if (status !== "authenticated") return;
     let mounted = true;
     if (sessionImageUrl) return;
     const loadProfile = async () => {
@@ -36,12 +46,30 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     return () => {
       mounted = false;
     };
-  }, [sessionImageUrl]);
+  }, [sessionImageUrl, status]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
 
   if (status !== "authenticated") return null;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white max-w-[170px] sm:max-w-[220px]"
@@ -67,30 +95,38 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
       {open && (
         <div className="absolute right-0 mt-2 w-48 rounded-xl border border-stone-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 shadow-lg overflow-hidden z-50">
           <Link
-            href={`/${role}/profile`}
+            href={dashboard}
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? "Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ" : "Profile"}
+            {isArabic ? "áæÍÉ ÇáÊÍßã" : "Dashboard"}
           </Link>
+          {role !== "admin" ? (
+            <Link
+              href={`/${role}/profile`}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+            >
+              {isArabic ? "Çáãáİ ÇáÔÎÕí" : "Profile"}
+            </Link>
+          ) : null}
           {role === "student" ? (
             <Link
               href="/student/favorites"
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
             >
-              {isArabic ? "Ø§Ù„Ø¯ÙˆØ±Ø§Øª Ø§Ù„Ù…ÙØ¶Ù„Ø©" : "Favorite Courses"}
+              {isArabic ? "ÇáÏæÑÇÊ ÇáãİÖáÉ" : "Favorite Courses"}
             </Link>
           ) : null}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? "ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬" : "Logout"}
+            {isArabic ? "ÊÓÌíá ÇáÎÑæÌ" : "Logout"}
           </button>
         </div>
       )}
     </div>
   );
 }
-

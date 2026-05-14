@@ -39,15 +39,8 @@ import {
 const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", delay = 0 }: any) => {
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <div className="portal-surface 
-        bg-white dark:bg-gray-800 
-        rounded-xl 
-        shadow-sm 
-        border border-blue-200 dark:border-blue-800 
-        p-5 
-        hover:-translate-y-1 hover:shadow-lg 
-        transition-all duration-200
-      ">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
         <div className="flex items-center justify-between mb-2">
           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <Icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
@@ -64,17 +57,8 @@ const StatCard = ({ title, value, icon: Icon, change, changeType = "increase", d
 const CourseCard = ({ course, index }: any) => {
   return (
     <div className="group animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-      <div
-        className="portal-surface 
-          bg-white dark:bg-gray-800
-          rounded-xl
-          border border-blue-200 dark:border-blue-800
-          shadow-sm
-          p-5
-          hover:-translate-y-1 hover:shadow-lg
-          transition-all duration-200
-        "
-      >
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -147,13 +131,13 @@ const StudentRow = ({ student }: any) => {
   const badgeLabel = isCompleted ? 'completed' : isDropped ? 'dropped' : 'continue';
 
   return (
-    <div className="flex items-center justify-between py-4 px-2 border-b border-blue-100 dark:border-blue-800 last:border-0">
+    <div className="flex items-center justify-between py-4 px-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
       <div className="flex items-center gap-4">
         {student.imageUrl ? (
           <img
             src={student.imageUrl}
             alt={`${student.name} profile`}
-            className="w-10 h-10 rounded-full object-cover border border-blue-100 dark:border-blue-800"
+          className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"
           />
         ) : (
           <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-sm font-bold">
@@ -177,7 +161,7 @@ const StudentRow = ({ student }: any) => {
 
 /* ================= AI Insight Item ================= */
 const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 dark:text-blue-400" }: any) => (
-  <div className="flex gap-4 p-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+    <div className="flex gap-4 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">
     <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg h-fit">
       <Icon className={`w-5 h-5 ${color}`} />
     </div>
@@ -244,7 +228,11 @@ export default function TeacherDashboard() {
         const data = await res.json();
         if (!res.ok) return;
         setAiInsights(data.insights || []);
-        setAiSource(data.source === 'openai' || data.source === 'rule-based' ? data.source : 'unknown');
+        setAiSource(
+          data.source === 'openai' || data.source === 'rule-based'
+            ? data.source
+            : 'unknown'
+        );
       } catch (error) {
         console.error('Failed to load AI insights', error);
       } finally {
@@ -264,7 +252,7 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-transparent p-4 md:p-6 transition-colors duration-300">
       {/* رأس الصفحة */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
@@ -296,7 +284,8 @@ export default function TeacherDashboard() {
       {/* باقي الأقسام (My Courses, AI Insights, Student Performance, Recent Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* My Courses */}
-        <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="admin-surface lg:col-span-2 relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
               My Courses
@@ -321,14 +310,20 @@ export default function TeacherDashboard() {
         </div>
 
         {/* AI Insights */}
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             AI Insights
           </h2>
           <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
             <span>Smart analytics & suggestions</span>
             <span className="text-xs uppercase tracking-wide">
-              Source: {aiSource === 'openai' ? 'OpenAI' : aiSource === 'rule-based' ? 'Rule-based' : 'Unknown'}
+              Source:{' '}
+              {aiSource === 'openai'
+                ? 'OpenAI'
+                : aiSource === 'rule-based'
+                    ? 'Rule-based'
+                    : 'Unknown'}
             </span>
           </div>
           <div className="space-y-4">
@@ -363,11 +358,12 @@ export default function TeacherDashboard() {
 
       {/* Student Performance + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Student Performance
           </h2>
-          <div className="divide-y divide-blue-100 dark:divide-blue-800">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {loading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading students...</p>
             ) : error ? (
@@ -382,7 +378,8 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500" />
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
             Recent Activity
           </h2>
@@ -411,3 +408,4 @@ export default function TeacherDashboard() {
     </div>
   );
 }
+

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { createAdminNotification } from '@/lib/notifications-write';
 
 type MessageRow = RowDataPacket & {
   id: string;
@@ -277,17 +278,11 @@ export async function POST(req: Request) {
     const teacherName = teacherRows[0]?.fullName || 'Teacher';
 
     try {
-      const [notifIdRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
-      const notifId = notifIdRows[0].id as string;
-      await pool.query<ResultSetHeader>(
-        `
-        INSERT INTO admin_notification
-          (id, type, title, message, createdAt)
-        VALUES
-          (?, 'teacher_message', ?, ?, NOW())
-        `,
-        [notifId, `New message from ${teacherName}`, messageBody]
-      );
+      await createAdminNotification({
+        type: 'teacher_message',
+        title: `New message from ${teacherName}`,
+        message: messageBody,
+      });
     } catch (notifError: unknown) {
       console.error('Admin notification insert failed:', notifError);
     }

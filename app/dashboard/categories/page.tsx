@@ -1,7 +1,8 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { PencilSquareIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilSquareIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 
 type Category = {
   id: string;
@@ -13,9 +14,11 @@ type Category = {
 };
 
 export default function AdminCategoriesPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -46,6 +49,11 @@ export default function AdminCategoriesPage() {
     setEditingCategoryId(null);
   };
 
+  const openAddModal = () => {
+    resetForm();
+    setIsAddEditModalOpen(true);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -72,6 +80,7 @@ export default function AdminCategoriesPage() {
       }
 
       resetForm();
+      setIsAddEditModalOpen(false);
       await fetchCategories();
     } catch (error) {
       console.error('Failed to save category:', error);
@@ -86,6 +95,7 @@ export default function AdminCategoriesPage() {
     setName(category.name);
     setDescription(category.description || '');
     setStatus(category.status);
+    setIsAddEditModalOpen(true);
   };
 
   const handleDelete = async (category: Category) => {
@@ -118,60 +128,39 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Organize courses and learning paths by topic.
-        </p>
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300 space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur p-5 shadow-sm">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition"
+                aria-label="Back"
+                title="Back"
+              >
+                <ArrowLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              </button>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Organize courses and learning paths by topic.
+            </p>
+          </div>
+          <button
+            onClick={openAddModal}
+            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold text-sm shadow-sm border border-emerald-200 transition-all duration-200 active:scale-95 whitespace-nowrap dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800"
+          >
+            <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+            Add New Category
+          </button>
+        </div>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="admin-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 grid gap-3 md:grid-cols-4"
-      >
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Category name (e.g. Web Development)"
-          className="md:col-span-2 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
-        />
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Short description"
-          className="md:col-span-2 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
-        />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
-          className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <button
-          type="submit"
-          disabled={saving || !name.trim()}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
-        >
-          <PlusIcon className="w-4 h-4" />
-          {saving ? (editingCategoryId ? 'Saving...' : 'Creating...') : editingCategoryId ? 'Save Category' : 'Add Category'}
-        </button>
-
-        {editingCategoryId ? (
-          <button
-            type="button"
-            onClick={resetForm}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          >
-            <XMarkIcon className="w-4 h-4" />
-            Cancel Edit
-          </button>
-        ) : null}
-      </form>
-
-      <div className="admin-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Categories ({categories.length})
         </div>
@@ -251,6 +240,87 @@ export default function AdminCategoriesPage() {
           </table>
         </div>
       </div>
+
+      {isAddEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="admin-surface w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold">{editingCategoryId ? 'Edit Category' : 'Add New Category'}</h2>
+              <button
+                onClick={() => {
+                  setIsAddEditModalOpen(false);
+                  resetForm();
+                }}
+                className="text-white hover:text-gray-200 transition"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Category Name
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Category name (e.g. Web Development)"
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Short Description
+                </label>
+                <textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Short description"
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
+                  className="admin-surface w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 backdrop-blur focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddEditModalOpen(false);
+                    resetForm();
+                  }}
+                  className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !name.trim()}
+                  className="px-6 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/40 transition disabled:opacity-60"
+                >
+                  {saving ? (editingCategoryId ? 'Saving...' : 'Creating...') : editingCategoryId ? 'Save Category' : 'Add Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

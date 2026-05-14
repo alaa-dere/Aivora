@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
 
 type EnrollmentRow = {
   enrollmentId: string;
@@ -60,14 +61,16 @@ export async function GET(req: Request) {
     await ensureStudySessionTable();
     const { searchParams } = new URL(req.url);
     const notifications = searchParams.get('notifications');
+    const useUnified = await hasUnifiedNotificationTable();
 
     if (notifications) {
       if (notifications === 'count') {
         const [countRows] = await pool.query<RowDataPacket[]>(
           `
           SELECT COUNT(*) AS total
-          FROM student_notification
-          WHERE studentId = ? AND readAt IS NULL
+          FROM ${useUnified ? 'notification' : 'student_notification'}
+          WHERE ${useUnified ? "recipientRole = 'student' AND recipientId = ?" : 'studentId = ?'} AND readAt IS NULL
+          ${useUnified ? 'AND deletedAt IS NULL' : ''}
           `,
           [user.id]
         );
@@ -88,12 +91,12 @@ export async function GET(req: Request) {
           n.courseId,
           c.title AS courseTitle,
           cert.id AS certificateId
-        FROM student_notification n
+        FROM ${useUnified ? 'notification' : 'student_notification'} n
         LEFT JOIN course c ON c.id = n.courseId
         LEFT JOIN certificate cert
-          ON cert.studentId = n.studentId
+          ON cert.studentId = ${useUnified ? 'n.relatedUserId' : 'n.studentId'}
          AND cert.courseId = n.courseId
-        WHERE n.studentId = ?
+        WHERE ${useUnified ? "n.recipientRole = 'student' AND n.recipientId = ? AND n.deletedAt IS NULL" : 'n.studentId = ?'}
         ORDER BY n.createdAt DESC
         LIMIT ${limit}
         `,
@@ -289,24 +292,39 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const action = String(body?.action || '');
+    const useUnified = await hasUnifiedNotificationTable();
 
     if (action === 'mark_notification_read') {
       const id = String(body?.id || '').trim();
       if (!id) {
         return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
       }
-      await pool.query(
-        `UPDATE student_notification SET readAt = NOW() WHERE id = ? AND studentId = ?`,
-        [id, user.id]
-      );
+      if (useUnified) {
+        await pool.query(
+          `UPDATE notification SET readAt = NOW() WHERE id = ? AND recipientRole = 'student' AND recipientId = ? AND deletedAt IS NULL`,
+          [id, user.id]
+        );
+      } else {
+        await pool.query(
+          `UPDATE student_notification SET readAt = NOW() WHERE id = ? AND studentId = ?`,
+          [id, user.id]
+        );
+      }
       return NextResponse.json({ success: true });
     }
 
     if (action === 'mark_all_notifications_read') {
-      await pool.query(
-        `UPDATE student_notification SET readAt = NOW() WHERE studentId = ? AND readAt IS NULL`,
-        [user.id]
-      );
+      if (useUnified) {
+        await pool.query(
+          `UPDATE notification SET readAt = NOW() WHERE recipientRole = 'student' AND recipientId = ? AND deletedAt IS NULL AND readAt IS NULL`,
+          [user.id]
+        );
+      } else {
+        await pool.query(
+          `UPDATE student_notification SET readAt = NOW() WHERE studentId = ? AND readAt IS NULL`,
+          [user.id]
+        );
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -315,10 +333,17 @@ export async function POST(req: Request) {
       if (!id) {
         return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
       }
-      await pool.query(
-        `DELETE FROM student_notification WHERE id = ? AND studentId = ?`,
-        [id, user.id]
-      );
+      if (useUnified) {
+        await pool.query(
+          `UPDATE notification SET deletedAt = NOW() WHERE id = ? AND recipientRole = 'student' AND recipientId = ? AND deletedAt IS NULL`,
+          [id, user.id]
+        );
+      } else {
+        await pool.query(
+          `DELETE FROM student_notification WHERE id = ? AND studentId = ?`,
+          [id, user.id]
+        );
+      }
       return NextResponse.json({ success: true });
     }
 

@@ -4,6 +4,8 @@ import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { randomUUID } from 'crypto';
 import nodemailer from 'nodemailer';
+import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
+import { createStudentNotification } from '@/lib/notifications-write';
 
 async function hasColumn(tableName: string, columnName: string) {
   const [rows] = await pool.query<RowDataPacket[]>(
@@ -293,6 +295,7 @@ export async function GET(req: Request) {
     await ensureChatDeleteColumns();
     await ensureLiveSessionTables();
     await ensureTeacherNotificationTable();
+    const useUnifiedNotifications = await hasUnifiedNotificationTable();
     const teacherId = user.id;
     const { searchParams } = new URL(req.url);
     const notifications = searchParams.get('notifications');
@@ -332,9 +335,10 @@ export async function GET(req: Request) {
         const [quizNotifRows] = await pool.query<RowDataPacket[]>(
           `
           SELECT COUNT(*) AS total
-          FROM teacher_notification
-          WHERE teacherId = ?
-            AND readAt IS NULL
+          FROM ${useUnifiedNotifications ? 'notification' : 'teacher_notification'}
+          WHERE ${useUnifiedNotifications ? "recipientRole = 'teacher' AND recipientId = ?" : 'teacherId = ?'}
+            ${useUnifiedNotifications ? 'AND deletedAt IS NULL' : ''}
+            AND createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
           `,
           [teacherId]
         );
@@ -416,11 +420,11 @@ export async function GET(req: Request) {
           tn.createdAt,
           tn.readAt,
           cert.id AS certificateId
-        FROM teacher_notification tn
+        FROM ${useUnifiedNotifications ? 'notification' : 'teacher_notification'} tn
         LEFT JOIN certificate cert
-          ON cert.studentId = tn.studentId
+          ON cert.studentId = ${useUnifiedNotifications ? 'tn.relatedUserId' : 'tn.studentId'}
          AND cert.courseId = tn.courseId
-        WHERE tn.teacherId = ?
+        WHERE ${useUnifiedNotifications ? "tn.recipientRole = 'teacher' AND tn.recipientId = ? AND tn.deletedAt IS NULL" : 'tn.teacherId = ?'}
         ORDER BY tn.createdAt DESC
         LIMIT ${limit}
         `,
@@ -946,22 +950,16 @@ export async function POST(req: Request) {
             attendanceParams
           );
 
-          const notifValues = studentIds.map(() => '(?, ?, ?, ?, ?, ?, NOW(), NULL)').join(',');
-          const notifParams = studentIds.flatMap((studentId) => [
-            randomUUID(),
-            studentId,
-            courseId,
-            'live_session',
-            'Live session scheduled',
-            `Live session scheduled for ${courseTitle} on ${sessionDate} at ${startTime}.`,
-          ]);
-          await pool.query(
-            `
-            INSERT INTO student_notification
-              (id, studentId, courseId, type, title, message, createdAt, readAt)
-            VALUES ${notifValues}
-            `,
-            notifParams
+          await Promise.all(
+            studentIds.map((studentId) =>
+              createStudentNotification({
+                studentId,
+                courseId,
+                type: 'live_session',
+                title: 'Live session scheduled',
+                message: `Live session scheduled for ${courseTitle} on ${sessionDate} at ${startTime}.`,
+              })
+            )
           );
         }
 
@@ -1016,22 +1014,16 @@ export async function POST(req: Request) {
       let emailFailureMessage: string | null = null;
 
       if (studentIds.length > 0) {
-        const notifValues = studentIds.map(() => '(?, ?, ?, ?, ?, ?, NOW(), NULL)').join(',');
-        const notifParams = studentIds.flatMap((studentId) => [
-          randomUUID(),
-          studentId,
-          session.courseId,
-          'live_session',
-          'Live session reminder',
-          `Reminder: live session for ${session.courseTitle} on ${dateStr} at ${timeStr}.`,
-        ]);
-        await pool.query(
-          `
-          INSERT INTO student_notification
-            (id, studentId, courseId, type, title, message, createdAt, readAt)
-          VALUES ${notifValues}
-          `,
-          notifParams
+        await Promise.all(
+          studentIds.map((studentId) =>
+            createStudentNotification({
+              studentId,
+              courseId: session.courseId,
+              type: 'live_session',
+              title: 'Live session reminder',
+              message: `Reminder: live session for ${session.courseTitle} on ${dateStr} at ${timeStr}.`,
+            })
+          )
         );
 
         const studentsForEmail = studentRows
@@ -1160,22 +1152,16 @@ export async function POST(req: Request) {
       const absentIds = absentRows.map((r) => r.studentId as string);
 
       if (absentIds.length > 0) {
-        const notifValues = absentIds.map(() => '(?, ?, ?, ?, ?, ?, NOW(), NULL)').join(',');
-        const notifParams = absentIds.flatMap((studentId) => [
-          randomUUID(),
-          studentId,
-          session.courseId,
-          'missed_session',
-          'You missed a live session',
-          `You missed the live session for ${session.courseTitle}. Please watch the recording.`,
-        ]);
-        await pool.query(
-          `
-          INSERT INTO student_notification
-            (id, studentId, courseId, type, title, message, createdAt, readAt)
-          VALUES ${notifValues}
-          `,
-          notifParams
+        await Promise.all(
+          absentIds.map((studentId) =>
+            createStudentNotification({
+              studentId,
+              courseId: session.courseId,
+              type: 'missed_session',
+              title: 'You missed a live session',
+              message: `You missed the live session for ${session.courseTitle}. Please watch the recording.`,
+            })
+          )
         );
 
         const missValues = absentIds.map(() => '(?, ?, ?, 1, NOW())').join(',');
@@ -1218,22 +1204,16 @@ export async function POST(req: Request) {
             [session.courseId, ...failedIds]
           );
 
-          const failValues = failedIds.map(() => '(?, ?, ?, ?, ?, ?, NOW(), NULL)').join(',');
-          const failParams = failedIds.flatMap((studentId) => [
-            randomUUID(),
-            studentId,
-            session.courseId,
-            'course_failed',
-            'Course failed',
-            `You missed 6 live sessions for ${session.courseTitle} and the course was marked as failed.`,
-          ]);
-          await pool.query(
-            `
-            INSERT INTO student_notification
-              (id, studentId, courseId, type, title, message, createdAt, readAt)
-            VALUES ${failValues}
-            `,
-            failParams
+          await Promise.all(
+            failedIds.map((studentId) =>
+              createStudentNotification({
+                studentId,
+                courseId: session.courseId,
+                type: 'course_failed',
+                title: 'Course failed',
+                message: `You missed 6 live sessions for ${session.courseTitle} and the course was marked as failed.`,
+              })
+            )
           );
         }
       }
