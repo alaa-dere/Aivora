@@ -22,6 +22,14 @@ type Lesson = {
   codeContent?: string;
   description?: string;
   videoUrl?: string;
+  quizQuestions?: Array<{
+    id?: string;
+    questionType: 'multiple_choice' | 'written' | 'true_false';
+    questionText: string;
+    options?: string[];
+    correctOptionIndex?: number;
+    writtenAnswer?: string;
+  }>;
 };
 
 type Module = {
@@ -1450,7 +1458,9 @@ const regenerateSingleLesson = async (lessonId: string) => {
                       )}
                     </div>
                     <LessonContentView
+                      key={lesson.id}
                       content={lesson.content || ''}
+                      quizQuestions={lesson.quizQuestions || []}
                       enableLiveEditor={lesson.enableLiveEditor}
                       liveEditorLanguage={lesson.liveEditorLanguage || 'python'}
                       starterDisabledMessage="Starter code found, but Live Editor is disabled for this lesson."

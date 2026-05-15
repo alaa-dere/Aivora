@@ -515,13 +515,14 @@ function ensurePracticalLesson(lesson: OutlineLesson, moduleTitle: string, lesso
 function enforceQuizMatchesOutput(lesson: OutlineLesson): OutlineLesson {
   if (!lesson.enableLiveEditor || !lesson.expectedOutput) return lesson;
   const expected = lesson.expectedOutput.trim().toLowerCase();
+  const lessonScopedQuestion = `In "${lesson.title}", what will the console print when you run this code?`;
   if (!Array.isArray(lesson.quizQuestions) || lesson.quizQuestions.length === 0) {
     return {
       ...lesson,
       quizQuestions: [
         {
           questionType: 'multiple_choice',
-          questionText: 'What will the console print when you run this code?',
+          questionText: lessonScopedQuestion,
           options: [
             expected,
             expected.split('').reverse().join(''),
@@ -539,7 +540,16 @@ function enforceQuizMatchesOutput(lesson: OutlineLesson): OutlineLesson {
       if (!Array.isArray(q.options) || q.options.length === 0) return q;
       const opts = [...q.options];
       opts[q.correctOptionIndex ?? 0] = expected;
-      return { ...q, options: opts, correctOptionIndex: q.correctOptionIndex ?? 0 };
+      const normalizedText = String(q.questionText || '').trim();
+      const isGenericOutputQuestion =
+        /^what will the console print when you run this code\??$/i.test(normalizedText) ||
+        /^what is the expected output\??$/i.test(normalizedText);
+      return {
+        ...q,
+        questionText: isGenericOutputQuestion ? lessonScopedQuestion : normalizedText,
+        options: opts,
+        correctOptionIndex: q.correctOptionIndex ?? 0,
+      };
     }),
   };
 }
@@ -882,7 +892,7 @@ async function generateLessonDetailsFromAi(input: {
   'Rules: ' +
   '1. description = 60-80 words MAX. Cover: what+why+pitfall. No filler. ' +
   '2. enableLiveEditor=true only for code_example type. starterCode must be browser-safe JS (no require/import/process/express()). expectedOutput = exact console.log output, lowercase, no punctuation. ' +
-'3. quizQuestions: exactly 1 question PER lesson if neededthat has enableLiveEditor=true. The question MUST be about the starter code output — ask "What will the console print when you run this code?" or "What is the expected output?". The correct answer (correctOptionIndex) must exactly match the expectedOutput value. Wrong options must be plausible but clearly incorrect variations. If enableLiveEditor=false, quizQuestions=[].' + 
+'3. quizQuestions: exactly 1 question per lesson when enableLiveEditor=true. The question MUST be about starter-code output and MUST include lesson-specific context (for example the lesson title) so question text is unique across lessons. The correct answer (correctOptionIndex) must exactly match expectedOutput. Wrong options must be plausible but incorrect. If enableLiveEditor=false, quizQuestions=[].' + 
  '4. videoUrl: one relevant YouTube link. resources: 2-3 real working links (MDN/Express docs/Node docs only). ' +
   '5. Choose type based on lesson content. If the lesson is about a specific practical task (e.g. handling POST requests), prefer code_example. If it’s about understanding concepts, prefer text. video_embed if it’s best explained visually (e.g. event loop). ' +
   '6. durationMinutes: 10-20 mins. Longer for code_example, shorter for text. ' +
@@ -931,19 +941,22 @@ async function generateLessonDetailsFromAi(input: {
     ? parsed.resources.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 4)
     : [];
 
-  return {
-    title,
-    description,
-    type,
-    durationMinutes,
-    enableLiveEditor: Boolean(parsed.enableLiveEditor) && (type === 'code_example' || Boolean(starterCode)),
-    liveEditorLanguage: finalLang,
-    starterCode: starterCode || undefined,
-    expectedOutput: String(parsed.expectedOutput || '').trim() || undefined,
-    videoUrl: String(parsed.videoUrl || '').trim() || undefined,
-    resources,
-    quizQuestions: [],
-  };
+ const quizRaw = Array.isArray(parsed.quizQuestions) ? parsed.quizQuestions : [];
+const quizQuestions = quizRaw.map(normalizeQuizQuestion).filter(Boolean) as QuizQuestion[];
+
+return {
+  title,
+  description,
+  type,
+  durationMinutes,
+  enableLiveEditor: Boolean(parsed.enableLiveEditor) && (type === 'code_example' || Boolean(starterCode)),
+  liveEditorLanguage: finalLang,
+  starterCode: starterCode || undefined,
+  expectedOutput: String(parsed.expectedOutput || '').trim() || undefined,
+  videoUrl: String(parsed.videoUrl || '').trim() || undefined,
+  resources,
+  quizQuestions, 
+};
 }
 
 export async function POST(req: Request, { params }: Params) {
@@ -1012,6 +1025,11 @@ export async function POST(req: Request, { params }: Params) {
       if (lessonIds.length === 0) {
         return NextResponse.json({ message: 'lessonIds are required for regenerate mode' }, { status: 400 });
       }
+      await ensureCourseQuizSchema();
+      const actor = await getRequestUser(req);
+      const teacherIdFromCourse = String(courseRows[0].teacherId || '').trim();
+      const actorId = String(actor?.id || '').trim();
+      const questionTeacherId = teacherIdFromCourse || actorId;
 
       const placeholders = lessonIds.map(() => '?').join(',');
       const [rows] = await pool.query<RowDataPacket[]>(
@@ -1038,12 +1056,11 @@ export async function POST(req: Request, { params }: Params) {
         if (!details) continue;
         let prepared = ensureDetailedExplanation(details);
         prepared = ensurePracticalLesson(prepared, String(row.moduleTitle || ''), 0);
-        prepared = stripLiveCompilerLikeQuestions(prepared);
         prepared = sanitizeLessonForDb(prepared);
 
-        await pool.query(
-          `
-          UPDATE lesson
+          await pool.query(
+            `
+            UPDATE lesson
           SET title = ?, description = ?, content = ?, videoUrl = ?, durationMinutes = ?, type = ?, enableLiveEditor = ?, liveEditorLanguage = ?, updatedAt = NOW()
           WHERE id = ?
           `,
@@ -1057,10 +1074,54 @@ export async function POST(req: Request, { params }: Params) {
             Boolean(prepared.enableLiveEditor),
             prepared.liveEditorLanguage || 'python',
             String(row.id),
-          ]
-        );
-        updated += 1;
-      }
+            ]
+          );
+
+          await pool.query(
+            `DELETE FROM course_question_bank WHERE courseId = ? AND lessonId = ?`,
+            [normalizedCourseId, String(row.id)]
+          );
+
+          if (questionTeacherId && Array.isArray(prepared.quizQuestions)) {
+            for (const q of prepared.quizQuestions.slice(0, 4)) {
+              const options =
+                q.questionType === 'written'
+                  ? [String(q.writtenAnswer || q.options?.[0] || '').trim()]
+                  : q.questionType === 'true_false'
+                    ? ['True', 'False']
+                    : (q.options || []).slice(0, 4);
+              const correctIndex =
+                q.questionType === 'written'
+                  ? 0
+                  : q.questionType === 'true_false'
+                    ? Number(q.correctOptionIndex === 1 ? 1 : 0)
+                    : Number(q.correctOptionIndex || 0);
+              if (!q.questionText || options.length === 0) continue;
+
+              const [qidRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
+              const questionId = String(qidRows[0].id);
+              await pool.query(
+                `
+                INSERT INTO course_question_bank
+                  (id, courseId, lessonId, teacherId, questionType, questionText, optionsJson, correctOptionIndex, createdAt, updatedAt)
+                VALUES
+                  (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                `,
+                [
+                  questionId,
+                  normalizedCourseId,
+                  String(row.id),
+                  questionTeacherId,
+                  q.questionType,
+                  q.questionText,
+                  JSON.stringify(options),
+                  correctIndex,
+                ]
+              );
+            }
+          }
+          updated += 1;
+        }
 
       return NextResponse.json({
         success: true,
@@ -1255,22 +1316,23 @@ modules = skipEnrich ? modules : enrichModules(modules);    modules = enforceTop
               if (!q.questionText || options.length === 0) continue;
 
               await conn.query(
-                `
-                INSERT INTO course_question_bank
-                  (id, courseId, teacherId, questionType, questionText, optionsJson, correctOptionIndex, createdAt, updatedAt)
-                VALUES
-                  (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                `,
-                [
-                  questionId,
-                  normalizedCourseId,
-                  questionTeacherId,
-                  q.questionType,
-                  q.questionText,
-                  JSON.stringify(options),
-                  correctIndex,
-                ]
-              );
+  `
+  INSERT INTO course_question_bank
+    (id, courseId, lessonId, teacherId, questionType, questionText, optionsJson, correctOptionIndex, createdAt, updatedAt)
+  VALUES
+    (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+  `,
+  [
+    questionId,
+    normalizedCourseId,
+    lessonId,                   
+    questionTeacherId,
+    q.questionType,
+    q.questionText,
+    JSON.stringify(options),
+    correctIndex,
+  ]
+);
               createdQuestions += 1;
             }
           }

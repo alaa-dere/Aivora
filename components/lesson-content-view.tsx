@@ -14,6 +14,7 @@ type LiveEditorSubmission = {
 
 type LessonContentViewProps = {
   content: string;
+  quizQuestions?: any[];
   enableLiveEditor?: boolean;
   liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
@@ -165,6 +166,14 @@ const normalizeFenceText = (content: string) => {
   return content.replace(/\\`/g, '`');
 };
 
+const normalizeStarterFormatting = (value: string) => {
+  if (!value) return value;
+  return value
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t');
+};
+
 const parseLessonContent = (content: string) => {
   const source = normalizeFenceText(content || '');
   const segments: Segment[] = [];
@@ -223,7 +232,7 @@ const parseLessonContent = (content: string) => {
     if (normalizedToken.includes('video')) {
       segments.push({ type: 'video', value });
     } else if (normalizedToken.includes('starter')) {
-      segments.push({ type: 'starter', value });
+      segments.push({ type: 'starter', value: normalizeStarterFormatting(value) });
     } else {
       segments.push({ type: 'answer', value });
     }
@@ -265,6 +274,7 @@ export default function LessonContentView({
   onSubmissionChange,
   starterDisabledMessage = 'Live editor is disabled for this lesson.',
   emptyMessage = 'No lesson content yet.',
+  quizQuestions = [],
 }: LessonContentViewProps) {
   const segments = parseLessonContent(content || '');
 
@@ -319,3 +329,5 @@ export default function LessonContentView({
     </div>
   );
 }
+
+

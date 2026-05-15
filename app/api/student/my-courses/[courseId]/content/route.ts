@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -24,6 +25,7 @@ export async function GET(req: Request, { params }: Params) {
   }
 
   try {
+    await ensureCourseQuizSchema();
     const { courseId } = await params;
     const id = decodeURIComponent(courseId).trim();
 
@@ -61,6 +63,7 @@ export async function GET(req: Request, { params }: Params) {
 
     const moduleIds = moduleRows.map((row) => row.id as string);
     let lessonRows: RowDataPacket[] = [];
+    let quizQuestionsByLesson: Record<string, any[]> = {};
 
     if (moduleIds.length > 0) {
       const placeholders = moduleIds.map(() => '?').join(',');
@@ -89,6 +92,53 @@ export async function GET(req: Request, { params }: Params) {
         [enrollRows[0].id, ...moduleIds]
       );
       lessonRows = rows;
+
+      const lessonIds = lessonRows.map((row) => String(row.id)).filter(Boolean);
+      if (lessonIds.length > 0) {
+        const lessonPlaceholders = lessonIds.map(() => '?').join(',');
+        const [questionRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT id, lessonId, questionType, questionText, optionsJson, correctOptionIndex
+          FROM course_question_bank
+          WHERE courseId = ? AND lessonId IN (${lessonPlaceholders})
+          ORDER BY createdAt ASC
+          `,
+          [id, ...lessonIds]
+        );
+
+        quizQuestionsByLesson = questionRows.reduce<Record<string, any[]>>((acc, row) => {
+          const lessonId = String(row.lessonId || '');
+          if (!lessonId) return acc;
+          if (!acc[lessonId]) acc[lessonId] = [];
+
+          let options: string[] = [];
+          if (Array.isArray(row.optionsJson)) {
+            options = row.optionsJson.map((x: unknown) => String(x || ''));
+          } else if (typeof row.optionsJson === 'string') {
+            try {
+              const parsed = JSON.parse(row.optionsJson);
+              if (Array.isArray(parsed)) {
+                options = parsed.map((x) => String(x || ''));
+              }
+            } catch {
+              options = [];
+            }
+          }
+
+          acc[lessonId].push({
+            id: row.id,
+            questionType: row.questionType || 'multiple_choice',
+            questionText: row.questionText,
+            options,
+            correctOptionIndex:
+              row.correctOptionIndex === null || row.correctOptionIndex === undefined
+                ? undefined
+                : Number(row.correctOptionIndex),
+          });
+
+          return acc;
+        }, {});
+      }
     }
 
     const lessonsByModule = lessonRows.reduce<Record<string, any[]>>((acc, row) => {
@@ -107,6 +157,7 @@ export async function GET(req: Request, { params }: Params) {
         enableLiveEditor: Boolean(row.enableLiveEditor),
         liveEditorLanguage: row.liveEditorLanguage || 'python',
         completed: Boolean(row.completed),
+        quizQuestions: quizQuestionsByLesson[String(row.id)] || [],
       });
       return acc;
     }, {});

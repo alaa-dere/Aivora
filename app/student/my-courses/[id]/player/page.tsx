@@ -20,6 +20,13 @@ type Lesson = {
   title: string;
   description?: string;
   content?: string;
+  quizQuestions?: Array<{
+    id?: string;
+    questionType: 'multiple_choice' | 'written' | 'true_false';
+    questionText: string;
+    options?: string[];
+    correctOptionIndex?: number;
+  }>;
   videoUrl?: string;
   durationMinutes: number;
   completed: boolean;
@@ -779,7 +786,9 @@ export default function CoursePlayerPage() {
                 </h2>
 
                 <LessonContentView
+                  key={selectedLesson.id}
                   content={selectedLesson.content || ''}
+                  quizQuestions={selectedLesson.quizQuestions || []}
                   enableLiveEditor={selectedLesson.enableLiveEditor}
                   liveEditorLanguage={selectedLesson.liveEditorLanguage || 'python'}
                   onSubmissionChange={handleLiveSubmissionChange}

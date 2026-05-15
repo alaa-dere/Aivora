@@ -19,6 +19,39 @@ async function hasColumn(tableName: string, columnName: string): Promise<boolean
   return rows.length > 0;
 }
 
+async function hasIndex(tableName: string, indexName: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND INDEX_NAME = ?
+      LIMIT 1
+    `,
+    [tableName, indexName]
+  );
+
+  return rows.length > 0;
+}
+
+async function hasForeignKey(tableName: string, constraintName: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+        AND CONSTRAINT_NAME = ?
+      LIMIT 1
+    `,
+    [tableName, constraintName]
+  );
+
+  return rows.length > 0;
+}
+
 export async function ensureCourseQuizSchema() {
   if (ensurePromise) {
     return ensurePromise;
@@ -29,6 +62,7 @@ export async function ensureCourseQuizSchema() {
       CREATE TABLE IF NOT EXISTS course_question_bank (
           id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
           courseId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          lessonId            VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
           teacherId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
           questionType        ENUM('multiple_choice', 'written', 'true_false') NOT NULL DEFAULT 'multiple_choice',
           questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
@@ -39,12 +73,36 @@ export async function ensureCourseQuizSchema() {
 
           FOREIGN KEY (courseId) REFERENCES course(id)
               ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (lessonId) REFERENCES lesson(id)
+              ON DELETE SET NULL ON UPDATE CASCADE,
           FOREIGN KEY (teacherId) REFERENCES user(id)
               ON DELETE CASCADE ON UPDATE CASCADE,
           INDEX idx_courseId (courseId),
+          INDEX idx_lessonId (lessonId),
           INDEX idx_teacherId (teacherId)
       ) ENGINE=InnoDB
     `);
+    if (!(await hasColumn('course_question_bank', 'lessonId'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD COLUMN lessonId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci
+        AFTER courseId
+      `);
+    }
+    if (!(await hasIndex('course_question_bank', 'idx_lessonId'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD INDEX idx_lessonId (lessonId)
+      `);
+    }
+    if (!(await hasForeignKey('course_question_bank', 'fk_course_question_bank_lesson'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD CONSTRAINT fk_course_question_bank_lesson
+        FOREIGN KEY (lessonId) REFERENCES lesson(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+      `);
+    }
     if (!(await hasColumn('course_question_bank', 'questionType'))) {
       await pool.query(`
         ALTER TABLE course_question_bank
