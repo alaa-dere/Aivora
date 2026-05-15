@@ -247,7 +247,7 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
   if (options.length < 2) return null;
   const idx = Number(q.correctOptionIndex);
   const correctOptionIndex = Number.isInteger(idx) && idx >= 0 && idx < options.length ? idx : 0;
-  return { questionType, questionText, options, correctOptionIndex };
+return { questionType, questionText, options, correctOptionIndex };
 }
 
 function normalizeVideoForTopic(url: string | undefined, topicText: string): string | undefined {
@@ -512,7 +512,37 @@ function ensurePracticalLesson(lesson: OutlineLesson, moduleTitle: string, lesso
 
   const withVideoUrl =
     normalizeVideoForTopic(lesson.videoUrl, lowerTitle) || defaultVideoForTopic(lowerTitle);
-
+function enforceQuizMatchesOutput(lesson: OutlineLesson): OutlineLesson {
+  if (!lesson.enableLiveEditor || !lesson.expectedOutput) return lesson;
+  const expected = lesson.expectedOutput.trim().toLowerCase();
+  if (!Array.isArray(lesson.quizQuestions) || lesson.quizQuestions.length === 0) {
+    return {
+      ...lesson,
+      quizQuestions: [
+        {
+          questionType: 'multiple_choice',
+          questionText: 'What will the console print when you run this code?',
+          options: [
+            expected,
+            expected.split('').reverse().join(''),
+            expected.toUpperCase(),
+            `error: ${expected}`,
+          ],
+          correctOptionIndex: 0,
+        },
+      ],
+    };
+  }
+  return {
+    ...lesson,
+    quizQuestions: lesson.quizQuestions.map((q) => {
+      if (!Array.isArray(q.options) || q.options.length === 0) return q;
+      const opts = [...q.options];
+      opts[q.correctOptionIndex ?? 0] = expected;
+      return { ...q, options: opts, correctOptionIndex: q.correctOptionIndex ?? 0 };
+    }),
+  };
+}
   return {
     ...lesson,
     type: lesson.type === 'video_embed' && lessonIndex % 2 === 0 ? 'code_example' : lesson.type,
@@ -550,6 +580,7 @@ function stripLiveCompilerLikeQuestions(lesson: OutlineLesson): OutlineLesson {
 }
 
 function enrichModules(modules: OutlineModule[]): OutlineModule[] {
+  const usedQuizKeys = new Set<string>();
   return modules.map((module) => {
     const baseLessons = module.lessons.slice(0, 8);
     if (baseLessons.length === 0) return module;
@@ -572,9 +603,18 @@ function enrichModules(modules: OutlineModule[]): OutlineModule[] {
         }));
       }
 
-      return appendExtraCodeExample(
-        ensureDetailedExplanation(ensurePracticalLesson(lesson, module.title, lessonIndex))
-      );
+     const processed = stripLiveCompilerLikeQuestions(
+  ensureDetailedExplanation(ensurePracticalLesson(lesson, module.title, lessonIndex))
+);
+if (Array.isArray(processed.quizQuestions)) {
+  processed.quizQuestions = processed.quizQuestions.filter((q) => {
+    const key = q.questionText.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (usedQuizKeys.has(key)) return false;
+    usedQuizKeys.add(key);
+    return true;
+  });
+}
+return appendExtraCodeExample(processed);
     });
 
     return {
@@ -723,6 +763,7 @@ function topicScore(text: string, profile: TopicProfile): number {
 
 function strictSanitizeModules(modules: OutlineModule[], profile: TopicProfile): OutlineModule[] {
   const usedLessonTitles = new Set<string>();
+  const usedQuizQuestions = new Set<string>();
   const usedVideos = new Set<string>();
   const usedResources = new Set<string>();
   const usedStarter = new Set<string>();
@@ -770,8 +811,15 @@ function strictSanitizeModules(modules: OutlineModule[], profile: TopicProfile):
         const finalSk = String(next.starterCode || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (finalSk) usedStarter.add(finalSk);
       }
-
-      next = stripLiveCompilerLikeQuestions(next);
+// dedupe quiz questions across all lessons
+if (Array.isArray(next.quizQuestions)) {
+  next.quizQuestions = next.quizQuestions.filter((q) => {
+  const key = q.questionText.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (usedQuizQuestions.has(key)) return false;
+  usedQuizQuestions.add(key);
+  return true;
+});
+}
       next.description = dedupeTextBlocks(String(next.description || ''));
       keptLessons.push(next);
     }
@@ -790,9 +838,13 @@ async function generateOutlineOnlyFromAi(input: {
   prompt: string;
   courseTitle: string;
 }): Promise<OutlineOnlyModule[] | null> {
-  const instruction =
-    'Return JSON only: {"modules":[{"title":"","description":"","lessons":[{"title":"","objective":""}]}]}. ' +
-    'Generate 3 to 5 modules and 4 to 6 lessons per module. Keep it concise and topic-specific.';
+ const instruction =
+  'Return JSON only: {"modules":[{"title":"","description":"","lessons":[{"title":"","objective":""}]}]}. ' +
+  '4-5 modules, 4-5 lessons each. ' +
+  'Each lesson title must be specific and action-oriented (e.g. "Handle POST requests with body-parser"). ' +
+  'Objective = one sentence: what the student will be able to DO after this lesson. ' +
+  'No duplicate lesson titles. Lessons must progress logically from basics to advanced. ' +
+  'Topic-specific only — no generic programming lessons.';
 
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -825,11 +877,17 @@ async function generateLessonDetailsFromAi(input: {
   lessonTitle: string;
   objective: string;
 }): Promise<OutlineLesson | null> {
-  const instruction =
-    'Return JSON only with shape: ' +
-    '{"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"python|javascript|html_css","starterCode":"","expectedOutput":"","videoUrl":"","resources":[""]}. ' +
-    'Quality rules are mandatory: include WHY + HOW + PITFALLS in description. ' +
-    'Enable live editor only when needed. Use trusted relevant links only. Avoid repetition.';
+ const instruction =
+  'Return JSON only: {"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"javascript","starterCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice","questionText":"","options":[""],"correctOptionIndex":0}]}. ' +
+  'Rules: ' +
+  '1. description = 60-80 words MAX. Cover: what+why+pitfall. No filler. ' +
+  '2. enableLiveEditor=true only for code_example type. starterCode must be browser-safe JS (no require/import/process/express()). expectedOutput = exact console.log output, lowercase, no punctuation. ' +
+'3. quizQuestions: exactly 1 question PER lesson if neededthat has enableLiveEditor=true. The question MUST be about the starter code output — ask "What will the console print when you run this code?" or "What is the expected output?". The correct answer (correctOptionIndex) must exactly match the expectedOutput value. Wrong options must be plausible but clearly incorrect variations. If enableLiveEditor=false, quizQuestions=[].' + 
+ '4. videoUrl: one relevant YouTube link. resources: 2-3 real working links (MDN/Express docs/Node docs only). ' +
+  '5. Choose type based on lesson content. If the lesson is about a specific practical task (e.g. handling POST requests), prefer code_example. If it’s about understanding concepts, prefer text. video_embed if it’s best explained visually (e.g. event loop). ' +
+  '6. durationMinutes: 10-20 mins. Longer for code_example, shorter for text. ' +
+  '7. Ensure all content is highly relevant to the topic and course title. No generic programming lessons. ' +
+  '8. No duplicate lesson titles within the same module.';
 
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -1020,8 +1078,7 @@ export async function POST(req: Request, { params }: Params) {
       }
     }
 
-    if (apiKey) {
-      const instruction =
+if (apiKey && !(Array.isArray(body?.outline) && body.outline.length > 0)) {      const instruction =
         'Return JSON only in this shape: ' +
         '{"modules":[{"title":"","description":"","lessons":[{"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"python|javascript|html_css","starterCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice|written|true_false","questionText":"","options":[""],"correctOptionIndex":0,"writtenAnswer":""}]}]}]}. ' +
         'Generate 3 to 5 modules and 4 to 6 lessons per module. ' +
@@ -1060,11 +1117,12 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     // If phase 2 and outline exists, enrich each lesson details individually for better quality.
-    if ((phase === 2 || mode === 'details') && apiKey && Array.isArray(body?.outline)) {
-      const detailedModules: OutlineModule[] = [];
-      for (const module of modules) {
-        const detailedLessons: OutlineLesson[] = [];
-        for (const lesson of module.lessons) {
+    // Phase 2: generate all lesson details in PARALLEL for speed
+if ((phase === 2 || mode === 'details') && apiKey && Array.isArray(body?.outline)) {
+  const detailedModules: OutlineModule[] = await Promise.all(
+    modules.map(async (module) => {
+      const detailedLessons = await Promise.all(
+        module.lessons.map(async (lesson) => {
           const detailed = await generateLessonDetailsFromAi({
             apiKey,
             model,
@@ -1074,16 +1132,35 @@ export async function POST(req: Request, { params }: Params) {
             lessonTitle: lesson.title,
             objective: lesson.description || '',
           });
-          detailedLessons.push(detailed || lesson);
-        }
-        detailedModules.push({ ...module, lessons: detailedLessons });
-      }
-      modules = detailedModules;
-      source = 'openai';
-    }
+          return detailed ?? lesson;
+        })
+      );
+      return { ...module, lessons: detailedLessons };
+    })
+  );
 
-    modules = enrichModules(modules);
-    modules = enforceTopicRelevance(modules, profile);
+  const usedQuizKeys = new Set<string>();
+  modules = detailedModules.map((module) => ({
+    ...module,
+    lessons: module.lessons.map((lesson) => ({
+      ...lesson,
+      quizQuestions: Array.isArray(lesson.quizQuestions)
+        ? lesson.quizQuestions.filter((q) => {
+            const key = q.questionText.toLowerCase().replace(/\s+/g, ' ').trim();
+            if (usedQuizKeys.has(key)) return false;
+            usedQuizKeys.add(key);
+            return true;
+          })
+        : [],
+    })),
+  }));
+
+  source = 'openai';
+}
+// skip enrichModules video/starter override when we already have AI-generated details
+const skipEnrich = (phase === 2 || mode === 'details') && Array.isArray(body?.outline);
+
+modules = skipEnrich ? modules : enrichModules(modules);    modules = enforceTopicRelevance(modules, profile);
     modules = validateAndFixLinks(modules, profile);
     modules = enforceNoDuplicates(modules);
     modules = strictSanitizeModules(modules, profile);
