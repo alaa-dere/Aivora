@@ -193,7 +193,9 @@ export default function LiveSessionsPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to schedule");
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Failed to schedule");
+      }
       toast.success("Session scheduled successfully!");
       setShowScheduleModal(false);
       setFormData({
@@ -317,55 +319,6 @@ export default function LiveSessionsPage() {
           <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
           Schedule Weekly Session
         </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total Sessions", value: String(sessions.length), icon: UsersIcon },
-          {
-            label: "Upcoming",
-            value: String(sessions.filter((s) => s.status === "scheduled").length),
-            icon: ClockIcon,
-          },
-          {
-            label: "Completed",
-            value: String(sessions.filter((s) => s.status === "completed").length),
-            icon: CheckCircleIcon,
-          },
-          {
-            label: "Avg. Attendance",
-            value:
-              sessions.length === 0
-                ? "0%"
-                : `${Math.round(
-                    (sessions.reduce((sum, s) => sum + s.attendees, 0) /
-                      Math.max(sessions.reduce((sum, s) => sum + s.totalStudents, 0), 1)) *
-                      100
-                  )}%`,
-            icon: UsersIcon,
-          },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="portal-surface 
-              bg-white dark:bg-gray-800
-              rounded-xl
-              border border-blue-200 dark:border-blue-800
-              shadow-sm
-              p-5
-              hover:-translate-y-1 hover:shadow-lg
-              transition-all duration-200
-            "
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
-          </div>
-        ))}
       </div>
 
       <div className="space-y-4">

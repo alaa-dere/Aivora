@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCircle, Filter, Trash2 } from "lucide-react";
+import { Bell, CheckCircle, Filter, Trash2, MessageSquare } from "lucide-react";
 
 type NotificationItem = {
   id: string;
@@ -12,7 +12,8 @@ type NotificationItem = {
     | "course_failed"
     | "quiz_passed"
     | "quiz_failed"
-    | "certificate_earned";
+    | "certificate_earned"
+    | "teacher_message";
   title: string;
   message: string;
   time: string;
@@ -44,6 +45,8 @@ function getTypeIcon(type: NotificationItem["type"]) {
       return <Bell className="w-5 h-5 text-rose-600 dark:text-rose-400" />;
     case "certificate_earned":
       return <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
+    case "teacher_message":
+      return <MessageSquare className="w-5 h-5 text-sky-600 dark:text-sky-400" />;
     default:
       return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
   }
@@ -63,6 +66,8 @@ function getTypeBg(type: NotificationItem["type"]) {
       return "bg-rose-100 dark:bg-rose-900/30";
     case "certificate_earned":
       return "bg-purple-100 dark:bg-purple-900/30";
+    case "teacher_message":
+      return "bg-sky-100 dark:bg-sky-900/30";
     default:
       return "bg-gray-100 dark:bg-gray-700";
   }
@@ -162,7 +167,7 @@ export default function StudentNotificationsPage() {
     notification.title.toLowerCase().includes("certificate unlocked");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
@@ -172,7 +177,8 @@ export default function StudentNotificationsPage() {
         </div>
       </div>
 
-      <div className="portal-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+      <div className="portal-surface relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
@@ -202,7 +208,7 @@ export default function StudentNotificationsPage() {
         </div>
       </div>
 
-      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+      <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Notifications List{" "}

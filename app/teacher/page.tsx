@@ -131,43 +131,89 @@ const StudentRow = ({ student }: any) => {
   const badgeLabel = isCompleted ? 'completed' : isDropped ? 'dropped' : 'continue';
 
   return (
-    <div className="flex items-center justify-between py-4 px-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-      <div className="flex items-center gap-4">
+    <div className="flex items-center justify-between py-2 px-2.5 rounded-lg border border-blue-100/80 dark:border-blue-900/50 bg-white/70 dark:bg-slate-800/40 backdrop-blur-sm hover:bg-blue-50/60 dark:hover:bg-blue-900/20 transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
         {student.imageUrl ? (
           <img
             src={student.imageUrl}
             alt={`${student.name} profile`}
-          className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+            className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-sm font-bold">
+          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-xs font-bold">
             {student.avatar}
           </div>
         )}
-        <div>
-          <p className="font-medium text-gray-800 dark:text-gray-200">{student.name}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{student.name}</p>
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 truncate">
             Course: {student.courseName || 'Unknown course'}
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Progress: {student.progress}%</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Progress: {student.progress}%</p>
         </div>
       </div>
-      <span className={`text-xs px-3 py-1.5 rounded-full ${badgeClass}`}>
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full h-fit ${badgeClass}`}>
         {badgeLabel}
       </span>
     </div>
   );
 };
 
+function formatRelativeTime(input: string) {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return 'Since now';
+  const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return `Since ${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Since ${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Since ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `Since ${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `Since ${months}mo`;
+  const years = Math.floor(months / 12);
+  return `Since ${years}y`;
+}
+
+function getActivityAppearance(type: string) {
+  const normalized = String(type || '').toLowerCase();
+  if (normalized.includes('enroll')) {
+    return {
+      badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      border: 'border-blue-200/80 dark:border-blue-900/40',
+      hover: 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20',
+      iconWrap: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      icon: UserGroupIcon,
+    };
+  }
+  if (normalized.includes('course')) {
+    return {
+      badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300',
+      border: 'border-emerald-200/80 dark:border-emerald-900/40',
+      hover: 'hover:bg-emerald-50/60 dark:hover:bg-emerald-900/20',
+      iconWrap: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+      icon: BookOpenIcon,
+    };
+  }
+  return {
+    badge: 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300',
+    border: 'border-violet-200/80 dark:border-violet-900/40',
+    hover: 'hover:bg-violet-50/60 dark:hover:bg-violet-900/20',
+    iconWrap: 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300',
+    icon: SparklesIcon,
+  };
+}
+
 /* ================= AI Insight Item ================= */
 const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 dark:text-blue-400" }: any) => (
-    <div className="flex gap-4 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors">
-    <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg h-fit">
-      <Icon className={`w-5 h-5 ${color}`} />
+  <div className="flex items-start gap-3">
+    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+      <Icon className={`w-4 h-4 ${color}`} />
     </div>
     <div>
-      <h3 className="font-medium text-gray-800 dark:text-gray-200">{title}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200">{title}</h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{description}</p>
     </div>
   </div>
 );
@@ -190,6 +236,8 @@ export default function TeacherDashboard() {
   const [aiInsights, setAiInsights] = useState<{ title: string; description: string; type: 'forecast' | 'trend' | 'recommendation' }[]>([]);
   const [aiLoading, setAiLoading] = useState(true);
   const [aiSource, setAiSource] = useState<'openai' | 'rule-based' | 'unknown'>('unknown');
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDebug, setAiDebug] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -224,10 +272,15 @@ export default function TeacherDashboard() {
     const loadAiInsights = async () => {
       try {
         setAiLoading(true);
+        setAiError(null);
         const res = await fetch('/api/teacher/ai/insights', { cache: 'no-store' });
         const data = await res.json();
-        if (!res.ok) return;
+        if (!res.ok) {
+          setAiError(data?.message || 'Failed to load AI insights');
+          return;
+        }
         setAiInsights(data.insights || []);
+        setAiDebug(typeof data?.aiDebug?.message === 'string' ? data.aiDebug.message : null);
         setAiSource(
           data.source === 'openai' || data.source === 'rule-based'
             ? data.source
@@ -235,6 +288,7 @@ export default function TeacherDashboard() {
         );
       } catch (error) {
         console.error('Failed to load AI insights', error);
+        setAiError('Failed to load AI insights');
       } finally {
         setAiLoading(false);
       }
@@ -312,13 +366,13 @@ export default function TeacherDashboard() {
         {/* AI Insights */}
         <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
+          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
             AI Insights
           </h2>
-          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
             <span>Smart analytics & suggestions</span>
-            <span className="text-xs uppercase tracking-wide">
-              Source:{' '}
+            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              SOURCE:{' '}
               {aiSource === 'openai'
                 ? 'OpenAI'
                 : aiSource === 'rule-based'
@@ -326,9 +380,22 @@ export default function TeacherDashboard() {
                     : 'Unknown'}
             </span>
           </div>
+          <Link
+            href="/teacher/earnings"
+            className="inline-flex mb-4 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+          >
+            Go to Forecast
+          </Link>
+          {aiSource === 'rule-based' && aiDebug && (
+            <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+              AI fallback reason: {aiDebug}
+            </p>
+          )}
           <div className="space-y-4">
             {aiLoading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading insights...</p>
+            ) : aiError ? (
+              <p className="text-sm text-rose-600 dark:text-rose-400">{aiError}</p>
             ) : aiInsights.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No insights yet.</p>
             ) : (
@@ -358,12 +425,12 @@ export default function TeacherDashboard() {
 
       {/* Student Performance + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
+          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
             Student Performance
           </h2>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="space-y-2">
             {loading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading students...</p>
             ) : error ? (
@@ -378,29 +445,38 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500" />
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-2">
             Recent Activity
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Live platform events</p>
-          <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Live platform events</p>
+          <div className="space-y-2">
             {(recentActivities.length ? recentActivities : recentActivitiesFallback).map((activity, idx) => (
-              <div key={idx} className="flex gap-3">
-                <span
-                  className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    activity.type === 'ENROLL'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
-                  }`}
-                >
-                  {activity.type}
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-800 dark:text-gray-200">{activity.description}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
+              (() => {
+                const style = getActivityAppearance(activity.type);
+                const ActivityIcon = style.icon;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex gap-2.5 py-2 px-2.5 rounded-lg border bg-white/70 dark:bg-slate-800/40 backdrop-blur-sm transition-colors ${style.border} ${style.hover}`}
+                  >
+                    <div className={`h-7 w-7 rounded-md flex items-center justify-center ${style.iconWrap}`}>
+                      <ActivityIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full h-fit ${style.badge}`}>
+                      {activity.type}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-800 dark:text-gray-200 leading-5">{activity.description}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 inline-flex items-center gap-1">
+                        <ClockIcon className="w-3 h-3" />
+                        {formatRelativeTime(activity.time)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()
             ))}
           </div>
         </div>

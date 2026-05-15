@@ -186,7 +186,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    const role = (session?.user?.role || '').toLowerCase();
+    if (status !== 'authenticated' || role !== 'student') return;
 
     const fetchRecent = async () => {
       try {
@@ -233,7 +234,7 @@ export default function HomePage() {
     };
 
     fetchRecent();
-  }, [status]);
+  }, [status, session?.user?.role]);
 
   useEffect(() => {
     const loadFavorites = async () => {
@@ -271,9 +272,11 @@ export default function HomePage() {
   const isArabic = language === 'ar';
   const role = session?.user?.role?.toLowerCase() || '';
   const isAdmin = role === 'admin';
+  const isStudent = role === 'student';
 
   const trackCourseView = (courseId: string) => {
-    if (status !== 'authenticated') return;
+    const role = (session?.user?.role || '').toLowerCase();
+    if (status !== 'authenticated' || role !== 'student') return;
     try {
       fetch('/api/recent-courses', {
         method: 'POST',
@@ -533,7 +536,7 @@ export default function HomePage() {
         </section>
 
         {/* Enrolled Courses Section */}
-        {status === 'authenticated' && !isAdmin && (
+        {status === 'authenticated' && isStudent && (
           <section className="px-5 sm:px-6 lg:px-8 py-16">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
@@ -657,7 +660,7 @@ export default function HomePage() {
         )}
 
         {/* Recent Courses Section */}
-        {status === 'authenticated' && !isAdmin && (
+        {status === 'authenticated' && isStudent && (
           <section className="px-5 sm:px-6 lg:px-8 pb-20">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { generateAiInsights } from '@/lib/ai-insights-provider';
 
 type Insight = {
   type: 'forecast' | 'trend' | 'recommendation';
@@ -104,10 +105,49 @@ export async function GET(req: Request) {
             : 'Run a short weekly check-in and add one quick formative quiz per active course.',
       },
     ];
+    const weeklyProgressPoints = [...courseRows]
+      .slice(0, 8)
+      .map((row, index) => ({
+        week: `W${index + 1}`,
+        revenue: Number(row.avgProgress || 0),
+      }));
+
+    const last8Weeks = weeklyProgressPoints.length > 0 ? weeklyProgressPoints : [{ week: 'W1', revenue: 0 }];
+    const last4 = last8Weeks.slice(-4);
+    const prev4 = last8Weeks.slice(0, Math.max(0, last8Weeks.length - 4));
+    const sum = (list: { revenue: number }[]) => list.reduce((acc, cur) => acc + Number(cur.revenue || 0), 0);
+    const last4Total = sum(last4);
+    const prev4Total = sum(prev4);
+    const weeklyAvg = last4.length ? last4Total / last4.length : 0;
+    const trendPct = prev4Total > 0 ? (last4Total - prev4Total) / prev4Total : 0;
+    const forecastMonthly = weeklyAvg * 4;
+
+    const aiResult = await generateAiInsights({
+      last8Weeks,
+      last4Total,
+      prev4Total,
+      weeklyAvg,
+      trendPct,
+      topCourses: courseRows.slice(0, 3).map((row) => ({
+        title: row.title,
+        revenue: Number(row.avgProgress || 0),
+        count: Number(row.students || 0),
+      })),
+      ruleBased: {
+        forecastMonthly,
+        trendPct,
+        insights,
+      },
+    });
+
+    const source = aiResult.ok ? aiResult.source : 'rule-based';
+    const finalInsights = aiResult.ok ? (aiResult.insights as Insight[]) : insights;
+    const aiDebug = aiResult.ok ? null : aiResult.debug;
 
     return NextResponse.json({
-      insights,
-      source: 'rule-based',
+      insights: finalInsights,
+      source,
+      aiDebug,
       context: {
         totalCourses,
         totalStudents,
@@ -144,4 +184,3 @@ export async function GET(req: Request) {
     );
   }
 }
-

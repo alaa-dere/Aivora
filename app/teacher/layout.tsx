@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Manrope } from "next/font/google";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -12,9 +12,6 @@ import { signOut } from 'next-auth/react';
 import { Bell, MessageSquare } from 'lucide-react';
 import {
   HomeIcon,
-  BookOpenIcon,
-  UsersIcon,
-  VideoCameraIcon,
   BellIcon,
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
@@ -33,16 +30,18 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
-import { BrainCircuit } from 'lucide-react'; // احتفظنا بـ lucide لهذه الأيقونة فقط
 
 const menuItems = [
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
-  { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
-  { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
-  { href: '/teacher/students', name: 'Students', icon: UsersIcon },
   { href: '/teacher/earnings', name: 'Earnings', icon: CurrencyDollarIcon },
-  { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
   { href: '/teacher/certificates', name: 'Certificates', icon: AcademicCapIcon },
+  { href: '/teacher/profile', name: 'Profile', icon: UserCircleIcon },
+];
+
+const headerLinks = [
+  { href: '/teacher/courses', name: 'My Courses' },
+  { href: '/teacher/students', name: 'Students' },
+  { href: '/teacher/live-sessions', name: 'Live Sessions' },
 ];
 
 const manrope = Manrope({
@@ -57,8 +56,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'course_enroll' | 'admin_message' | 'student_message'>('all');
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+    { id: string; type: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
   const [profile, setProfile] = useState<{
     fullName: string;
@@ -78,6 +79,24 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   };
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!notificationMenuRef.current) return;
+      if (!notificationMenuRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -101,12 +120,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
         );
         const unreadNotifications = (notifData.notifications || [])
-          .map((n: any) => ({
+          .map((n: { id: string; read?: boolean }) => ({
             id: n.id,
             read: readSet.has(n.id) || Boolean(n.read),
           }))
-          .filter((n: any) => !deletedSet.has(n.id))
-          .filter((n: any) => !n.read).length;
+          .filter((n: { id: string; read: boolean }) => !deletedSet.has(n.id))
+          .filter((n: { read: boolean }) => !n.read).length;
         if (mounted) {
           setNotificationCount(Number(unreadNotifications || 0));
           setMessageCount(totalMessages);
@@ -163,22 +182,43 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   }, []);
 
 
-  const loadNotifications = async () => {
+  async function loadNotifications() {
     try {
-      const res = await fetch('/api/teacher/dashboard?notifications=1', { cache: 'no-store' });
+      const res = await fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      const items = (data.notifications || []).map((n: any) => ({
+      const readSet = new Set<string>(
+        JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+      );
+      const deletedSet = new Set<string>(
+        JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
+      );
+      const allItems = (data.notifications || []).map((n: { id: string; type?: string; title: string; message: string; createdAt: string; read?: boolean }) => ({
         id: n.id,
+        type: String(n.type || 'course_enroll'),
         title: n.title,
         message: n.message,
         createdAt: n.createdAt,
-        read: Boolean(n.read),
+        read: readSet.has(n.id) || Boolean(n.read),
       }));
+      const items = allItems
+        .filter((n: { id: string }) => !deletedSet.has(n.id))
+        .filter((n: { type: string }) => notificationTypeFilter === 'all' || n.type === notificationTypeFilter)
+        .slice(0, 8);
       setNotificationItems(items);
     } catch (error) {
       console.error('Failed to load teacher notifications', error);
     }
+  }
+
+  const markAllNotificationsRead = async () => {
+    const existing = new Set<string>(
+      JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+    );
+    notificationItems.forEach((n) => existing.add(n.id));
+    localStorage.setItem('teacher_read_notifications', JSON.stringify(Array.from(existing)));
+    setNotificationItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    window.dispatchEvent(new Event('notifications:refresh'));
   };
 const router = useRouter();
 
@@ -223,9 +263,25 @@ const handleLogout = async () => {
 </div>
         </div>
 
+        <div className="hidden md:flex items-center gap-2">
+          {headerLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`px-3 py-2 text-sm font-semibold transition-colors ${
+                isActive(item.href)
+                  ? 'text-sky-300'
+                  : 'text-blue-100 hover:text-sky-300'
+              }`}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </div>
+
         <div className="flex items-center space-x-3">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notificationMenuRef}>
             <button
               onClick={() => {
                 const next = !notificationOpen;
@@ -243,29 +299,51 @@ const handleLogout = async () => {
             </button>
 
             {notificationOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Notifications
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <select
+                      value={notificationTypeFilter}
+                      onChange={(e) =>
+                        setNotificationTypeFilter(
+                          e.target.value as 'all' | 'course_enroll' | 'admin_message' | 'student_message'
+                        )
+                      }
+                      className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="all">All</option>
+                      <option value="course_enroll">Enrollments</option>
+                      <option value="admin_message">Admin Msg</option>
+                      <option value="student_message">Student Msg</option>
+                    </select>
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   {notificationItems.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
                       No notifications yet.
                     </div>
                   ) : (
                     notificationItems.map((n) => (
                       <div
                         key={n.id}
-                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
+                            n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
+                          }`}
+                        >
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {n.title}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           {n.message}
                         </p>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
@@ -275,7 +353,7 @@ const handleLogout = async () => {
                     ))
                   )}
                 </div>
-                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
                   <Link
                     href="/teacher/notifications"
                     onClick={() => setNotificationOpen(false)}
@@ -340,12 +418,13 @@ const handleLogout = async () => {
             </button>
 
             {accountOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
                 <Link
                   href="/teacher/profile"
                   onClick={() => setAccountOpen(false)}
-                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <UserCircleIcon className="w-4 h-4 text-slate-500" />
                   Profile
                 </Link>
                 <button
@@ -353,8 +432,9 @@ const handleLogout = async () => {
                     setAccountOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4 text-slate-500" />
                   Logout
                 </button>
               </div>
@@ -577,4 +657,3 @@ const handleLogout = async () => {
     </div>
   );
 }
-

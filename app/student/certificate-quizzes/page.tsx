@@ -32,8 +32,8 @@ export default function CertificateQuizzesPage() {
         const data = await readJsonResponse(res);
         if (!res.ok) throw new Error(data.message || 'Failed to load quizzes');
         setCourses(data.courses || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load quizzes');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load quizzes');
       } finally {
         setLoading(false);
       }
@@ -42,11 +42,9 @@ export default function CertificateQuizzesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-          Certificate Quizzes
-        </h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Certificate Quizzes</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Pass the final quiz with at least 60% to unlock your certificate.
         </p>
@@ -57,30 +55,28 @@ export default function CertificateQuizzesPage() {
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
       ) : courses.length === 0 ? (
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            You don’t have any pending certificate quizzes.
-          </p>
+        <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">You do not have any pending certificate quizzes.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {courses.map((course) => (
             <div
               key={course.courseId}
-              className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5"
+              className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5"
             >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
               <div className="flex items-center gap-2 mb-3">
                 <AcademicCapIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                  {course.courseTitle}
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{course.courseTitle}</h2>
               </div>
 
               <div className="space-y-2">
                 {course.quizzes.map((quiz) => (
                   <div
                     key={quiz.id}
-                    className="flex items-center justify-between rounded-lg border border-blue-100 dark:border-blue-800 px-4 py-3"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 px-4 py-3"
                   >
                     <span className="text-sm text-gray-700 dark:text-gray-200">{quiz.title}</span>
                     <Link

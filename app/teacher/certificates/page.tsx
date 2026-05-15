@@ -46,7 +46,8 @@ export default function TeacherCertificatesPage() {
         </p>
       </div>
 
-      <div className="portal-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur shadow-md overflow-hidden">
+      <div className="portal-surface relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur shadow-md overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
         {loading ? (
           <p className="p-4 text-sm text-slate-500 dark:text-slate-400">Loading certificates...</p>
         ) : error ? (

@@ -6,6 +6,8 @@ import { getRequestUser } from '@/lib/request-auth';
 type LeaderboardRow = {
   id: string;
   fullName: string;
+  imageUrl: string | null;
+  minutesAllTime: number;
   minutesLast7: number;
   minutesPrev7: number;
 };
@@ -56,6 +58,15 @@ export async function GET(req: Request) {
         SELECT
           u.id,
           u.fullName,
+          u.imageUrl,
+          COALESCE(SUM(COALESCE(
+            NULLIF(lesson.durationMinutes, 0),
+            LEAST(
+              GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
+              180
+            ),
+            0
+          )), 0) AS minutesAllTime,
           COALESCE(SUM(CASE
             WHEN COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             THEN COALESCE(
@@ -88,13 +99,15 @@ export async function GET(req: Request) {
           ON lp.enrollmentId = e.id
         LEFT JOIN lesson
           ON lesson.id = lp.lessonId
-        GROUP BY u.id, u.fullName
+        GROUP BY u.id, u.fullName, u.imageUrl
       `
     );
 
     const mapped: LeaderboardRow[] = (rows || []).map((row) => ({
       id: String(row.id),
       fullName: String(row.fullName || ''),
+      imageUrl: row.imageUrl ? String(row.imageUrl) : null,
+      minutesAllTime: Number(row.minutesAllTime || 0),
       minutesLast7: Number(row.minutesLast7 || 0),
       minutesPrev7: Number(row.minutesPrev7 || 0),
     }));

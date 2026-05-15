@@ -819,8 +819,9 @@ export async function POST(req: Request) {
 
       const [studentRows] = await pool.query<RowDataPacket[]>(
         `
-        SELECT studentId
+        SELECT e.studentId, u.fullName, u.email
         FROM enrollment e
+        JOIN user u ON u.id = e.studentId
         LEFT JOIN certificate cert
           ON cert.studentId = e.studentId
          AND cert.courseId = e.courseId
@@ -877,6 +878,23 @@ export async function POST(req: Request) {
               })
             )
           );
+
+          const studentsForEmail = studentRows
+            .map((row) => ({
+              email: String(row.email || '').trim(),
+              name: String(row.fullName || 'Student'),
+            }))
+            .filter((row) => Boolean(row.email));
+
+          if (studentsForEmail.length > 0) {
+            await sendLiveSessionReminderEmails({
+              students: studentsForEmail,
+              courseTitle: String(courseTitle || 'Course'),
+              dateStr: sessionDate,
+              timeStr: startTime,
+              meetingLink: meetingLink || null,
+            });
+          }
         }
 
         createdIds.push(sessionId);
@@ -975,7 +993,7 @@ export async function POST(req: Request) {
     if (action === 'complete_session') {
       const sessionId = String(body?.sessionId || '').trim();
       const attendedIds = Array.isArray(body?.attendedStudentIds)
-        ? body.attendedStudentIds.map((id: any) => String(id))
+        ? body.attendedStudentIds.map((id: unknown) => String(id))
         : [];
       if (!sessionId) {
         return NextResponse.json({ message: 'Session ID is required' }, { status: 400 });
@@ -998,7 +1016,7 @@ export async function POST(req: Request) {
 
       const [studentRows] = await pool.query<RowDataPacket[]>(
         `
-        SELECT studentId
+        SELECT e.studentId
         FROM enrollment e
         LEFT JOIN certificate cert
           ON cert.studentId = e.studentId
@@ -1160,10 +1178,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ message: 'Unsupported action' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher live sessions error:', error);
     return NextResponse.json(
-      { message: 'Failed to process live session', error: error.message },
+      { message: 'Failed to process live session', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

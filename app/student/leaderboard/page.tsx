@@ -7,13 +7,13 @@ import {
   ArrowDownIcon,
   UserCircleIcon,
   ExclamationTriangleIcon,
-  FireIcon,
-  MinusIcon,
 } from '@heroicons/react/24/outline';
 
 type LeaderboardRow = {
   id: string;
   fullName: string;
+  imageUrl?: string | null;
+  minutesAllTime: number;
   minutesLast7: number;
   minutesPrev7: number;
   improvement: number;
@@ -30,12 +30,6 @@ type LeaderboardResponse = {
 const formatMinutes = (value: number) => {
   const mins = Math.round(Number(value || 0));
   return `${mins} min`;
-};
-
-const medalByRank: Record<number, string> = {
-  1: '1st',
-  2: '2nd',
-  3: '3rd',
 };
 
 export default function StudentLeaderboardPage() {
@@ -77,7 +71,7 @@ export default function StudentLeaderboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Leaderboard</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -86,7 +80,8 @@ export default function StudentLeaderboardPage() {
       </div>
 
       {loading && (
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
           Loading leaderboard...
         </div>
       )}
@@ -101,10 +96,19 @@ export default function StudentLeaderboardPage() {
       {!loading && !error && data && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+            <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <UserCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  {data.current?.imageUrl ? (
+                    <img
+                      src={data.current.imageUrl}
+                      alt={data.current.fullName || 'Student'}
+                      className="h-full w-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Your position</p>
@@ -134,13 +138,20 @@ export default function StudentLeaderboardPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">All time</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {data.current ? formatMinutes(data.current.minutesAllTime) : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Total students</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">{data.totalStudents}</span>
                 </div>
               </div>
             </div>
 
-            <div className="portal-surface mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-6">
+            <div className="portal-surface relative overflow-hidden mt-6 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
               <div className="flex items-center gap-2">
                 <TrophyIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">How it works</h2>
@@ -152,54 +163,8 @@ export default function StudentLeaderboardPage() {
           </div>
 
           <div className="lg:col-span-2">
-            {data.top.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                {data.top.slice(0, 3).map((row) => {
-                  const accent =
-                    row.rank === 1
-                      ? 'border-amber-300 bg-amber-50/70 dark:border-amber-700 dark:bg-amber-900/20'
-                      : row.rank === 2
-                      ? 'border-slate-300 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/20'
-                      : 'border-orange-300 bg-orange-50/70 dark:border-orange-700 dark:bg-orange-900/20';
-                  const isCurrent = data.current?.id === row.id;
-                  const trendUp = row.improvement > 0;
-                  const isFlat = row.improvement === 0;
-                  return (
-                    <div key={row.id} className={`portal-surface rounded-xl border p-4 ${accent}`}>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <span>{medalByRank[row.rank] || 'Top'}</span>#{row.rank}
-                        </p>
-                        <FireIcon className="w-4 h-4 text-blue-600 dark:text-blue-300" />
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <p className="text-sm font-bold text-gray-800 dark:text-gray-100 truncate">{row.fullName}</p>
-                        {isCurrent && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
-                            You
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
-                        {trendUp ? (
-                          <ArrowUpIcon className="w-3.5 h-3.5 text-green-600 dark:text-green-300" />
-                        ) : isFlat ? (
-                          <MinusIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-300" />
-                        ) : (
-                          <ArrowDownIcon className="w-3.5 h-3.5 text-red-600 dark:text-red-300" />
-                        )}
-                        <span>
-                          {row.improvement >= 0 ? '+' : ''}
-                          {row.improvement} min improvement
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+            <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Top 10 Students</p>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{data.metric}</span>
@@ -214,12 +179,13 @@ export default function StudentLeaderboardPage() {
                       <th className="px-4 py-3 font-medium">Improvement</th>
                       <th className="px-4 py-3 font-medium">Last 7 Days</th>
                       <th className="px-4 py-3 font-medium">Prev 7 Days</th>
+                      <th className="px-4 py-3 font-medium">All Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {data.top.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                        <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
                           No leaderboard data yet.
                         </td>
                       </tr>
@@ -239,7 +205,22 @@ export default function StudentLeaderboardPage() {
                           >
                             <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">#{row.rank}</td>
                             <td className="px-4 py-3">
-                              <div className="font-semibold text-gray-900 dark:text-white">{row.fullName || 'Student'}</div>
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                                  {row.imageUrl ? (
+                                    <img
+                                      src={row.imageUrl}
+                                      alt={row.fullName || 'Student'}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                      {(row.fullName || 'S').trim().charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="font-semibold text-gray-900 dark:text-white">{row.fullName || 'Student'}</div>
+                              </div>
                               {isCurrent && <div className="text-xs text-blue-600 dark:text-blue-300">You</div>}
                             </td>
                             <td className="px-4 py-3">
@@ -264,6 +245,7 @@ export default function StudentLeaderboardPage() {
                             </td>
                             <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{formatMinutes(row.minutesLast7)}</td>
                             <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{formatMinutes(row.minutesPrev7)}</td>
+                            <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{formatMinutes(row.minutesAllTime)}</td>
                           </tr>
                         );
                       })
@@ -274,7 +256,8 @@ export default function StudentLeaderboardPage() {
             </div>
 
             {data.current && !data.top.some((row) => row.id === data.current?.id) && (
-              <div className="portal-surface mt-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
+              <div className="portal-surface relative overflow-hidden mt-4 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
                 <p className="text-sm text-gray-700 dark:text-gray-200">
                   You are currently ranked{' '}
                   <span className="font-semibold text-blue-700 dark:text-blue-300">#{data.current.rank}</span>

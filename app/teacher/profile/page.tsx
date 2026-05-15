@@ -236,7 +236,8 @@ export default function TeacherProfilePage() {
       </div>
 
       {loading && (
-        <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
           Loading your profile...
         </div>
       )}
@@ -251,7 +252,8 @@ export default function TeacherProfilePage() {
       {!loading && profile && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
+            <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center overflow-hidden">
                   {profile.imageUrl ? (
@@ -354,8 +356,9 @@ export default function TeacherProfilePage() {
           <div className="lg:col-span-2">
             <form
               onSubmit={handleSubmit}
-              className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
+              className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
             >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-2">
                 <UserCircleIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-white">

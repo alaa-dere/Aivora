@@ -241,7 +241,8 @@ export default function TeacherNotificationsPage() {
         </div>
       </div>
 
-      <div className="portal-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
@@ -262,7 +263,7 @@ export default function TeacherNotificationsPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as 'all' | 'unread' | 'important')}
-              className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All</option>
               <option value="unread">Unread</option>
@@ -272,9 +273,9 @@ export default function TeacherNotificationsPage() {
         </div>
       </div>
 
-      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Notifications List{' '}
             <span className="text-gray-400 font-normal">({filteredNotifications.length})</span>
           </p>
@@ -282,13 +283,13 @@ export default function TeacherNotificationsPage() {
 
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {loading && (
-            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+            <div className="p-5 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
           )}
           {!loading && errorMsg && (
             <div className="p-5 text-sm text-red-600 dark:text-red-300">{errorMsg}</div>
           )}
           {!loading && !errorMsg && filteredNotifications.length === 0 && (
-            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
+            <div className="p-5 text-sm text-slate-500 dark:text-slate-400">
               No notifications yet.
             </div>
           )}
@@ -322,11 +323,11 @@ export default function TeacherNotificationsPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-500 dark:text-slate-400">
                     <span>{notification.time}</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-3 mt-3">
+                  <div className="flex flex-wrap gap-3 mt-2">
                     {isCertificateNotification(notification) && (
                       <Link
                         href={
@@ -347,7 +348,7 @@ export default function TeacherNotificationsPage() {
                             notification.type
                           )
                         }
-                        className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                        className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                       >
                         Mark as read
                       </button>
@@ -357,9 +358,9 @@ export default function TeacherNotificationsPage() {
 
                 <button
                   onClick={() => deleteNotification(notification)}
-                  className="h-fit p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  className="h-fit p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -371,7 +372,7 @@ export default function TeacherNotificationsPage() {
         {filteredNotifications.length > visibleCount && (
           <button
             onClick={() => setVisibleCount((prev) => prev + 4)}
-            className="portal-surface px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            className="admin-surface px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
             Load More Notifications
           </button>

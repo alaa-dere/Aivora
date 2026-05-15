@@ -47,6 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [notificationItems, setNotificationItems] = useState<
     { id: string; type: string; title: string; message: string; createdAt: string; read: boolean }[]
   >([]);
@@ -95,18 +96,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   useEffect(() => {
-    if (notificationOpen) {
-      loadNotifications();
-    }
-  }, [notificationTypeFilter, notificationOpen]);
-
-  useEffect(() => {
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (!notificationMenuRef.current) return;
-      if (!notificationMenuRef.current.contains(target)) {
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(target)) {
         setNotificationOpen(false);
+      }
+      if (accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+        setAccountOpen(false);
       }
     };
 
@@ -119,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
 
-  const loadNotifications = async () => {
+  async function loadNotifications() {
     try {
       const notifUrl =
         notificationTypeFilter === 'all'
@@ -132,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const notifData = await notifRes.json();
       const msgData = await msgRes.json();
       if (!notifRes.ok) return;
-      const items = (notifData.notifications || []).slice(0, 5).map((n: any) => ({
+      const items = (notifData.notifications || []).slice(0, 5).map((n: { id: string; type: string; title: string; message: string; createdAt: string; readAt?: string | null }) => ({
         id: n.id,
         type: n.type,
         title: n.title,
@@ -143,9 +140,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setNotificationItems(items);
 
       const messageItems = (msgData.threads || [])
-        .filter((t: any) => Number(t.unreadCount || 0) > 0)
+        .filter((t: { unreadCount?: number }) => Number(t.unreadCount || 0) > 0)
         .slice(0, 5)
-        .map((t: any) => ({
+        .map((t: { id: string; teacherId: string; teacherName?: string; lastMessage?: string; lastMessageAt: string }) => ({
           id: t.id,
           teacherId: t.teacherId,
           title: `New message from ${t.teacherName || 'Teacher'}`,
@@ -156,7 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch (error) {
       console.error('Failed to load notifications', error);
     }
-  };
+  }
 
   const markAllNotificationsRead = async () => {
     try {
@@ -349,7 +346,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <HomeSolidIcon className="w-5 h-5 text-white" />
           </Link>
 
-          <div className="relative">
+          <div className="relative" ref={accountMenuRef}>
             <button
               onClick={() => setAccountOpen((v) => !v)}
               className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold hover:bg-blue-100 dark:hover:bg-slate-700 transition"
@@ -359,14 +356,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
 
             {accountOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setAccountOpen(false)}
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                >
+                  <ChartBarIcon className="w-4 h-4 text-slate-500" />
+                  Dashboard
+                </Link>
                 <button
                   onClick={() => {
                     setAccountOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4 text-slate-500" />
                   Logout
                 </button>
               </div>
