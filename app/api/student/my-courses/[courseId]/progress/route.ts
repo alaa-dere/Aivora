@@ -312,7 +312,7 @@ export async function POST(req: Request, { params }: Params) {
       const language = String(lesson.liveEditorLanguage || 'python');
 
       const candidate =
-        language === 'html_css'
+        language === 'html_css' || language === 'sql'
           ? submittedCode
           : submittedOutput || submittedCode;
 
@@ -323,7 +323,7 @@ export async function POST(req: Request, { params }: Params) {
         );
       }
 
-      if (language !== 'html_css' && !hasRun) {
+      if (language !== 'html_css' && language !== 'sql' && !hasRun) {
         return NextResponse.json(
           { message: 'Run your code and get the correct answer before completing this lesson.' },
           { status: 400 }
@@ -448,3 +448,4 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 }
+

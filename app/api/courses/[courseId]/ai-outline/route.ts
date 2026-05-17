@@ -22,8 +22,9 @@ type OutlineLesson = {
   type: 'text' | 'code_example' | 'video_embed';
   durationMinutes: number;
   enableLiveEditor?: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
   starterCode?: string;
+  exampleCode?: string;
   expectedOutput?: string;
   videoUrl?: string;
   resources?: string[];
@@ -46,6 +47,13 @@ type OutlineOnlyModule = {
   description: string;
   lessons: OutlineOnlyLesson[];
 };
+
+type GenerationConstraints = {
+  minModules: number;
+  maxModules: number;
+};
+
+const HARD_MAX_MODULES = 12;
 
 function ensureDetailedExplanation(lesson: OutlineLesson): OutlineLesson {
   const text = String(lesson.description || '').trim();
@@ -75,6 +83,8 @@ type TopicProfile = {
   requiredResourceLinks: string[];
 };
 
+type LiveEditorLanguage = 'python' | 'javascript' | 'html_css' | 'sql';
+
 const DB_TITLE_MAX = 180;
 const DB_DESC_MAX = 4000;
 
@@ -97,6 +107,61 @@ function conciseTopicFromPrompt(prompt: string): string {
   const compact = clampText(firstSentence, 80);
   if (compact) return compact;
   return 'Express.js API Development';
+}
+
+function extractGenerationConstraints(prompt: string): GenerationConstraints {
+  const text = String(prompt || '').toLowerCase();
+  const rangeMatch =
+    text.match(/(\d+)\s*[-–]\s*(\d+)\s*(modules?|موديول|موديولات|وحدات|chapters?)/i) ||
+    text.match(/(?:from|من)\s*(\d+)\s*(?:to|الى|إلى)\s*(\d+)\s*(modules?|موديول|موديولات|وحدات|chapters?)/i);
+
+  if (rangeMatch) {
+    const a = Number(rangeMatch[1]);
+    const b = Number(rangeMatch[2]);
+    const min = Math.max(1, Math.min(a, b));
+    const max = Math.max(min, Math.max(a, b));
+    return { minModules: min, maxModules: Math.min(HARD_MAX_MODULES, max) };
+  }
+
+  const exactMatch = text.match(/(\d+)\s*(modules?|موديول|موديولات|وحدات|chapters?)/i);
+  if (exactMatch) {
+    const n = Math.max(1, Number(exactMatch[1]));
+    const clamped = Math.min(HARD_MAX_MODULES, n);
+    return { minModules: clamped, maxModules: clamped };
+  }
+
+  return { minModules: 4, maxModules: 5 };
+}
+
+function enforceModuleCount(modules: OutlineModule[], constraints: GenerationConstraints, prompt: string): OutlineModule[] {
+  const capped = modules.slice(0, constraints.maxModules);
+  if (capped.length >= constraints.minModules) return capped;
+
+  const needed = constraints.minModules - capped.length;
+  const topic = conciseTopicFromPrompt(prompt);
+  const startIdx = capped.length + 1;
+  for (let i = 0; i < needed; i += 1) {
+    const idx = startIdx + i;
+    capped.push({
+      title: `Module ${idx}: ${topic} Practice ${idx}`,
+      description: `Practical applications for ${topic}.`,
+      lessons: [
+        {
+          title: `Practice Task ${idx}.1`,
+          description: `Apply key concepts of ${topic} in a guided exercise.`,
+          type: 'code_example',
+          durationMinutes: 15,
+          enableLiveEditor: true,
+          liveEditorLanguage: 'javascript',
+          starterCode: 'const values = [1, 2, 3];\n\nconst result = values.map((n) => n * 2);\n\nconsole.log(result.join(","));',
+          expectedOutput: '2,4,6',
+          resources: ['https://developer.mozilla.org/en-US/docs/Learn'],
+          quizQuestions: [],
+        },
+      ],
+    });
+  }
+  return capped;
 }
 
 function sanitizeLessonForDb(lesson: OutlineLesson): OutlineLesson {
@@ -189,6 +254,41 @@ function extractJsonObject(text: string): unknown {
   }
 }
 
+let ensureLessonLiveEditorLanguagePromise: Promise<void> | null = null;
+
+async function ensureLessonLiveEditorLanguageSupportsSql() {
+  if (ensureLessonLiveEditorLanguagePromise) return ensureLessonLiveEditorLanguagePromise;
+
+  ensureLessonLiveEditorLanguagePromise = (async () => {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT COLUMN_TYPE
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'lesson'
+        AND COLUMN_NAME = 'liveEditorLanguage'
+      LIMIT 1
+      `
+    );
+
+    const columnType = String(rows[0]?.COLUMN_TYPE || '').toLowerCase();
+    if (columnType.includes("'sql'")) return;
+
+    await pool.query(`
+      ALTER TABLE lesson
+      MODIFY COLUMN liveEditorLanguage ENUM('python','javascript','html_css','sql')
+      NOT NULL DEFAULT 'python'
+    `);
+  })();
+
+  try {
+    await ensureLessonLiveEditorLanguagePromise;
+  } catch (err) {
+    ensureLessonLiveEditorLanguagePromise = null;
+    throw err;
+  }
+}
+
 function detectCodeLanguage(code: string): 'python' | 'javascript' | null {
   const src = String(code || '').trim();
   if (!src) return null;
@@ -206,6 +306,15 @@ function detectCodeLanguage(code: string): 'python' | 'javascript' | null {
   return jsScore > pyScore ? 'javascript' : 'python';
 }
 
+function inferPreferredLiveEditorLanguage(topicText: string, profile: TopicProfile): LiveEditorLanguage {
+  const text = String(topicText || '').toLowerCase();
+  if (/\bsql\b|mysql|postgres|database query|query optimization|joins/.test(text)) return 'sql';
+  if (/html|css|frontend|ui|web design/.test(text)) return 'html_css';
+  if (/\bpython\b|django|flask/.test(text) || profile.key === 'python') return 'python';
+  if (/\bnode\b|express|javascript|backend|api/.test(text) || profile.key === 'node') return 'javascript';
+  return 'javascript';
+}
+
 function sanitizeJsStarterCode(code: string): string {
   let out = String(code || '').trim();
   if (!out) return out;
@@ -215,6 +324,75 @@ function sanitizeJsStarterCode(code: string): string {
     .replace(/\bprocess\.[a-zA-Z0-9_]+/g, '"[not available in browser runtime]"')
     .replace(/\bexpress\s*\(\s*\)/g, '({ note: "Express server runtime is not available in this editor" })');
   return out;
+}
+
+function normalizeGeneratedCode(code: string | undefined): string | undefined {
+  if (!code) return undefined;
+  const normalized = String(code)
+    .replace(/\r\n/g, '\n')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .trim();
+  return normalized || undefined;
+}
+
+function prettifyStarterCode(code: string | undefined, language: 'python' | 'javascript' | 'html_css' | 'sql'): string | undefined {
+  const normalized = normalizeGeneratedCode(code);
+  if (!normalized) return undefined;
+
+  // If already multiline, keep it as-is after normalization.
+  if (/\n/.test(normalized)) return normalized;
+
+  if (language === 'javascript' || language === 'html_css') {
+    const pretty = normalized
+      .replace(/;\s*/g, ';\n')
+      .replace(/\{\s*/g, '{\n  ')
+      .replace(/\s*\}/g, '\n}\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return pretty || normalized;
+  }
+
+  if (language === 'python') {
+    const pretty = normalized
+      .replace(/\s+if\s+/g, '\nif ')
+      .replace(/\s+for\s+/g, '\nfor ')
+      .replace(/\s+while\s+/g, '\nwhile ')
+      .replace(/\s+print\(/g, '\nprint(')
+      .replace(/:\s+/g, ':\n    ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return pretty || normalized;
+  }
+
+  return normalized;
+}
+
+function enforceReadableSpacing(code: string | undefined): string | undefined {
+  const normalized = normalizeGeneratedCode(code);
+  if (!normalized) return undefined;
+
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.replace(/\s+$/g, ''))
+    .filter((line, idx, arr) => !(line === '' && arr[idx - 1] === ''));
+
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    out.push(line);
+
+    if (!trimmed) continue;
+    const isBlockBoundary = /[;:{}]$/.test(trimmed);
+    const next = lines[i + 1]?.trim() || '';
+    if (isBlockBoundary && next) {
+      out.push('');
+    }
+  }
+
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
@@ -337,10 +515,17 @@ function lessonToContent(lesson: OutlineLesson): string {
     chunks.push(`{{video: ${lesson.videoUrl}}}`);
   }
 
+  const exampleCode = normalizeGeneratedCode(lesson.exampleCode);
+  if (exampleCode) {
+    chunks.push('Example:');
+    chunks.push(`\`\`\`code\n${exampleCode}\n\`\`\``);
+  }
+
   if (lesson.enableLiveEditor && lesson.starterCode) {
+    const starter = enforceReadableSpacing(normalizeGeneratedCode(lesson.starterCode) || lesson.starterCode) || lesson.starterCode;
     chunks.push('Live Coding Task:');
     chunks.push('Run the starter code, then complete the TODOs.');
-    chunks.push(`{{starter:\n${lesson.starterCode}\n}}`);
+    chunks.push(`{{starter:\n${starter}\n}}`);
     if (lesson.expectedOutput) {
       chunks.push(`{{answer: ${lesson.expectedOutput}}}`);
     }
@@ -349,8 +534,27 @@ function lessonToContent(lesson: OutlineLesson): string {
   return dedupeTextBlocks(chunks.join('\n\n'));
 }
 
-function fallbackOutline(prompt: string): OutlineModule[] {
+function fallbackOutline(prompt: string, preferredLanguage: LiveEditorLanguage): OutlineModule[] {
   const idea = conciseTopicFromPrompt(prompt);
+  const starterByLang: Record<LiveEditorLanguage, { code: string; output: string }> = {
+    javascript: {
+      code: 'const users = [{ id: 1, name: "Ali" }, { id: 2, name: "Lina" }];\nconst result = users.map((u) => u.name.toLowerCase()).join(",");\nconsole.log(result);',
+      output: 'ali,lina',
+    },
+    python: {
+      code: 'users = ["Ali", "Lina"]\nresult = ",".join(name.lower() for name in users)\nprint(result)',
+      output: 'ali,lina',
+    },
+    html_css: {
+      code: '<h1 id="title">Hello</h1>\n<style>\n  #title { color: steelblue; }\n</style>',
+      output: 'rendered',
+    },
+    sql: {
+      code: 'SELECT name\nFROM users\nWHERE is_active = 1\nORDER BY created_at DESC\nLIMIT 5;',
+      output: 'query parsed',
+    },
+  };
+  const starter = starterByLang[preferredLanguage];
   return [
     {
       title: clampText(`Getting Started with ${idea}`, DB_TITLE_MAX),
@@ -362,9 +566,9 @@ function fallbackOutline(prompt: string): OutlineModule[] {
           type: 'code_example',
           durationMinutes: 20,
           enableLiveEditor: true,
-          liveEditorLanguage: 'javascript',
-          starterCode: 'const users = [{ id: 1, name: "Ali" }, { id: 2, name: "Lina" }];\nconst result = users.map((u) => u.name.toLowerCase()).join(",");\nconsole.log(result);',
-          expectedOutput: 'ali,lina',
+            liveEditorLanguage: preferredLanguage,
+            starterCode: starter.code,
+            expectedOutput: starter.output,
           videoUrl: 'https://www.youtube.com/watch?v=l8WPWK9mS5M',
           resources: ['https://expressjs.com/', 'https://nodejs.org/en/docs'],
           quizQuestions: [
@@ -413,20 +617,25 @@ function normalizeOutline(parsed: unknown): OutlineModule[] | null {
       const quizRaw = Array.isArray(lessonObj.quizQuestions) ? lessonObj.quizQuestions : [];
       const quizQuestions = quizRaw.map(normalizeQuizQuestion).filter(Boolean) as QuizQuestion[];
 
-      const starterCode = String(lessonObj.starterCode || '').trim() || undefined;
-      const detected = detectCodeLanguage(starterCode || '');
-      const langRaw = String(lessonObj.liveEditorLanguage || '').trim();
-      const liveLang: 'python' | 'javascript' | 'html_css' =
-        langRaw === 'javascript' || langRaw === 'html_css' ? langRaw : detected || 'python';
+        const starterCode = String(lessonObj.starterCode || '').trim() || undefined;
+        const detected = detectCodeLanguage(starterCode || '');
+        const langRaw = String(lessonObj.liveEditorLanguage || '').trim();
+        const liveLang: 'python' | 'javascript' | 'html_css' | 'sql' =
+          langRaw === 'javascript' || langRaw === 'html_css' || langRaw === 'sql' ? langRaw : detected || 'python';
+        const prettyStarter = enforceReadableSpacing(prettifyStarterCode(starterCode, liveLang));
 
-      lessons.push({
+        lessons.push({
         title: lessonTitle,
         description: String(lessonObj.description || '').trim(),
         type,
         durationMinutes: Number.isFinite(duration) ? duration : 10,
         enableLiveEditor: Boolean(lessonObj.enableLiveEditor),
         liveEditorLanguage: liveLang,
-        starterCode: liveLang === 'javascript' && starterCode ? sanitizeJsStarterCode(starterCode) : starterCode,
+          starterCode:
+            liveLang === 'javascript' && prettyStarter
+              ? sanitizeJsStarterCode(prettyStarter)
+              : prettyStarter,
+        exampleCode: normalizeGeneratedCode(String(lessonObj.exampleCode || '').trim() || undefined),
         expectedOutput: String(lessonObj.expectedOutput || '').trim() || undefined,
         videoUrl: String(lessonObj.videoUrl || '').trim() || undefined,
         resources,
@@ -438,7 +647,7 @@ function normalizeOutline(parsed: unknown): OutlineModule[] | null {
     modules.push({ title, description, lessons });
   }
 
-  return modules.length > 0 ? modules.slice(0, 8) : null;
+  return modules.length > 0 ? modules.slice(0, HARD_MAX_MODULES) : null;
 }
 
 function normalizeOutlineOnly(parsed: unknown): OutlineOnlyModule[] | null {
@@ -467,7 +676,7 @@ function normalizeOutlineOnly(parsed: unknown): OutlineOnlyModule[] | null {
     modules.push({ title, description, lessons });
   }
 
-  return modules.length > 0 ? modules.slice(0, 8) : null;
+  return modules.length > 0 ? modules.slice(0, HARD_MAX_MODULES) : null;
 }
 
 function outlineOnlyToOutline(modules: OutlineOnlyModule[]): OutlineModule[] {
@@ -487,18 +696,27 @@ function outlineOnlyToOutline(modules: OutlineOnlyModule[]): OutlineModule[] {
   }));
 }
 
-function ensurePracticalLesson(lesson: OutlineLesson, moduleTitle: string, lessonIndex: number): OutlineLesson {
+function ensurePracticalLesson(
+  lesson: OutlineLesson,
+  moduleTitle: string,
+  lessonIndex: number,
+  preferredLanguage: LiveEditorLanguage
+): OutlineLesson {
   const lowerTitle = `${moduleTitle} ${lesson.title}`.toLowerCase();
   const jsPreferred = /node|javascript|js|backend|api|express|next/.test(lowerTitle);
   const inferredFromStarter = detectCodeLanguage(String(lesson.starterCode || ''));
-  const language: 'python' | 'javascript' | 'html_css' =
-    inferredFromStarter || (jsPreferred ? 'javascript' : 'python');
+  const language: LiveEditorLanguage =
+    (inferredFromStarter as LiveEditorLanguage | null) || lesson.liveEditorLanguage || preferredLanguage || (jsPreferred ? 'javascript' : 'python');
 
   const starterCode =
-    language === 'javascript'
-      ? 'const users = [{ id: 1, name: "Ali" }, { id: 2, name: "Lina" }];\n// TODO: print names in lowercase as comma-separated values\nconst result = users.map((u) => u.name.toLowerCase()).join(",");\nconsole.log(result);'
-      : 'print("Hello, Backend World!")\n# TODO: print your Python version';
-  const expectedOutput = language === 'javascript' ? 'ali,lina' : 'hello, backend world!';
+      language === 'javascript'
+        ? 'const users = [{ id: 1, name: "Ali" }, { id: 2, name: "Lina" }];\n// TODO: print names in lowercase as comma-separated values\nconst result = users.map((u) => u.name.toLowerCase()).join(",");\nconsole.log(result);'
+        : language === 'sql'
+          ? 'SELECT name\nFROM users\nWHERE is_active = 1\nORDER BY created_at DESC\nLIMIT 5;'
+          : language === 'html_css'
+            ? '<div class="card">Hello</div>\n<style>\n.card { color: #2563eb; }\n</style>'
+            : 'print("Hello, Backend World!")\n# TODO: print your Python version';
+  const expectedOutput = language === 'javascript' ? 'ali,lina' : language === 'python' ? 'hello, backend world!' : 'rendered';
 
   const resources = (lesson.resources || []).filter(Boolean);
   if (resources.length === 0) {
@@ -613,9 +831,9 @@ function enrichModules(modules: OutlineModule[]): OutlineModule[] {
         }));
       }
 
-     const processed = stripLiveCompilerLikeQuestions(
-  ensureDetailedExplanation(ensurePracticalLesson(lesson, module.title, lessonIndex))
-);
+  const processed = stripLiveCompilerLikeQuestions(
+    ensureDetailedExplanation(ensurePracticalLesson(lesson, module.title, lessonIndex, 'javascript'))
+  );
 if (Array.isArray(processed.quizQuestions)) {
   processed.quizQuestions = processed.quizQuestions.filter((q) => {
     const key = q.questionText.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -839,7 +1057,7 @@ if (Array.isArray(next.quizQuestions)) {
     }
   }
 
-  return cleaned.slice(0, 8);
+  return cleaned.slice(0, HARD_MAX_MODULES);
 }
 
 async function generateOutlineOnlyFromAi(input: {
@@ -847,10 +1065,11 @@ async function generateOutlineOnlyFromAi(input: {
   model: string;
   prompt: string;
   courseTitle: string;
+  constraints: GenerationConstraints;
 }): Promise<OutlineOnlyModule[] | null> {
  const instruction =
   'Return JSON only: {"modules":[{"title":"","description":"","lessons":[{"title":"","objective":""}]}]}. ' +
-  '4-5 modules, 4-5 lessons each. ' +
+  `${input.constraints.minModules}-${input.constraints.maxModules} modules, 4-5 lessons each. ` +
   'Each lesson title must be specific and action-oriented (e.g. "Handle POST requests with body-parser"). ' +
   'Objective = one sentence: what the student will be able to DO after this lesson. ' +
   'No duplicate lesson titles. Lessons must progress logically from basics to advanced. ' +
@@ -886,12 +1105,14 @@ async function generateLessonDetailsFromAi(input: {
   moduleTitle: string;
   lessonTitle: string;
   objective: string;
+  preferredLanguage: LiveEditorLanguage;
 }): Promise<OutlineLesson | null> {
  const instruction =
-  'Return JSON only: {"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"javascript","starterCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice","questionText":"","options":[""],"correctOptionIndex":0}]}. ' +
+  `Return JSON only: {"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"${input.preferredLanguage}","starterCode":"","exampleCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice","questionText":"","options":[""],"correctOptionIndex":0}]}. ` +
   'Rules: ' +
   '1. description = 60-80 words MAX. Cover: what+why+pitfall. No filler. ' +
-  '2. enableLiveEditor=true only for code_example type. starterCode must be browser-safe JS (no require/import/process/express()). expectedOutput = exact console.log output, lowercase, no punctuation. ' +
+  '2. enableLiveEditor=true only for code_example type. starterCode must be browser-safe JS (no require/import/process/express()). Use proper line breaks and indentation (never one-line compressed code), and include one empty line between logical steps/blocks for readability. expectedOutput = exact console.log output, lowercase, no punctuation. ' +
+  '2.1 For lessons that include an explanation example, fill exampleCode with a short readable snippet (5-20 lines) using clear new lines and indentation. ' +
 '3. quizQuestions: exactly 1 question per lesson when enableLiveEditor=true. The question MUST be about starter-code output and MUST include lesson-specific context (for example the lesson title) so question text is unique across lessons. The correct answer (correctOptionIndex) must exactly match expectedOutput. Wrong options must be plausible but incorrect. If enableLiveEditor=false, quizQuestions=[].' + 
  '4. videoUrl: one relevant YouTube link. resources: 2-3 real working links (MDN/Express docs/Node docs only). ' +
   '5. Choose type based on lesson content. If the lesson is about a specific practical task (e.g. handling POST requests), prefer code_example. If it’s about understanding concepts, prefer text. video_embed if it’s best explained visually (e.g. event loop). ' +
@@ -930,13 +1151,17 @@ async function generateLessonDetailsFromAi(input: {
   const typeRaw = String(parsed.type || 'text');
   const type: OutlineLesson['type'] = typeRaw === 'code_example' || typeRaw === 'video_embed' ? typeRaw : 'text';
   const durationMinutes = Math.max(5, Number(parsed.durationMinutes || 15));
-  const langRaw = String(parsed.liveEditorLanguage || 'javascript');
-  const liveEditorLanguage: 'python' | 'javascript' | 'html_css' =
-    langRaw === 'python' || langRaw === 'html_css' ? langRaw : 'javascript';
+  const langRaw = String(parsed.liveEditorLanguage || input.preferredLanguage || 'javascript');
+  const liveEditorLanguage: 'python' | 'javascript' | 'html_css' | 'sql' =
+    langRaw === 'python' || langRaw === 'html_css' || langRaw === 'sql' ? langRaw : 'javascript';
   const starterCodeRaw = String(parsed.starterCode || '').trim();
+  const exampleCodeRaw = String(parsed.exampleCode || '').trim();
   const detected = detectCodeLanguage(starterCodeRaw);
   const finalLang = detected || liveEditorLanguage;
-  const starterCode = finalLang === 'javascript' ? sanitizeJsStarterCode(starterCodeRaw) : starterCodeRaw;
+  const starterCodeNormalized = normalizeGeneratedCode(starterCodeRaw) || '';
+  const prettyStarter = enforceReadableSpacing(prettifyStarterCode(starterCodeNormalized, finalLang));
+  const starterCode = finalLang === 'javascript' ? sanitizeJsStarterCode(prettyStarter || '') : prettyStarter || '';
+  const exampleCode = normalizeGeneratedCode(exampleCodeRaw);
   const resources = Array.isArray(parsed.resources)
     ? parsed.resources.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 4)
     : [];
@@ -952,6 +1177,7 @@ return {
   enableLiveEditor: Boolean(parsed.enableLiveEditor) && (type === 'code_example' || Boolean(starterCode)),
   liveEditorLanguage: finalLang,
   starterCode: starterCode || undefined,
+  exampleCode: exampleCode || undefined,
   expectedOutput: String(parsed.expectedOutput || '').trim() || undefined,
   videoUrl: String(parsed.videoUrl || '').trim() || undefined,
   resources,
@@ -969,6 +1195,7 @@ export async function POST(req: Request, { params }: Params) {
   const normalizedCourseId = decodeURIComponent(courseId).trim();
 
   try {
+    await ensureLessonLiveEditorLanguageSupportsSql();
     const body = await req.json().catch(() => ({}));
     const prompt = String(body?.prompt || '').trim();
     if (!prompt) {
@@ -985,7 +1212,12 @@ export async function POST(req: Request, { params }: Params) {
 
     const phase = Number(body?.phase || 2);
     const mode = String(body?.mode || '').trim(); // optional: outline_only | details | regenerate_lessons
+    const constraints = extractGenerationConstraints(prompt);
     const profile = buildTopicProfile(`${prompt} ${String(courseRows[0].title || '')}`);
+    const preferredLanguage = inferPreferredLiveEditorLanguage(
+      `${prompt} ${String(courseRows[0].title || '')}`,
+      profile
+    );
     const apiKey = process.env.OPENAI_API_KEY;
     const model = (process.env.OPENAI_MODEL || 'gpt-5-mini').trim();
 
@@ -995,13 +1227,15 @@ export async function POST(req: Request, { params }: Params) {
         model,
         prompt,
         courseTitle: String(courseRows[0].title || ''),
+        constraints,
       });
       if (outline && outline.length > 0) {
+        const boundedOutline = outline.slice(0, constraints.maxModules);
         return NextResponse.json({
           success: true,
           phase: 1,
           source: 'openai',
-          outline,
+          outline: boundedOutline,
           message: 'Outline generated. Proceed to phase 2 to generate lesson details.',
         });
       }
@@ -1009,7 +1243,7 @@ export async function POST(req: Request, { params }: Params) {
         success: true,
         phase: 1,
         source: 'fallback',
-        outline: fallbackOutline(prompt).map((m) => ({
+        outline: enforceModuleCount(fallbackOutline(prompt, preferredLanguage), constraints, prompt).map((m) => ({
           title: m.title,
           description: m.description,
           lessons: m.lessons.map((l) => ({ title: l.title, objective: l.description })),
@@ -1048,14 +1282,15 @@ export async function POST(req: Request, { params }: Params) {
           apiKey,
           model,
           topic: prompt,
-          courseTitle: String(courseRows[0].title || ''),
-          moduleTitle: String(row.moduleTitle || ''),
-          lessonTitle: String(row.title || ''),
-          objective: String(row.description || ''),
-        });
+            courseTitle: String(courseRows[0].title || ''),
+            moduleTitle: String(row.moduleTitle || ''),
+            lessonTitle: String(row.title || ''),
+            objective: String(row.description || ''),
+            preferredLanguage,
+          });
         if (!details) continue;
         let prepared = ensureDetailedExplanation(details);
-        prepared = ensurePracticalLesson(prepared, String(row.moduleTitle || ''), 0);
+        prepared = ensurePracticalLesson(prepared, String(row.moduleTitle || ''), 0, preferredLanguage);
         prepared = sanitizeLessonForDb(prepared);
 
           await pool.query(
@@ -1129,7 +1364,7 @@ export async function POST(req: Request, { params }: Params) {
         updatedLessons: updated,
       });
     }
-    let modules = fallbackOutline(prompt);
+    let modules = fallbackOutline(prompt, preferredLanguage);
     let source: 'openai' | 'fallback' = 'fallback';
 
     if ((phase === 2 || mode === 'details') && Array.isArray(body?.outline)) {
@@ -1141,10 +1376,11 @@ export async function POST(req: Request, { params }: Params) {
 
 if (apiKey && !(Array.isArray(body?.outline) && body.outline.length > 0)) {      const instruction =
         'Return JSON only in this shape: ' +
-        '{"modules":[{"title":"","description":"","lessons":[{"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"python|javascript|html_css","starterCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice|written|true_false","questionText":"","options":[""],"correctOptionIndex":0,"writtenAnswer":""}]}]}]}. ' +
-        'Generate 3 to 5 modules and 4 to 6 lessons per module. ' +
+        '{"modules":[{"title":"","description":"","lessons":[{"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"python|javascript|html_css|sql","starterCode":"","exampleCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice|written|true_false","questionText":"","options":[""],"correctOptionIndex":0,"writtenAnswer":""}]}]}]}. ' +
+        `Generate ${constraints.minModules} to ${constraints.maxModules} modules and 4 to 6 lessons per module. ` +
         'Write rich lesson explanations, not short bullet-only text. Each lesson description should be practical and detailed (concept + why + steps + pitfalls). ' +
-        'For code lessons, set enableLiveEditor true and provide starterCode plus short expectedOutput string (plain text output, lowercase recommended). ' +
+        'For code lessons, set enableLiveEditor true and provide starterCode plus short expectedOutput string (plain text output, lowercase recommended). starterCode must use real line breaks and indentation, never compressed into one line, and include empty lines between logical steps. ' +
+        'When a lesson explanation needs a code example, include exampleCode (5-20 lines, readable, properly formatted) so it can be rendered inside a code box. ' +
         'For javascript live-editor code, do not use require/import/process/fs or express server bootstrap; use browser-safe JavaScript only. ' +
         'Before returning, verify topical consistency: if the course is Express/Node, avoid Python-specific videos/links/examples; if Python course, avoid Node-only examples. ' +
         'Include real docs links in resources and YouTube links in videoUrl when relevant.';
@@ -1188,11 +1424,12 @@ if ((phase === 2 || mode === 'details') && apiKey && Array.isArray(body?.outline
             apiKey,
             model,
             topic: prompt,
-            courseTitle: String(courseRows[0].title || ''),
-            moduleTitle: module.title,
-            lessonTitle: lesson.title,
-            objective: lesson.description || '',
-          });
+              courseTitle: String(courseRows[0].title || ''),
+              moduleTitle: module.title,
+              lessonTitle: lesson.title,
+              objective: lesson.description || '',
+              preferredLanguage,
+            });
           return detailed ?? lesson;
         })
       );
@@ -1221,13 +1458,20 @@ if ((phase === 2 || mode === 'details') && apiKey && Array.isArray(body?.outline
 // skip enrichModules video/starter override when we already have AI-generated details
 const skipEnrich = (phase === 2 || mode === 'details') && Array.isArray(body?.outline);
 
-modules = skipEnrich ? modules : enrichModules(modules);    modules = enforceTopicRelevance(modules, profile);
-    modules = validateAndFixLinks(modules, profile);
-    modules = enforceNoDuplicates(modules);
-    modules = strictSanitizeModules(modules, profile);
-    if (modules.length === 0) {
-      modules = strictSanitizeModules(fallbackOutline(prompt), profile);
-    }
+  modules = skipEnrich ? modules : enrichModules(modules);    modules = enforceTopicRelevance(modules, profile);
+  modules = validateAndFixLinks(modules, profile);
+  modules = enforceNoDuplicates(modules);
+  modules = modules.map((module) => ({
+    ...module,
+    lessons: module.lessons.map((lesson, idx) =>
+      ensurePracticalLesson(lesson, module.title, idx, preferredLanguage)
+    ),
+  }));
+  modules = strictSanitizeModules(modules, profile);
+  if (modules.length === 0) {
+      modules = strictSanitizeModules(fallbackOutline(prompt, preferredLanguage), profile);
+  }
+    modules = enforceModuleCount(modules, constraints, prompt);
     modules = sanitizeModulesForDb(modules);
 
     await ensureCourseQuizSchema();

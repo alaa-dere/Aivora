@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
+import LiveSqlEditor from '@/components/live-sql-editor';
 
 type LiveEditorSubmission = {
   code: string;
@@ -16,7 +17,7 @@ type LessonContentViewProps = {
   content: string;
   quizQuestions?: any[];
   enableLiveEditor?: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
   starterDisabledMessage?: string;
   emptyMessage?: string;
@@ -305,6 +306,9 @@ export default function LessonContentView({
           }
           if (liveEditorLanguage === 'html_css') {
             return <LiveHtmlPreview key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
+          }
+          if (liveEditorLanguage === 'sql') {
+            return <LiveSqlEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
           }
           return <LivePythonEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
         }

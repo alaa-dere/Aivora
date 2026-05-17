@@ -32,7 +32,7 @@ type Lesson = {
   completed: boolean;
   unlocked: boolean;
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
 };
 
 type Module = {
@@ -727,35 +727,39 @@ export default function CoursePlayerPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Ask about current lessons and course topics.
               </p>
-              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-3 h-64 overflow-y-auto space-y-2">
-                {assistantMessages.map((msg, idx) => (
-                  <div
-                    key={`${msg.role}-${idx}`}
-                    className={`rounded-lg px-3 py-2 text-xs ${
-                      msg.role === 'student'
-                        ? 'bg-blue-600 text-white ml-6'
-                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                ))}
-                {assistantLoading && (
-                  <div className="rounded-lg px-3 py-2 text-xs bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
-                    Thinking...
-                  </div>
-                )}
-              </div>
+                <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-4 h-[30rem] overflow-y-auto space-y-3">
+                  {assistantMessages.map((msg, idx) => (
+                    <div
+                      key={`${msg.role}-${idx}`}
+                      className={`rounded-lg px-3 py-2 text-xs ${
+                        msg.role === 'student'
+                          ? 'bg-blue-600 text-white ml-6'
+                          : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                    </div>
+                  ))}
+                  {assistantLoading && (
+                    <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                      Thinking...
+                    </div>
+                  )}
+                </div>
               <div className="mt-3 flex gap-2">
-                <input
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') askAssistant();
-                  }}
-                  placeholder="Ask about this lesson..."
-                  className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                  <textarea
+                    value={assistantInput}
+                    onChange={(e) => setAssistantInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        askAssistant();
+                      }
+                    }}
+                    placeholder="Ask about this lesson..."
+                    rows={2}
+                    className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  />
                 <button
                   onClick={askAssistant}
                   disabled={assistantLoading || !assistantInput.trim()}
@@ -872,6 +876,7 @@ export default function CoursePlayerPage() {
     </div>
   );
 }
+
 
 
 

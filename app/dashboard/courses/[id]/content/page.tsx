@@ -15,7 +15,7 @@ type Lesson = {
   title: string;
   type: 'text' | 'code_example' | 'live_python' | 'video_embed' | 'quiz' | 'mixed';
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
   durationMinutes: number;
   isPublished: boolean;
   content?: string;
@@ -1122,6 +1122,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                       <option value="python">Python (Replit / OneCompiler)</option>
                       <option value="javascript">JavaScript / Node.js (Replit / StackBlitz)</option>
                       <option value="html_css">HTML/CSS (CodePen / StackBlitz)</option>
+                      <option value="sql">SQL (Query Practice)</option>
                     </select>
                   </div>
                 )}
@@ -1556,5 +1557,6 @@ const regenerateSingleLesson = async (lessonId: string) => {
     </div>
   );
 }
+
 
 
