@@ -721,19 +721,19 @@ export async function GET(req: Request) {
       const normalizedStatus =
         progress >= 100 || status === 'completed' ? 'completed' : status;
 
-      return ({
-      name: row.name,
-      courseName: row.courseTitle || '',
-      imageUrl: row.imageUrl || null,
-      avatar: (row.name || '?')
-        .split(' ')
-        .map((part: string) => part[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase(),
-      progress: Math.round(progress),
-      status: normalizedStatus,
-      });
+      return {
+        name: row.name,
+        courseName: row.courseTitle || '',
+        imageUrl: row.imageUrl || null,
+        avatar: (row.name || '?')
+          .split(' ')
+          .map((part: string) => part[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase(),
+        progress: Math.round(progress),
+        status: normalizedStatus,
+      };
     });
 
     const [activityRows] = await pool.query<RowDataPacket[]>(
