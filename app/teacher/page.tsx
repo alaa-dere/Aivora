@@ -306,19 +306,19 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-transparent p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       {/* رأس الصفحة */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
           Overview of your courses, students, and progress.
         </p>
       </div>
 
       {/* بطاقات الإحصائيات - نفس الستايل والأيقونات اللي في Admin */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
         {[
           { title: 'Total Students', value: stats.totalStudents.toLocaleString(), icon:UserGroupIcon, delay: 0 },
           { title: 'Active Courses', value: stats.activeCourses.toString(), icon: BookOpenIcon, delay: 100 },
@@ -336,19 +336,19 @@ export default function TeacherDashboard() {
       </div>
 
       {/* باقي الأقسام (My Courses, AI Insights, Student Performance, Recent Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* My Courses */}
-        <div className="admin-surface lg:col-span-2 relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+        <div className="admin-surface lg:col-span-2 relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-700 dark:text-gray-200">
               My Courses
             </h2>
-            <Link href="/teacher/courses" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
+            <Link href="/teacher/courses" className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
               View All <ChevronRightIcon className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {loading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading courses...</p>
             ) : error ? (
@@ -356,15 +356,17 @@ export default function TeacherDashboard() {
             ) : courses.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No courses yet.</p>
             ) : (
-              courses.map((course, i) => (
-              <CourseCard key={i} course={course} index={i} />
+              courses.slice(0, 2).map((course, i) => (
+                <div key={i} className={i === 1 ? 'hidden md:block' : ''}>
+                  <CourseCard course={course} index={i} />
+                </div>
               ))
             )}
           </div>
         </div>
 
         {/* AI Insights */}
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
             AI Insights

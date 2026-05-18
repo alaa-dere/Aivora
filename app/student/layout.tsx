@@ -10,6 +10,8 @@ import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
 import { useRef } from 'react';
 import {
+  Bars3Icon,
+  XMarkIcon,
   HomeIcon,
   UserCircleIcon,
   HeartIcon,
@@ -44,6 +46,7 @@ const manrope = Manrope({
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -233,9 +236,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   return (
     <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
       {/* Header - Ù†ÙØ³ Ø³ØªØ§ÙŠÙ„ Ø§Ù„Ø£Ø¯Ù…Ù† */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
+      <header className="sticky top-0 z-30 px-4 pt-9 sm:pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center">
+                 <button
+                   onClick={() => setSidebarOpen((v) => !v)}
+                   className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+                   aria-label="Toggle sidebar"
+                 >
+                   <Bars3Icon className="w-6 h-6 text-white" />
+                 </button>
+                 <div className="ml-2" />
                  <Link href="/student" className="flex items-center" aria-label="Go to dashboard">
                   <Image
                     src="/alaa.png"
@@ -285,7 +296,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </button>
 
             {notificationOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="portal-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[85vw] rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
                 <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Notifications
@@ -308,9 +319,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         key={n.id}
                         href={getStudentNotificationHref(n)}
                         onClick={() => setNotificationOpen(false)}
-                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          ''
-                        } block hover:bg-slate-50 dark:hover:bg-slate-800/60`}
+                        className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
                       >
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                           {n.title}
@@ -389,7 +398,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </button>
 
             {accountOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="portal-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-52 rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
                 <Link
                   href="/student"
                   onClick={() => setAccountOpen(false)}
@@ -437,11 +446,79 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </div>
         </div>
         </div>
+
+        <div
+          className={`md:hidden relative z-10 mt-2 rounded-xl border border-blue-900/50 dark:border-gray-800 bg-blue-950/90 dark:bg-gray-950/90 backdrop-blur px-2 py-1.5 ${
+            notificationOpen || accountOpen ? 'hidden' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
+            {headerLinks.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={`mobile-${item.href}`}
+                  href={item.href}
+                  className={`shrink-0 py-1.5 text-xs font-semibold text-center transition-colors ${
+                    isActive
+                      ? 'text-sky-300'
+                      : 'text-blue-100 hover:text-sky-200 dark:text-slate-200 dark:hover:text-sky-200'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </header>
+
+      <aside
+        className={`
+          fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          w-64
+        `}
+      >
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 rounded-t-2xl">
+            <Image src="/alaa.png" alt="Aivora Logo" width={100} height={30} className="object-contain" />
+            <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-blue-900/50">
+              <XMarkIcon className="w-6 h-6 text-white" />
+            </button>
+          </div>
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <Link href="/student" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <HomeIcon className="w-5 h-5 mr-3" />
+              Dashboard
+            </Link>
+            <Link href="/student/profile" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <UserCircleIcon className="w-5 h-5 mr-3" />
+              Profile
+            </Link>
+            <Link href="/student/favorites" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <HeartIcon className="w-5 h-5 mr-3" />
+              Favorite Courses
+            </Link>
+            <Link href="/student/calendar" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <CalendarOutlineIcon className="w-5 h-5 mr-3" />
+              Calendar
+            </Link>
+          </nav>
+        </div>
+      </aside>
 
       <main className="flex-1">
         <div className="p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 dark:bg-black/50 z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       <style jsx global>{`
         .portal-surface {

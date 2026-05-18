@@ -674,9 +674,9 @@ export default function CreateQuizPage() {
             <button
               type="button"
               onClick={addQuestion}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition flex items-center gap-1.5 sm:gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Queue Question
             </button>
           </div>
@@ -779,17 +779,17 @@ export default function CreateQuizPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-2 sm:py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs sm:text-sm font-medium transition flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50"
             >
-              <Save className="w-5 h-5" />
+              <Save className="w-4 h-4 sm:w-5 sm:h-5" />
               {saving ? "Saving..." : "Save All Queued Questions"}
             </button>
             <button
               type="button"
               onClick={() => router.push("/teacher/courses")}
-              className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition flex items-center justify-center gap-2"
+              className="flex-1 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium transition flex items-center justify-center gap-1.5 sm:gap-2"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
               Back
             </button>
           </div>

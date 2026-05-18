@@ -5,7 +5,6 @@ import {
   CurrencyDollarIcon,
   ChartBarIcon,
   ShoppingBagIcon,
-  BanknotesIcon,
 } from '@heroicons/react/24/outline';
 
 type EarningsSummary = {
@@ -65,14 +64,11 @@ export default function TeacherEarningsPage() {
       maximumFractionDigits: 2,
     }).format(Number(value || 0));
 
-  const pendingPayouts = Math.max(0, summary.totalRevenue - summary.grossSales);
-
   const cards = useMemo(
     () => [
       { label: 'My Total Revenue', value: fmtCurrency(summary.totalRevenue), icon: CurrencyDollarIcon },
       { label: 'This Month Revenue', value: fmtCurrency(summary.monthRevenue), icon: ChartBarIcon },
       { label: 'Gross Sales (My Courses)', value: fmtCurrency(summary.grossSales), icon: ShoppingBagIcon },
-      { label: 'Pending Payouts', value: fmtCurrency(pendingPayouts), icon: BanknotesIcon },
     ],
     [summary]
   );
@@ -92,7 +88,7 @@ export default function TeacherEarningsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {cards.map((card) => (
           <div
             key={card.label}
@@ -117,8 +113,9 @@ export default function TeacherEarningsPage() {
         ) : transactions.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No transactions yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               <thead className="bg-gray-50 dark:bg-gray-900/40">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -143,8 +140,48 @@ export default function TeacherEarningsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+            <div className="md:hidden space-y-3">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(tx.dateTime).toLocaleString()}</p>
+                    <span className="text-xs capitalize px-2 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      {tx.status}
+                    </span>
+                  </div>
+
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white mt-2">
+                    {tx.courseTitle || '-'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Student: {tx.studentName || '-'}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Type</p>
+                      <p className="capitalize text-gray-800 dark:text-gray-200">{tx.type}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Amount</p>
+                      <p className="text-gray-800 dark:text-gray-200">{fmtCurrency(tx.amount, tx.currency || 'USD')}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-gray-500 dark:text-gray-400">My Share</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {fmtCurrency(tx.teacherShare, tx.currency || 'USD')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

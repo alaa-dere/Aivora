@@ -174,7 +174,7 @@ export default function TeacherStudentDetailsPage() {
         <div className="space-y-6">
           {tab === "overview" && (
             <>
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 {cards.map((card) => (
                   <div key={card.title} className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
@@ -218,7 +218,8 @@ export default function TeacherStudentDetailsPage() {
           )}
 
           {tab === "courses" && (
-            <div className="admin-surface overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75">
+            <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75">
+              <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                   <tr className="text-left">
@@ -247,6 +248,41 @@ export default function TeacherStudentDetailsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
+
+              <div className="md:hidden p-2.5 space-y-2.5">
+                {data.courses.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-300 px-2 py-6">No courses yet.</p>
+                ) : (
+                  data.courses.map((course) => (
+                    <div
+                      key={`mobile-${course.enrollmentId}`}
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+                    >
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{course.title}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Status: <span className="text-slate-700 dark:text-slate-300">{course.status.replace("_", " ")}</span>
+                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                        <div className="text-slate-500 dark:text-slate-400">Progress</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">{course.progressPercentage.toFixed(0)}%</div>
+                        <div className="text-slate-500 dark:text-slate-400">Quiz</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">{course.avgQuizScore.toFixed(1)}%</div>
+                        <div className="text-slate-500 dark:text-slate-400">Attempts</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">{course.quizAttempts}</div>
+                        <div className="text-slate-500 dark:text-slate-400">Attendance</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">
+                          {course.attendedSessions}/{course.totalSessions}
+                        </div>
+                        <div className="text-slate-500 dark:text-slate-400">Missed</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">{course.missedSessions}</div>
+                        <div className="text-slate-500 dark:text-slate-400">Certificate</div>
+                        <div className="text-right text-slate-700 dark:text-slate-300">{course.certificateId ? "Yes" : "No"}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

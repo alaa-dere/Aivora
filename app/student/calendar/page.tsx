@@ -191,11 +191,11 @@ export default function StudentCalendarPage() {
   const courseStats = data?.courseStats || [];
 
   return (
-    <div className="min-h-screen bg-transparent p-4 md:p-6">
-      <div className="portal-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 mb-6 bg-gradient-to-br from-sky-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-transparent p-3 sm:p-4 md:p-6">
+      <div className="portal-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 md:p-6 mb-4 sm:mb-6 bg-gradient-to-br from-sky-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Student Calendar</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Student Calendar</h1>
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
           View live sessions, reminders, pending submissions, and your absence count.
         </p>
       </div>
@@ -210,74 +210,81 @@ export default function StudentCalendarPage() {
         <>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-2 portal-surface rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/50">
+              <div className="px-3 sm:px-4 py-2.5 border-b border-blue-900/60 dark:border-gray-800 flex items-center justify-between bg-blue-950/95 dark:bg-gray-950/90">
                 <button
                   onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1))}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 active:bg-white/25 transition-colors"
+                  aria-label="Previous month"
                 >
-                  <ChevronLeftIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  <ChevronLeftIcon className="w-4 h-4 text-white" />
                 </button>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <p className="text-sm sm:text-base font-semibold text-white text-center">
                   {monthAnchor.toLocaleString([], { month: 'long', year: 'numeric' })}
                 </p>
                 <button
                   onClick={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1))}
-                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="h-8 w-8 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 active:bg-white/25 transition-colors"
+                  aria-label="Next month"
                 >
-                  <ChevronRightIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  <ChevronRightIcon className="w-4 h-4 text-white" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-7 text-xs font-semibold text-center border-b border-slate-200 dark:border-slate-800">
-                {days.map((d) => (
-                  <div key={d} className="py-2 text-slate-500 dark:text-slate-400">{d}</div>
-                ))}
-              </div>
+              <div className="overflow-x-auto">
+                <div className="min-w-[560px]">
+                  <div className="grid grid-cols-7 text-xs font-semibold text-center border-b border-slate-200 dark:border-slate-800">
+                    {days.map((d) => (
+                      <div key={d} className="py-2 text-slate-500 dark:text-slate-400">{d}</div>
+                    ))}
+                  </div>
 
-              <div className="grid grid-cols-7">
-                {monthGrid.map((d) => {
-                  const key = dateKey(d);
-                  const isCurrentMonth = d.getMonth() === monthAnchor.getMonth();
-                  const isSelected = key === selectedKey;
-                  const dayEvents = eventsByDay.get(key) || [];
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedKey(key)}
-                      className={`h-24 border border-slate-100 dark:border-slate-800 p-1.5 text-left align-top transition-colors ${
-                        isSelected ? 'bg-sky-100/80 dark:bg-sky-900/25 ring-1 ring-sky-300/70 dark:ring-sky-700/60' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'
-                      }`}
-                    >
-                      <p className={`text-xs ${isCurrentMonth ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
-                        {d.getDate()}
-                      </p>
-                      <div className="mt-1 space-y-1">
-                        {dayEvents.slice(0, 2).map((event) => (
-                          <div
-                            key={event.id}
-                            className={`rounded px-1 py-0.5 text-[10px] truncate ${
-                              event.kind === 'session'
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : event.kind === 'deliverable'
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                            }`}
-                          >
-                            {event.title}
+                  <div className="grid grid-cols-7">
+                    {monthGrid.map((d) => {
+                      const key = dateKey(d);
+                      const isCurrentMonth = d.getMonth() === monthAnchor.getMonth();
+                      const isSelected = key === selectedKey;
+                      const dayEvents = eventsByDay.get(key) || [];
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedKey(key)}
+                          className={`h-20 sm:h-24 border border-slate-100 dark:border-slate-800 p-1.5 text-left align-top transition-colors ${
+                            isSelected ? 'bg-sky-100/80 dark:bg-sky-900/25 ring-1 ring-sky-300/70 dark:ring-sky-700/60' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'
+                          }`}
+                        >
+                          <p className={`text-xs ${isCurrentMonth ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                            {d.getDate()}
+                          </p>
+                          <div className="mt-1 space-y-1">
+                            {dayEvents.slice(0, 1).map((event) => (
+                              <div
+                                key={event.id}
+                                className={`rounded px-1 py-0.5 text-[10px] truncate ${
+                                  event.kind === 'session'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                    : event.kind === 'deliverable'
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                }`}
+                              >
+                                {event.title}
+                              </div>
+                            ))}
+                            {dayEvents.length > 1 && (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400">+{dayEvents.length - 1} more</p>
+                            )}
                           </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">+{dayEvents.length - 2} more</p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="portal-surface rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <div className="portal-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
                   <CalendarDaysIcon className="w-4 h-4 text-blue-600 dark:text-blue-300" />
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -312,7 +319,8 @@ export default function StudentCalendarPage() {
                 </div>
               </div>
 
-              <div className="portal-surface rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <div className="portal-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-red-400" />
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
                   <ExclamationTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-300" />
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Per-Course Lectures & Absences</p>

@@ -363,7 +363,7 @@ export default function StudentsPage() {
                       {filteredStudents.length} students
                     </span>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                         <tr className="text-left">
@@ -461,6 +461,82 @@ export default function StudentsPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div className="md:hidden p-2.5 space-y-2.5">
+                    {filteredStudents.map((student) => (
+                      <div
+                        key={`mobile-${student.id}`}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                              {student.name}
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {student.email}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full ${
+                              student.status === "completed"
+                                ? "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
+                                : student.status === "dropped"
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                            }`}
+                          >
+                            {(student.status || "in progress").replace("_", " ")}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div className="text-slate-500 dark:text-slate-400">Progress</div>
+                          <div className="text-right text-slate-700 dark:text-slate-300">{student.progress}%</div>
+                          <div className="text-slate-500 dark:text-slate-400">Quiz Score</div>
+                          <div className="text-right text-slate-700 dark:text-slate-300">
+                            {Number(student.quizAttempts || 0) > 0
+                              ? `${Math.round(Number(student.bestQuizScore || 0))}%`
+                              : "No attempts"}
+                          </div>
+                        </div>
+
+                        <div className="mt-2">
+                          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                student.progress >= 70
+                                  ? "bg-blue-400"
+                                  : student.progress >= 40
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{ width: `${student.progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          {studentView === "completed" ? (
+                            <button
+                              onClick={() => removeCompletedStudent(student.id)}
+                              disabled={deletingStudentId === student.id}
+                              className="text-[11px] px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
+                            >
+                              {deletingStudentId === student.id ? "Deleting..." : "Delete"}
+                            </button>
+                          ) : (
+                            <Link
+                              href={`/teacher/students/${student.id}`}
+                              className="text-[11px] px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                            >
+                              View Student
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}

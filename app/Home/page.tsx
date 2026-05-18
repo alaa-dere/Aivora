@@ -28,6 +28,7 @@ import {
 const navItemsEn = [
   { name: 'Home', id: 'home' },
   { name: 'About', id: 'about' },
+  { name: 'Category', id: 'categories' },
   { name: 'Courses', id: 'courses' },
   { name: 'Feedback', id: 'testimonials' },
   { name: 'Contact', id: 'contact' },
@@ -36,11 +37,11 @@ const navItemsEn = [
 const navItemsAr = [
   { name: 'الرئيسية', id: 'home' },
   { name: 'عنا', id: 'about' },
+  { name: 'التصنيفات', id: 'categories' },
   { name: 'الدورات', id: 'courses' },
   { name: 'آراء الطلاب', id: 'testimonials' },
   { name: 'اتصل بنا', id: 'contact' },
 ];
-
 const testimonialsEn = [
   {
     name: 'Sarah Mohammed',
@@ -114,6 +115,24 @@ type FeedbackItem = {
   rating: number;
 };
 
+type CategoryMenuItem = {
+  id: string;
+  name: string;
+  courses: Array<{
+    id: string;
+    title: string;
+    description: string;
+    price: number;
+    image: string;
+    instructor: string;
+    duration: string;
+    students: string;
+    averageRating?: number;
+    evaluationCount?: number;
+  }>;
+  paths: Array<{ id: string; title: string }>;
+};
+
 export default function HomePage() {
   const { theme, setTheme } = useTheme();
   const { data: session, status } = useSession();
@@ -131,6 +150,10 @@ export default function HomePage() {
   const [recentError, setRecentError] = useState('');
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [categoryMenuLoading, setCategoryMenuLoading] = useState(false);
+  const [categoryMenuError, setCategoryMenuError] = useState('');
+  const [categoryMenuItems, setCategoryMenuItems] = useState<CategoryMenuItem[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -242,6 +265,28 @@ export default function HomePage() {
     loadFavorites();
   }, [status]);
 
+  useEffect(() => {
+    const fetchCategoryMenu = async () => {
+      try {
+        setCategoryMenuLoading(true);
+        setCategoryMenuError('');
+        const res = await fetch('/api/home/categories', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load categories');
+        }
+        setCategoryMenuItems(Array.isArray(data?.categories) ? data.categories : []);
+      } catch (error) {
+        console.error('Failed loading home categories:', error);
+        setCategoryMenuError('Failed to load categories');
+      } finally {
+        setCategoryMenuLoading(false);
+      }
+    };
+
+    fetchCategoryMenu();
+  }, []);
+
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
@@ -297,6 +342,10 @@ export default function HomePage() {
   }, [isDark]);
 
   const sectionBase = `${SECTION_HEIGHT_CLASS} flex items-center justify-center px-5 sm:px-6 lg:px-8`;
+  const selectedCategory = categoryMenuItems.find((c) => c.id === selectedCategoryId) || null;
+  const selectedCategoryHasContent = Boolean(
+    selectedCategory && (selectedCategory.courses.length > 0 || selectedCategory.paths.length > 0)
+  );
 
   return (
     <div
@@ -515,8 +564,166 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section id="categories" className="px-5 sm:px-6 lg:px-8 py-10 md:py-14">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6 sm:mb-8">
+              <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
+                {isArabic ? 'التصنيفات' : 'Categories'}
+              </p>
+              <h3 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
+                {isArabic ? 'أفضل ' : 'Top '}
+                <span className="text-blue-300">{isArabic ? 'التصنيفات' : 'Categories'}</span>
+              </h3>
+            </div>
+
+            {categoryMenuLoading ? (
+              <p className="text-center text-white/80 text-sm">{isArabic ? 'جاري التحميل...' : 'Loading...'}</p>
+            ) : categoryMenuError ? (
+              <p className="text-center text-sm text-red-500">{categoryMenuError}</p>
+            ) : categoryMenuItems.length === 0 ? (
+              <p className="text-center text-sm text-white/80">{isArabic ? 'لا توجد تصنيفات حالياً' : 'No categories yet'}</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 sm:mt-10 mb-6">
+                  {categoryMenuItems.map((cat) => (
+                    <button
+                      key={`cat-pill-${cat.id}`}
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      className={`w-full min-h-[54px] px-4 py-3 rounded-2xl text-sm sm:text-base font-semibold border transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(15,23,42,0.35)] ${
+                        selectedCategoryId === cat.id
+                          ? 'bg-white/20 border-white/40 text-white hover:bg-blue-500'
+                          : 'bg-transparent border-white/30 text-white hover:bg-blue-500'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedCategoryHasContent && selectedCategory && (
+                  <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-lg p-4 sm:p-5">
+                    <h4 className="text-base sm:text-lg font-semibold text-white mb-3">
+                      {selectedCategory.name}
+                    </h4>
+                    <div className="space-y-5">
+                      {selectedCategory.courses.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-blue-200 mb-3">
+                            {isArabic ? 'الدورات' : 'Courses'}
+                          </p>
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            {selectedCategory.courses.map((course) => {
+                              const rating = Number(course.averageRating || 0);
+                              const reviewCount = Number(course.evaluationCount || 0);
+                              const filledStars = Math.round(rating);
+
+                              return (
+                                <div
+                                  key={`cat-course-${course.id}`}
+                                  className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                                >
+                                  <div className="relative h-36 sm:h-40 overflow-hidden">
+                                    <img
+                                      src={course.image || '/default-course.jpg'}
+                                      alt={course.title}
+                                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                    />
+                                    <CourseFavoriteButton
+                                      courseId={course.id}
+                                      initialFavorite={favoriteIds.has(course.id)}
+                                      onChange={(next) => updateFavorite(course.id, next)}
+                                      className="absolute top-3 right-3 h-8 w-8"
+                                    />
+                                  </div>
+
+                                  <div className="p-4">
+                                    <p className="text-sm text-blue-200 mb-2 font-medium">
+                                      {isArabic ? 'بواسطة' : 'By'} {course.instructor}
+                                    </p>
+
+                                    <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
+                                      {course.title}
+                                    </h3>
+
+                                    <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
+                                      <div className="flex items-center gap-1">
+                                        <ClockIcon className="w-4 h-4 text-blue-300" />
+                                        {course.duration}
+                                      </div>
+
+                                      <div className="flex items-center gap-1">
+                                        <UserGroupIcon className="w-4 h-4 text-blue-300" />
+                                        {course.students}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 mb-4">
+                                      {Array.from({ length: 5 }).map((_, idx) => (
+                                        <StarIcon
+                                          key={`cat-rating-${course.id}-${idx}`}
+                                          className={`w-4 h-4 ${
+                                            idx < filledStars
+                                              ? 'text-yellow-400 fill-yellow-400'
+                                              : 'text-slate-400'
+                                          }`}
+                                        />
+                                      ))}
+                                      {reviewCount > 0 ? (
+                                        <span className="ml-2 text-xs text-slate-300">
+                                          {rating.toFixed(1)} ({reviewCount})
+                                        </span>
+                                      ) : (
+                                        <span className="ml-2 text-xs text-slate-300">
+                                          {isArabic ? 'بدون تقييم بعد' : 'No reviews yet'}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-lg sm:text-xl font-black text-blue-300">
+                                        ${course.price}
+                                      </span>
+
+                                      <Link
+                                        href={`/Home/courses/${course.id}`}
+                                        onClick={() => trackCourseView(course.id)}
+                                        className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
+                                      >
+                                        {isArabic ? 'عرض الدورة' : 'View Course'}
+                                      </Link>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedCategory.paths.length > 0 && (
+                        <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                          <p className="text-sm font-semibold text-blue-200 mb-2">
+                            {isArabic ? 'المسارات' : 'Paths'}
+                          </p>
+                          <ul className="space-y-1">
+                            {selectedCategory.paths.map((path) => (
+                              <li key={`sel-path-${path.id}`} className="text-sm text-slate-100">
+                                {path.title}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+
         {/* Enrolled Courses Section */}
-        {status === 'authenticated' && isStudent && (
+        {status === 'authenticated' && isStudent && (coursesLoading || enrolledCourses.length > 0) && (
           <section className="px-5 sm:px-6 lg:px-8 py-16">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
@@ -640,7 +847,7 @@ export default function HomePage() {
         )}
 
         {/* Recent Courses Section */}
-        {status === 'authenticated' && isStudent && (
+        {status === 'authenticated' && isStudent && (recentLoading || recentCourses.length > 0) && (
           <section className="px-5 sm:px-6 lg:px-8 pb-20">
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
@@ -1086,3 +1293,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+

@@ -14,6 +14,7 @@ type CertificateItem = {
 
 export default function AdminCertificatesPage() {
   const [certificates, setCertificates] = useState<CertificateItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,17 @@ export default function AdminCertificatesPage() {
     };
     load();
   }, []);
+
+  const filteredCertificates = certificates.filter((cert) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      cert.student.name.toLowerCase().includes(q) ||
+      cert.student.email.toLowerCase().includes(q) ||
+      cert.course.title.toLowerCase().includes(q) ||
+      cert.teacher.name.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
@@ -64,6 +76,21 @@ export default function AdminCertificatesPage() {
               </p>
             </div>
 
+            <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by student, email, course, or teacher..."
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-400/50"
+              />
+            </div>
+
+            {filteredCertificates.length === 0 ? (
+              <p className="p-4 text-sm text-slate-500 dark:text-slate-400">No matching certificates.</p>
+            ) : (
+              <>
+
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
@@ -76,7 +103,7 @@ export default function AdminCertificatesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {certificates.map((cert) => (
+                  {filteredCertificates.map((cert) => (
                     <tr key={cert.id} className="border-t border-slate-200/70 dark:border-slate-800">
                       <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                         <div>{cert.student.name}</div>
@@ -102,7 +129,7 @@ export default function AdminCertificatesPage() {
             </div>
 
             <div className="md:hidden p-2.5 space-y-2.5">
-              {certificates.map((cert) => (
+              {filteredCertificates.map((cert) => (
                 <div
                   key={`mobile-${cert.id}`}
                   className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
@@ -132,6 +159,8 @@ export default function AdminCertificatesPage() {
                 </div>
               ))}
             </div>
+              </>
+            )}
           </>
         )}
       </div>

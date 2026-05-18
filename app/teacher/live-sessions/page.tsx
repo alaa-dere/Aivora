@@ -48,6 +48,8 @@ type AttendanceStudent = {
   missedCount: number;
 };
 
+type DerivedSessionStatus = "scheduled" | "completed" | "past";
+
 export default function LiveSessionsPage() {
   const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
   const [searchTerm, setSearchTerm] = useState("");
@@ -113,10 +115,18 @@ export default function LiveSessionsPage() {
   const formatTime = (value: string) =>
     new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  const getDerivedStatus = (session: SessionItem): DerivedSessionStatus => {
+    if (session.status === "completed") return "completed";
+    const endAtMs = new Date(session.endAt).getTime();
+    if (!Number.isNaN(endAtMs) && endAtMs < Date.now()) return "past";
+    return "scheduled";
+  };
+
   const filteredSessions = sessions
     .filter((session) => {
-      if (view === "upcoming") return session.status === "scheduled";
-      if (view === "past") return session.status === "completed";
+      const derivedStatus = getDerivedStatus(session);
+      if (view === "upcoming") return derivedStatus === "scheduled";
+      if (view === "past") return derivedStatus === "past" || derivedStatus === "completed";
       return true;
     })
     .filter((session) =>
@@ -306,17 +316,18 @@ export default function LiveSessionsPage() {
           onClick={() => setShowScheduleModal(true)}
           className="
             group inline-flex items-center gap-2
-            px-4 py-2.5 rounded-xl
+            px-2 py-1.5 text-[11px] rounded-md
+            sm:px-4 sm:py-2.5 sm:text-sm sm:rounded-xl
             bg-gradient-to-r from-blue-600 to-blue-700
             hover:from-blue-700 hover:to-blue-800
-            text-white font-semibold text-sm
+            text-white font-semibold
             shadow-sm hover:shadow-md
             border border-blue-500/50
             transition-all duration-200
             active:scale-95
           "
         >
-          <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+          <PlusIcon className="w-3.5 h-3.5 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:rotate-90" />
           Schedule Weekly Session
         </button>
       </div>
@@ -372,6 +383,13 @@ export default function LiveSessionsPage() {
           <div className="text-sm text-gray-500 dark:text-gray-400">No sessions yet.</div>
         ) : (
           filteredSessions.map((session) => (
+            (() => {
+              const derivedStatus = getDerivedStatus(session);
+              const isUpcoming = derivedStatus === "scheduled";
+              const isCompleted = derivedStatus === "completed";
+              const isPast = derivedStatus === "past";
+
+              return (
             <div
               key={session.id}
               className="portal-surface 
@@ -390,10 +408,15 @@ export default function LiveSessionsPage() {
                     <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
                       {session.title}
                     </h3>
-                    {session.status === "scheduled" ? (
+                    {isUpcoming ? (
                       <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
                         <ClockIcon className="w-4 h-4" />
                         Scheduled
+                      </span>
+                    ) : isPast ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-800">
+                        <ClockIcon className="w-4 h-4" />
+                        Past
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
@@ -441,7 +464,7 @@ export default function LiveSessionsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                  {session.status === "scheduled" && (
+                  {isUpcoming && (
                     <button
                       onClick={() => handleSendReminder(session.id)}
                       className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-blue-200"
@@ -456,7 +479,7 @@ export default function LiveSessionsPage() {
                     className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-blue-200"
                   >
                     <PlayCircleIcon className="w-4 h-4" />
-                    {session.status === "scheduled" ? "Take Attendance" : "View Attendance"}
+                    {isCompleted ? "View Attendance" : "Take Attendance"}
                   </button>
 
                   <button
@@ -476,6 +499,8 @@ export default function LiveSessionsPage() {
                 </div>
               </div>
             </div>
+              );
+            })()
           ))
         )}
       </div>

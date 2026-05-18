@@ -190,14 +190,14 @@ export default function StudentNotificationsPage() {
       <div className="portal-surface relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+          <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center">
+            <button className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors whitespace-nowrap">
               <Filter className="w-4 h-4" />
               All notifications
             </button>
             <button
               onClick={markAllAsRead}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors whitespace-nowrap"
             >
               <CheckCircle className="w-4 h-4" />
               Mark all as read

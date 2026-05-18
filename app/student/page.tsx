@@ -98,7 +98,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         {[
           {
             name: 'Enrolled Courses',
@@ -163,7 +163,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="h-64">
+          <div className="h-48 sm:h-56 md:h-64">
             {loading ? (
               <div className="h-full w-full rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 flex items-center justify-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Loading study trend...</p>
@@ -178,7 +178,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={studyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={studyData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="studyGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -186,12 +186,12 @@ export default function StudentDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bfdbfe" />
-                  <XAxis dataKey="day" tick={{ fill: '#1e3a8a' }} stroke="#1e3a8a" />
+                  <XAxis dataKey="day" tick={{ fill: '#1e3a8a', fontSize: 11 }} stroke="#1e3a8a" />
                   <YAxis
-                    tick={{ fill: '#1e3a8a' }}
+                    tick={{ fill: '#1e3a8a', fontSize: 11 }}
                     stroke="#1e3a8a"
                     tickFormatter={(value) => `${value}m`}
-                    label={{ value: 'Minutes', angle: -90, position: 'insideLeft', fill: '#1e3a8a', offset: 0 }}
+                    width={34}
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}
@@ -207,7 +207,7 @@ export default function StudentDashboard() {
                     fill="url(#studyGradient)"
                     name="Study Time"
                   >
-                    <LabelList dataKey="minutes" position="top" formatter={(value: number) => `${value}m`} />
+                    <LabelList dataKey="minutes" position="top" formatter={(value: number) => `${value}m`} fontSize={10} />
                   </Area>
                 </AreaChart>
               </ResponsiveContainer>
@@ -278,7 +278,7 @@ export default function StudentDashboard() {
             Recent Quiz Results
           </h2>
 
-          <div className="overflow-x-auto">
+          <div className="space-y-3">
             {loading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
             ) : error ? (
@@ -286,26 +286,26 @@ export default function StudentDashboard() {
             ) : recentQuizzes.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No quizzes yet.</p>
             ) : (
-              <table className="min-w-full text-sm">
-                <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
-                  <tr className="text-left">
-                    <th className="px-4 py-3 font-medium">Course</th>
-                    <th className="px-4 py-3 font-medium">Date</th>
-                    <th className="px-4 py-3 font-medium text-right">Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {recentQuizzes.map((q) => (
-                    <tr key={q.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                      <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{q.course}</td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{q.date}</td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold text-blue-700 dark:text-blue-400">
-                        {q.score}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              recentQuizzes.map((q) => (
+                <div
+                  key={q.id}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/40 p-3 sm:p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        {q.course}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {q.date}
+                      </p>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      {q.score}%
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 

@@ -96,7 +96,7 @@ export default function StudentLeaderboardPage() {
       {!loading && !error && data && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+            <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -118,7 +118,7 @@ export default function StudentLeaderboardPage() {
                 </div>
               </div>
 
-              <div className="mt-5 space-y-3 text-sm">
+              <div className="mt-4 sm:mt-5 space-y-2.5 sm:space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Improvement</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
@@ -144,7 +144,7 @@ export default function StudentLeaderboardPage() {
               </div>
             </div>
 
-            <div className="portal-surface relative overflow-hidden mt-6 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+            <div className="portal-surface relative overflow-hidden mt-4 sm:mt-6 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
               <div className="flex items-center gap-2">
                 <TrophyIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -165,7 +165,7 @@ export default function StudentLeaderboardPage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">{data.metric}</span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300">
                     <tr className="text-left">
@@ -247,6 +247,82 @@ export default function StudentLeaderboardPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="md:hidden p-3 space-y-2.5">
+                {data.top.length === 0 ? (
+                  <div className="text-sm text-center text-gray-500 dark:text-gray-300 py-6">
+                    No leaderboard data yet.
+                  </div>
+                ) : (
+                  data.top.map((row) => {
+                    const isCurrent = data.current?.id === row.id;
+                    const isFlat = row.improvement === 0;
+                    const trendUp = row.improvement > 0;
+                    return (
+                      <div
+                        key={`mobile-${row.id}`}
+                        className={`rounded-xl border p-3 ${
+                          isCurrent
+                            ? 'bg-blue-50/70 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
+                            : 'bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0">
+                              {row.imageUrl ? (
+                                <img src={row.imageUrl} alt={row.fullName || 'Student'} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                  {(row.fullName || 'S').trim().charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                #{row.rank} {row.fullName || 'Student'}
+                              </p>
+                              {isCurrent && <p className="text-[11px] text-blue-600 dark:text-blue-300">You</p>}
+                            </div>
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold border ${
+                              trendUp
+                                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                                : isFlat
+                                ? 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700'
+                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+                            }`}
+                          >
+                            {!isFlat &&
+                              (trendUp ? (
+                                <ArrowUpIcon className="w-3 h-3" />
+                              ) : (
+                                <ArrowDownIcon className="w-3 h-3" />
+                              ))}
+                            {row.improvement >= 0 ? '+' : ''}
+                            {row.improvement}m
+                          </span>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+                          <div>
+                            <p className="text-gray-500 dark:text-gray-400">Last 7d</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-200">{formatMinutes(row.minutesLast7)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 dark:text-gray-400">Prev 7d</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-200">{formatMinutes(row.minutesPrev7)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 dark:text-gray-400">All time</p>
+                            <p className="font-semibold text-gray-800 dark:text-gray-200">{formatMinutes(row.minutesAllTime)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
             </div>

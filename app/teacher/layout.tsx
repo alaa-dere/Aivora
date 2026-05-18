@@ -247,7 +247,7 @@ const handleLogout = async () => {
   return (
     <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
       {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
+      <header className="sticky top-0 z-30 px-4 pt-9 sm:pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center">
           <button
@@ -304,12 +304,12 @@ const handleLogout = async () => {
             </button>
 
             {notificationOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[85vw] rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
                 <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Notifications
                   </p>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 grid grid-cols-[1fr_auto] items-center gap-2">
                     <select
                       value={notificationTypeFilter}
                       onChange={(e) =>
@@ -317,7 +317,7 @@ const handleLogout = async () => {
                           e.target.value as 'all' | 'course_enroll' | 'admin_message' | 'student_message'
                         )
                       }
-                      className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                      className="text-[11px] sm:text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 min-w-0 w-full"
                     >
                       <option value="all">All</option>
                       <option value="course_enroll">Enrollments</option>
@@ -326,9 +326,10 @@ const handleLogout = async () => {
                     </select>
                     <button
                       onClick={markAllNotificationsRead}
-                      className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                      className="text-[11px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap"
                     >
-                      Mark all read
+                      <span className="sm:hidden">Mark all</span>
+                      <span className="hidden sm:inline">Mark all read</span>
                     </button>
                   </div>
                 </div>
@@ -343,10 +344,8 @@ const handleLogout = async () => {
                         key={n.id}
                         href={getTeacherNotificationHref(n)}
                         onClick={() => setNotificationOpen(false)}
-                          className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                            ''
-                          } block hover:bg-slate-50 dark:hover:bg-slate-800/60`}
-                        >
+                        className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
+                      >
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {n.title}
                         </p>
@@ -425,7 +424,7 @@ const handleLogout = async () => {
             </button>
 
             {accountOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-52 rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
                 <Link
                   href="/teacher/profile"
                   onClick={() => setAccountOpen(false)}
@@ -448,6 +447,28 @@ const handleLogout = async () => {
             )}
           </div>
         </div>
+        </div>
+
+        <div
+          className={`md:hidden relative z-10 mt-2 rounded-xl border border-blue-900/50 dark:border-gray-800 bg-blue-950/90 dark:bg-gray-950/90 backdrop-blur px-2 py-1.5 ${
+            notificationOpen || accountOpen ? 'hidden' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
+            {headerLinks.map((item) => (
+              <Link
+                key={`mobile-${item.href}`}
+                href={item.href}
+                className={`shrink-0 py-1.5 text-xs font-semibold text-center transition-colors ${
+                  isActive(item.href)
+                    ? 'text-sky-300'
+                    : 'text-blue-100 hover:text-sky-200 dark:text-slate-200 dark:hover:text-sky-200'
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </header>
 
