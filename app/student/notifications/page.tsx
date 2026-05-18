@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCircle, Filter, Trash2, MessageSquare } from "lucide-react";
+import { getStudentNotificationHref } from "@/lib/notification-links";
 
 type NotificationItem = {
   id: string;
@@ -19,6 +20,9 @@ type NotificationItem = {
   time: string;
   read: boolean;
   certificateId?: string | null;
+  courseId?: string | null;
+  conversationId?: string | null;
+  teacherId?: string | null;
 };
 
 type NotificationApiItem = {
@@ -29,6 +33,9 @@ type NotificationApiItem = {
   createdAt: string;
   readAt: string | null;
   certificateId?: string | null;
+  courseId?: string | null;
+  conversationId?: string | null;
+  teacherId?: string | null;
 };
 
 function getTypeIcon(type: NotificationItem["type"]) {
@@ -105,6 +112,9 @@ export default function StudentNotificationsPage() {
           time: new Date(n.createdAt).toLocaleString(),
           read: Boolean(n.readAt),
           certificateId: n.certificateId || null,
+          courseId: n.courseId || null,
+          conversationId: n.conversationId || null,
+          teacherId: n.teacherId || null,
         }));
         setItems(mapped);
       } catch (error) {
@@ -228,9 +238,7 @@ export default function StudentNotificationsPage() {
           {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 md:p-4 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
-                !notification.read ? "bg-blue-50/40 dark:bg-blue-900/10" : ""
-              }`}
+              className="p-3 md:p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
               <div className="flex gap-3">
                 <div
@@ -272,6 +280,12 @@ export default function StudentNotificationsPage() {
                         View certificate
                       </Link>
                     )}
+                    <Link
+                      href={getStudentNotificationHref(notification)}
+                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open
+                    </Link>
                     {!notification.read && (
                       <button
                         onClick={() => markAsRead(notification.id)}
@@ -308,3 +322,7 @@ export default function StudentNotificationsPage() {
     </div>
   );
 }
+
+
+
+

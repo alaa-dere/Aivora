@@ -35,6 +35,26 @@ function compactText(value: string) {
     .trim();
 }
 
+function tokenize(text: string): string[] {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+}
+
+function scoreLessonRelevance(question: string, lesson: LessonRow): number {
+  const qTokens = new Set(tokenize(question));
+  if (qTokens.size === 0) return 0;
+  const lessonText = compactText(`${lesson.title} ${lesson.description || ''} ${lesson.content || ''}`).slice(0, 2500);
+  const lTokens = tokenize(lessonText);
+  let score = 0;
+  for (const token of lTokens) {
+    if (qTokens.has(token)) score += 1;
+  }
+  return score;
+}
+
 function extractOpenAiText(data: any) {
   const outputText = String(data?.output_text || '').trim();
   if (outputText) return outputText;
@@ -90,17 +110,26 @@ export async function POST(req: Request, { params }: Params) {
       [id]
     );
 
-    const maxLessons = 24;
+    const maxLessons = 40;
     const trimmedLessons = lessonRows.slice(0, maxLessons);
-    const contextLines = trimmedLessons.map((lesson, idx) => {
-      const raw = `${lesson.title}\n${lesson.description || ''}\n${lesson.content || ''}`;
-      const text = compactText(raw).slice(0, 1200);
-      return `Lesson ${idx + 1} (${lesson.id}): ${text}`;
-    });
-
     const currentLesson = lessonId
       ? trimmedLessons.find((lesson) => lesson.id === lessonId) || null
       : null;
+
+    const rankedLessons = [...trimmedLessons]
+      .map((lesson) => ({
+        lesson,
+        score: scoreLessonRelevance(question, lesson) + (currentLesson?.id === lesson.id ? 1000 : 0),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map((x) => x.lesson);
+
+    const contextLines = rankedLessons.map((lesson, idx) => {
+      const raw = `${lesson.title}\n${lesson.description || ''}\n${lesson.content || ''}`;
+      const text = compactText(raw).slice(0, 1600);
+      return `Lesson ${idx + 1} (${lesson.id}): ${text}`;
+    });
 
     const preferredLanguage = detectPreferredLanguage(question);
     const apiKey = process.env.OPENAI_API_KEY;
@@ -117,13 +146,14 @@ export async function POST(req: Request, { params }: Params) {
 
     const model = (process.env.OPENAI_MODEL || 'gpt-5-mini').trim();
     const systemPrompt =
-      'You are a course study assistant for students in an LMS. ' +
-      'Use the provided course context to answer any course-related question with a short explanation. ' +
-      'For each answer, give a mini-explanation in 2-5 short sentences, simple and practical. ' +
-      'If helpful, include one tiny example related to the course topic. ' +
-      'If the answer is not present in context, clearly say it is not available in this course content and suggest which lesson/topic to review. ' +
+      'You are a high-quality course tutor assistant inside an LMS. ' +
+      'Answer ONLY using the provided course context and prioritize the current lesson first, then closest related lessons. ' +
+      'Response quality rules: explain clearly, be practical, and include concise step-by-step guidance when applicable. ' +
+      'When the student asks for troubleshooting, provide: probable cause, fix steps, and a tiny corrected example. ' +
+      'When you reference content, mention the most relevant lesson title. ' +
+      'If the answer is not in context, explicitly say it is not available in this course and suggest the closest lesson/topic from context. ' +
       'Language rules: if preferredLanguage=ar respond only Arabic, if preferredLanguage=en respond only English. ' +
-      'No admin/finance data. No hallucinations.';
+      'No hallucinations. No unrelated policy/admin/finance content.';
 
     const payload = {
       preferredLanguage,

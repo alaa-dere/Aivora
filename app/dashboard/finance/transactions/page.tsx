@@ -127,19 +127,19 @@ export default function AdminFinanceTransactionsPage() {
   }, [tx, q, typeFilter]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
             Transactions
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Monitor payments and refunds across the platform.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
         {[
           { label: 'Income (month)', value: money(stats.income), icon: CurrencyDollarIcon },
           { label: 'Teacher profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
@@ -152,8 +152,8 @@ export default function AdminFinanceTransactionsPage() {
               rounded-2xl
               border border-slate-200 dark:border-slate-800
               shadow-md
-              p-6
-              min-h-[140px]
+              p-4 sm:p-6
+              min-h-[120px] sm:min-h-[140px]
               hover:-translate-y-1 hover:shadow-lg
               transition-all duration-200
             "
@@ -164,8 +164,8 @@ export default function AdminFinanceTransactionsPage() {
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
@@ -189,7 +189,7 @@ export default function AdminFinanceTransactionsPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search by id / student / teacher / course..."
-                className="w-full sm:w-[34rem] pl-10 pr-3 py-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full sm:w-[34rem] pl-10 pr-3 py-2.5 sm:py-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
             </div>
@@ -222,7 +222,7 @@ export default function AdminFinanceTransactionsPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
@@ -303,6 +303,35 @@ export default function AdminFinanceTransactionsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden p-2.5 space-y-2.5">
+          {loading ? (
+            <div className="px-3 py-8 text-sm text-slate-500 dark:text-slate-400">Loading transactions...</div>
+          ) : errorMsg ? (
+            <div className="px-3 py-8 text-sm text-red-500">{errorMsg}</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-3 py-8 text-sm text-slate-500 dark:text-slate-400">No transactions found.</div>
+          ) : (
+            filtered.map((t) => (
+              <div key={`mobile-${t.id}`} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.studentName || t.teacherName || '-'}</p>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full border text-[11px] font-medium ${typeBadge(t.type)}`}>{t.type}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{t.date}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">{t.courseTitle ?? '-'}</p>
+                <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                  <div className="text-slate-500 dark:text-slate-400">Course Price</div>
+                  <div className="text-right font-semibold text-slate-700 dark:text-slate-200">{money(t.coursePrice ?? 0)}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Teacher Profit</div>
+                  <div className="text-right font-semibold text-slate-700 dark:text-slate-200">{money(getTeacherProfit(t))}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Method</div>
+                  <div className="text-right text-slate-700 dark:text-slate-200">{t.method ?? '-'}</div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

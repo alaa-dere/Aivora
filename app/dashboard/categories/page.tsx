@@ -128,7 +128,7 @@ export default function AdminCategoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300 space-y-6">
+    <div className="min-h-screen bg-transparent p-3 sm:p-4 md:p-6 transition-colors duration-300 space-y-4 sm:space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur p-5 shadow-sm">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
         <div className="flex items-start sm:items-center justify-between gap-3">
@@ -143,15 +143,15 @@ export default function AdminCategoriesPage() {
               >
                 <ArrowLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
               Organize courses and learning paths by topic.
             </p>
           </div>
           <button
             onClick={openAddModal}
-            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold text-sm shadow-sm border border-emerald-200 transition-all duration-200 active:scale-95 whitespace-nowrap dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800"
+            className="group inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold text-xs sm:text-sm shadow-sm border border-emerald-200 transition-all duration-200 active:scale-95 whitespace-nowrap dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800"
           >
             <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
             Add New Category
@@ -164,7 +164,7 @@ export default function AdminCategoriesPage() {
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200">
           Categories ({categories.length})
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="text-left">
               <tr>
@@ -238,6 +238,57 @@ export default function AdminCategoriesPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden p-2.5 space-y-2.5">
+          {loading ? (
+            <div className="px-3 py-8 text-sm text-slate-500">Loading...</div>
+          ) : categories.length === 0 ? (
+            <div className="px-3 py-8 text-sm text-slate-500">No categories yet.</div>
+          ) : (
+            categories.map((category) => (
+              <div
+                key={`mobile-${category.id}`}
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+              >
+                <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{category.name}</p>
+                {category.description ? (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{category.description}</p>
+                ) : null}
+                <div className="mt-2 flex items-center justify-between">
+                  <span
+                    className={`inline-flex px-2 py-1 rounded-full text-[11px] font-medium ${
+                      category.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {category.status}
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Courses: {category.coursesCount} | Paths: {category.pathsCount}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(category)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-[11px]"
+                  >
+                    <PencilSquareIcon className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(category)}
+                    disabled={deletingId === category.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-[11px] disabled:opacity-60"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    {deletingId === category.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

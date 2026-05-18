@@ -396,46 +396,46 @@ export default function CourseEnrollPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 pt-4">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <Link href="/" className="flex items-center shrink-0">
               <Image
                 src="/alaa.png"
                 alt="Aivora Logo"
                 width={100}
                 height={35}
-                className="h-7 w-auto dark:brightness-100 brightness-25"
+                className="h-6 sm:h-7 w-auto dark:brightness-100 brightness-25"
               />
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? (
-                <SunIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                <SunIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               ) : (
-                <MoonIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               )}
             </button>
 
             <button
               onClick={toggleLanguage}
-              className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="Toggle language"
               title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
             >
-              <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+              <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
             </button>
 
             {status === 'authenticated' ? (
               <HomeUserMenu isArabic={isArabic} />
             ) : (
               <Link href="/login">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
                   <span className="hidden sm:inline">
                     {isArabic ? 'تسجيل الدخول' : 'Login'}
                   </span>
@@ -447,11 +447,11 @@ export default function CourseEnrollPage() {
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-6 shadow-xl">
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-5 py-6 sm:py-8">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 sm:p-6 shadow-xl">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                 {isArabic ? 'أكمل عملية التسجيل' : 'Complete Your Enrollment'}
               </h1>
               <p className="text-sm text-slate-200 mt-1">
@@ -460,7 +460,7 @@ export default function CourseEnrollPage() {
                   : 'Provide billing details and choose your payment method.'}
               </p>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+              <form onSubmit={handleSubmit} className="mt-5 sm:mt-6 space-y-5 sm:space-y-6">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -514,7 +514,7 @@ export default function CourseEnrollPage() {
                   <h2 className="text-lg font-semibold text-white mb-3">
                     {isArabic ? 'طريقة الدفع' : 'Payment Method'}
                   </h2>
-                  <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {[
                       {
                         value: 'card',
@@ -654,7 +654,7 @@ export default function CourseEnrollPage() {
                 <button
                   type="submit"
                   disabled={processing}
-                  className="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-semibold shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {processing
                     ? (isArabic ? 'جاري المعالجة...' : 'Processing...')
@@ -666,7 +666,7 @@ export default function CourseEnrollPage() {
             </div>
           </div>
 
-          <aside className="space-y-6">
+          <aside className="order-1 lg:order-2 space-y-6">
             <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 shadow-xl overflow-hidden">
               <div className="w-full aspect-[16/10] rounded-xl overflow-hidden bg-gray-100/20">
                 <img
@@ -676,7 +676,7 @@ export default function CourseEnrollPage() {
                 />
               </div>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-6 shadow-xl">
+            <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 sm:p-6 shadow-xl">
               <p className="text-sm font-semibold text-slate-200">
                 {isArabic ? 'ملخص الطلب' : 'Order Summary'}
               </p>

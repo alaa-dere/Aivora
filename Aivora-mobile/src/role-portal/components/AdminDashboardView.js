@@ -1,0 +1,364 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { portalStyles } from '../styles';
+import RevenueAreaChart from './RevenueAreaChart';
+
+const formatMoney = (value) =>
+  `$${Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString();
+};
+
+export default function AdminDashboardView({ apiFetch, theme, onOpenForecast, onOpenChatbot }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    activeCourses: 0,
+    monthlyRevenue: 0,
+    monthlyRevenueChangePct: null,
+  });
+  const [trend, setTrend] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [aiInsights, setAiInsights] = useState([]);
+  const [aiSource, setAiSource] = useState('');
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const [statsRes, trendRes, activityRes, txRes, aiRes] = await Promise.all([
+        apiFetch('/api/dashboard/stats', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+        apiFetch('/api/dashboard/revenue-trend', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+        apiFetch('/api/dashboard/recent-activity', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+        apiFetch('/api/finance/transactions', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+        apiFetch('/api/admin/ai/revenue-forecast', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }),
+      ]);
+
+      const [statsData, trendData, activityData, txData, aiData] = await Promise.all([
+        statsRes.json(),
+        trendRes.json(),
+        activityRes.json(),
+        txRes.json(),
+        aiRes.json().catch(() => ({})),
+      ]);
+
+      if (!statsRes.ok) throw new Error(statsData?.message || 'Failed to load dashboard stats');
+      if (!trendRes.ok) throw new Error(trendData?.message || 'Failed to load revenue trend');
+      if (!activityRes.ok) {
+        throw new Error(activityData?.message || 'Failed to load recent activity');
+      }
+      if (!txRes.ok) throw new Error(txData?.message || 'Failed to load transactions');
+
+      setStats({
+        totalStudents: Number(statsData?.totalStudents || 0),
+        totalTeachers: Number(statsData?.totalTeachers || 0),
+        activeCourses: Number(statsData?.activeCourses || 0),
+        monthlyRevenue: Number(statsData?.monthlyRevenue || 0),
+        monthlyRevenueChangePct:
+          Number.isFinite(Number(statsData?.monthlyRevenueChangePct))
+            ? Number(statsData?.monthlyRevenueChangePct)
+            : null,
+      });
+      setTrend(Array.isArray(trendData?.trend) ? trendData.trend : []);
+      setActivities(Array.isArray(activityData?.activities) ? activityData.activities : []);
+      setTransactions(
+        (Array.isArray(txData?.transactions) ? txData.transactions : []).slice(0, 4)
+      );
+      if (aiRes.ok) {
+        setAiInsights(Array.isArray(aiData?.insights) ? aiData.insights : []);
+        setAiSource(String(aiData?.source || ''));
+      } else {
+        setAiInsights([]);
+        setAiSource('');
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to load admin dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, [apiFetch]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const totalTrendRevenue = useMemo(
+    () => trend.reduce((sum, entry) => sum + Number(entry?.revenue || 0), 0),
+    [trend]
+  );
+
+  const uiTheme = theme || {
+    isDark: false,
+    cardBg: '#ffffff',
+    cardBorder: '#e2e8f0',
+    textPrimary: '#0f172a',
+    textMuted: '#64748b',
+  };
+  const isDark = Boolean(uiTheme.isDark);
+
+  return (
+    <View style={portalStyles.adminWrap}>
+      <View style={portalStyles.adminHeaderRow}>
+        <Text style={[portalStyles.adminHeaderTitle, { color: uiTheme.textPrimary }]}>Dashboard</Text>
+        <View style={portalStyles.adminHeaderActionsRow}>
+          <Pressable
+            style={[
+              portalStyles.adminForecastBtn,
+              isDark && { backgroundColor: 'rgba(30, 58, 138, 0.25)', borderColor: 'rgba(96, 165, 250, 0.55)' },
+            ]}
+            onPress={onOpenChatbot}
+          >
+            <View style={portalStyles.adminBtnWithIcon}>
+              <MaterialCommunityIcons name="robot-outline" size={14} color={isDark ? '#bfdbfe' : '#1d4ed8'} />
+              <Text style={[portalStyles.adminForecastBtnText, isDark && { color: '#dbeafe' }]}>Open Admin Chatbot</Text>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+      <Text style={[portalStyles.adminSubTitle, { color: uiTheme.textMuted }]}>
+        Overview of key metrics, revenue, and recent activity.
+      </Text>
+
+      {error ? <Text style={portalStyles.error}>{error}</Text> : null}
+      {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+
+      {!loading ? (
+        <>
+          <View style={portalStyles.statsGrid}>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <View style={portalStyles.statCardStripe} />
+              <View style={portalStyles.statCardBody}>
+                <View style={portalStyles.statIconWrap}>
+                  <MaterialCommunityIcons name="account-school-outline" size={16} color="#1d4ed8" />
+                </View>
+                <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.totalStudents.toLocaleString()}</Text>
+                <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Total Students</Text>
+              </View>
+            </View>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <View style={portalStyles.statCardStripe} />
+              <View style={portalStyles.statCardBody}>
+                <View style={portalStyles.statIconWrap}>
+                  <MaterialCommunityIcons name="account-tie-outline" size={16} color="#1d4ed8" />
+                </View>
+                <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.totalTeachers.toLocaleString()}</Text>
+                <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Total Teachers</Text>
+              </View>
+            </View>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <View style={portalStyles.statCardStripe} />
+              <View style={portalStyles.statCardBody}>
+                <View style={portalStyles.statIconWrap}>
+                  <MaterialCommunityIcons name="book-open-page-variant-outline" size={16} color="#1d4ed8" />
+                </View>
+                <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{stats.activeCourses.toLocaleString()}</Text>
+                <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Active Courses</Text>
+              </View>
+            </View>
+            <View style={[portalStyles.statCard, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+              <View style={portalStyles.statCardStripe} />
+              <View style={portalStyles.statCardBody}>
+                <View style={portalStyles.statIconWrap}>
+                  <MaterialCommunityIcons name="cash-multiple" size={16} color="#1d4ed8" />
+                </View>
+                <Text style={[portalStyles.statValue, { color: uiTheme.textPrimary }]}>{formatMoney(stats.monthlyRevenue)}</Text>
+                <Text style={[portalStyles.statLabel, { color: uiTheme.textMuted }]}>Monthly Revenue</Text>
+                {typeof stats.monthlyRevenueChangePct === 'number' ? (
+                  <Text
+                    style={[
+                      portalStyles.statChangeLabel,
+                      stats.monthlyRevenueChangePct >= 0
+                        ? portalStyles.statChangePositive
+                        : portalStyles.statChangeNegative,
+                    ]}
+                  >
+                    {stats.monthlyRevenueChangePct >= 0 ? '+' : ''}
+                    {stats.monthlyRevenueChangePct.toFixed(1)}% vs last month
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <View style={portalStyles.adminSectionStripe} />
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Revenue Trend (Last 12 weeks)</Text>
+            {trend.length === 0 ? (
+              <Text style={portalStyles.empty}>No revenue trend data.</Text>
+            ) : (
+              <>
+                <RevenueAreaChart trend={trend} theme={uiTheme} />
+                <View style={portalStyles.trendFooter}>
+                  <Text style={portalStyles.trendFooterLabel}>12-week total</Text>
+                  <Text style={portalStyles.trendFooterValue}>{formatMoney(totalTrendRevenue)}</Text>
+                </View>
+              </>
+            )}
+          </View>
+
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <View style={portalStyles.adminSectionStripe} />
+            <View style={portalStyles.adminSectionHeaderRow}>
+              <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>AI Insights</Text>
+              <Pressable style={portalStyles.adminForecastBtn} onPress={onOpenForecast}>
+                <Text style={[portalStyles.adminForecastBtnText, isDark && { color: '#dbeafe' }]}>Forecast</Text>
+              </Pressable>
+            </View>
+            {aiSource ? (
+              <Text style={[portalStyles.aiSourceText, isDark && { color: '#93c5fd' }]}>
+                Source: {aiSource === 'openai' ? 'OpenAI' : aiSource}
+              </Text>
+            ) : null}
+            {aiInsights.map((insight) => (
+              <View
+                key={insight.title}
+                style={[
+                  portalStyles.adminInsightRow,
+                  isDark && { backgroundColor: 'rgba(30, 41, 59, 0.7)', borderColor: '#334155' },
+                ]}
+              >
+                <View style={portalStyles.insightHeadRow}>
+                  <View
+                    style={[
+                      portalStyles.insightIconWrap,
+                      isDark && { backgroundColor: 'rgba(30, 58, 138, 0.25)', borderColor: '#334155' },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={
+                        insight.type === 'forecast'
+                          ? 'sparkles'
+                          : insight.type === 'recommendation'
+                          ? 'school-outline'
+                          : 'trending-up'
+                      }
+                      size={14}
+                      color={isDark ? '#bfdbfe' : '#1d4ed8'}
+                    />
+                  </View>
+                  <Text style={[portalStyles.insightTitle, isDark && { color: '#dbeafe' }]}>{insight.title}</Text>
+                </View>
+                <Text style={[portalStyles.insightBody, isDark && { color: '#cbd5e1' }]}>{insight.description}</Text>
+              </View>
+            ))}
+            {aiInsights.length === 0 ? (
+              <Text style={portalStyles.empty}>No AI insights available right now.</Text>
+            ) : null}
+          </View>
+
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <View style={portalStyles.adminSectionStripe} />
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Recent Transactions</Text>
+            {transactions.length === 0 ? (
+              <Text style={portalStyles.empty}>No transactions yet.</Text>
+            ) : (
+              transactions.map((tx) => (
+                <View
+                  key={tx.id}
+                  style={[
+                    portalStyles.adminListRow,
+                    isDark && { backgroundColor: 'rgba(15, 23, 42, 0.75)', borderColor: '#334155' },
+                  ]}
+                >
+                  <View style={portalStyles.listItemContent}>
+                    <Text style={[portalStyles.listItemTitle, isDark && { color: '#e2e8f0' }]}>
+                      {tx.studentName || tx.teacherName || tx.courseTitle || 'Unknown'}
+                    </Text>
+                    {tx.courseTitle ? (
+                      <Text style={[portalStyles.listItemMeta, isDark && { color: '#94a3b8' }]}>Course: {tx.courseTitle}</Text>
+                    ) : null}
+                    <Text style={[portalStyles.listItemMeta, isDark && { color: '#94a3b8' }]}>{tx.dateTime || tx.date || '-'}</Text>
+                  </View>
+                  <Text style={[portalStyles.listItemValue, isDark && { color: '#93c5fd' }]}>{formatMoney(tx.amount)}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={[portalStyles.adminSection, { backgroundColor: uiTheme.cardBg, borderColor: uiTheme.cardBorder }]}>
+            <View style={portalStyles.adminSectionStripe} />
+            <Text style={[portalStyles.adminSectionTitle, { color: uiTheme.textPrimary }]}>Recent Activity</Text>
+            {activities.length === 0 ? (
+              <Text style={portalStyles.empty}>No recent activity.</Text>
+            ) : (
+              activities.map((item, idx) => (
+                <View
+                  key={`activity-${idx}`}
+                  style={[
+                    portalStyles.adminListRow,
+                    isDark && { backgroundColor: 'rgba(15, 23, 42, 0.75)', borderColor: '#334155' },
+                  ]}
+                >
+                  <View style={portalStyles.listItemContent}>
+                    <View style={portalStyles.activityHeadRow}>
+                      <View
+                        style={[
+                          portalStyles.activityIconWrap,
+                          isDark && { backgroundColor: 'rgba(30, 58, 138, 0.25)', borderColor: '#334155' },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            String(item?.type || '').toLowerCase().includes('enroll')
+                              ? 'account-plus-outline'
+                              : String(item?.type || '').toLowerCase().includes('message')
+                              ? 'message-text-outline'
+                              : 'history'
+                          }
+                          size={14}
+                          color={isDark ? '#bfdbfe' : '#1d4ed8'}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          portalStyles.activityType,
+                          isDark && { color: '#bfdbfe', backgroundColor: 'rgba(30, 58, 138, 0.25)' },
+                        ]}
+                      >
+                        {item.type || 'EVENT'}
+                      </Text>
+                    </View>
+                    <Text style={[portalStyles.listItemTitle, isDark && { color: '#e2e8f0' }]}>{item.description || '-'}</Text>
+                    <Text style={[portalStyles.listItemMeta, isDark && { color: '#94a3b8' }]}>{formatDateTime(item.time)}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+}

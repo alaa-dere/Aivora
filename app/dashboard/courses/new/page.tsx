@@ -42,6 +42,8 @@ export default function NewCoursePage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -208,6 +210,42 @@ export default function NewCoursePage() {
     }
   };
 
+  const handleGenerateWithAi = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt) {
+      setErrorMsg('Please write a short course idea first');
+      return;
+    }
+
+    setAiGenerating(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/courses/ai-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.draft) {
+        throw new Error(data?.message || 'Failed to generate with AI');
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        title: String(data.draft.title || prev.title),
+        description: String(data.draft.description || prev.description),
+        durationWeeks: String(data.draft.durationWeeks ?? prev.durationWeeks),
+        price: String(data.draft.price ?? prev.price),
+        teacherSharePct: String(data.draft.teacherSharePct ?? prev.teacherSharePct),
+        status: (data.draft.status || prev.status) as CourseStatus,
+      }));
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to generate course draft');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur p-5 shadow-sm mb-6">
@@ -249,6 +287,23 @@ export default function NewCoursePage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Start with the core details that appear on the course card.
                 </p>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+                  <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    placeholder="Example: Beginner Node.js backend course with real projects"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGenerateWithAi}
+                    disabled={aiGenerating}
+                    className="inline-flex items-center justify-center rounded-xl border border-sky-300 bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-200 disabled:opacity-60 disabled:cursor-not-allowed dark:border-sky-800 dark:bg-sky-900/40 dark:text-sky-200 dark:hover:bg-sky-900/60"
+                  >
+                    {aiGenerating ? 'Generating...' : 'Generate with AI'}
+                  </button>
+                </div>
               </div>
 
               <div className="admin-surface flex-1 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">

@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 import {
-  createAdminNotification,
   createStudentNotification,
   createTeacherNotification,
 } from '@/lib/notifications-write';
@@ -164,24 +163,6 @@ async function createQuizNotifications(input: {
     message: baseMessage,
   });
 
-  await createAdminNotification({
-    type: 'course_enroll',
-    title: baseTitle,
-    message: baseMessage,
-    studentId: input.studentId,
-    courseId: input.courseId,
-  });
-
-  const studentBaseType = input.passed ? 'quiz_passed' : 'quiz_failed';
-  await createStudentNotification({
-    studentId: input.studentId,
-    teacherId: input.teacherId,
-    courseId: input.courseId,
-    type: studentBaseType,
-    title: baseTitle,
-    message: baseMessage,
-  });
-
   if (input.issuedCertificateNow) {
     const certTitle = input.issuedCertificateOnRetake
       ? 'Certificate unlocked after retake'
@@ -197,14 +178,6 @@ async function createQuizNotifications(input: {
       type: 'quiz_certificate',
       title: certTitle,
       message: certMessage,
-    });
-
-    await createAdminNotification({
-      type: 'course_enroll',
-      title: certTitle,
-      message: certMessage,
-      studentId: input.studentId,
-      courseId: input.courseId,
     });
 
     await createStudentNotification({
@@ -631,3 +604,4 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 }
+

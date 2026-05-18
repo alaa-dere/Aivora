@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
 import { FaGoogle, FaGithub } from "react-icons/fa";
+import {
+  API_ROUTES,
+  buildLoginPayload,
+  buildRegisterPayload,
+  validateAuthInput,
+} from "@aivora/shared";
 
 type Props = {
   open: boolean;
@@ -51,15 +57,31 @@ export default function HomeAuthModal({ open, onClose, nextUrl }: Props) {
     setLoading(true);
 
     try {
+      const inputValidation = validateAuthInput({
+        email,
+        password,
+        fullName,
+        requireFullName: !isLogin,
+      });
+      const { normalizedEmail, normalizedPassword, normalizedFullName } = inputValidation.values;
+
+      if (!inputValidation.ok) {
+        setErr(inputValidation.message);
+        setLoading(false);
+        return;
+      }
+
       if (!isLogin) {
-        const registerRes = await fetch("/api/auth/register", {
+        const registerRes = await fetch(API_ROUTES.auth.register, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName: fullName.trim(),
-            email: email.trim(),
-            password: password.trim(),
-          }),
+          body: JSON.stringify(
+            buildRegisterPayload({
+              fullName: normalizedFullName,
+              email: normalizedEmail,
+              password: normalizedPassword,
+            })
+          ),
         });
 
         const registerData = await registerRes.json();
@@ -71,8 +93,8 @@ export default function HomeAuthModal({ open, onClose, nextUrl }: Props) {
         }
 
         const signInResult = await signIn("credentials", {
-          email: email.trim(),
-          password: password.trim(),
+          email: normalizedEmail,
+          password: normalizedPassword,
           redirect: false,
         });
 
@@ -84,18 +106,20 @@ export default function HomeAuthModal({ open, onClose, nextUrl }: Props) {
         }
 
         try {
-          await fetch("/api/auth/login", {
+          await fetch(API_ROUTES.auth.login, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+            body: JSON.stringify(
+              buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+            ),
           });
         } catch (err) {
           console.error("Legacy login cookie set failed:", err);
         }
       } else {
         const result = await signIn("credentials", {
-          email: email.trim(),
-          password: password.trim(),
+          email: normalizedEmail,
+          password: normalizedPassword,
           redirect: false,
         });
 
@@ -106,10 +130,12 @@ export default function HomeAuthModal({ open, onClose, nextUrl }: Props) {
         }
 
         try {
-          await fetch("/api/auth/login", {
+          await fetch(API_ROUTES.auth.login, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+            body: JSON.stringify(
+              buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+            ),
           });
         } catch (err) {
           console.error("Legacy login cookie set failed:", err);

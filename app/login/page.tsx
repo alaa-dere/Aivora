@@ -6,6 +6,14 @@ import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import {
+  API_ROUTES,
+  buildLoginPayload,
+  buildRegisterPayload,
+  isValidEmail,
+  normalizeEmail,
+  validateAuthInput,
+} from "@aivora/shared";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -29,6 +37,7 @@ export default function AuthPage() {
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [savedCredentials, setSavedCredentials] = useState<Record<string, string>>({});
   const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const saveBrowserCredential = async (emailValue: string, passwordValue: string) => {
     try {
       if (
@@ -74,6 +83,15 @@ export default function AuthPage() {
     } catch {
       // ignore storage errors
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
 
   const saveLocalCredential = (emailValue: string, passwordValue: string) => {
@@ -140,7 +158,7 @@ useEffect(() => {
     return;
   }
 
-  fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+  fetch(API_ROUTES.auth.checkByEmail(email))
     .then((r) => r.json())
     .then(async (data) => {
       if (data.exists) {
@@ -172,7 +190,7 @@ useEffect(() => {
       return;
     }
 
-    fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+    fetch(API_ROUTES.auth.checkByEmail(email))
       .then((r) => r.json())
       .then(async (data) => {
         if (!data.exists) {
@@ -206,28 +224,43 @@ useEffect(() => {
     }
   }, [params]);
 
- async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   e.preventDefault();
   setErr("");
   setSuccess("");
   setLoading(true);
 
   try {
+    const fullNameCandidate = fullName.trim() || session?.user?.name || "";
+    const inputValidation = validateAuthInput({
+      email,
+      password,
+      fullName: fullNameCandidate,
+      requireFullName: !isLogin,
+    });
+    const { normalizedEmail, normalizedPassword, normalizedFullName } = inputValidation.values;
+
+    if (!inputValidation.ok) {
+      setErr(inputValidation.message);
+      setLoading(false);
+      return;
+    }
+
     // ─── حالة التسجيل (Sign Up) ───
     if (!isLogin) {
       // 1. جاء المستخدم من OAuth (Google/GitHub) ويُكمل البيانات
       if (social === "true" && session?.user) {
         // نرسل طلب لإكمال الحساب بدون كلمة مرور
-        const completeRes = await fetch("/api/auth/social-complete", {
+        const completeRes = await fetch(API_ROUTES.auth.socialComplete, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName: fullName.trim() || session.user.name || "",
-            password: password.trim(),
-            email: email.trim(),
-            // يمكنك إضافة حقول أخرى إذا أردت (مثل: phone, preferredRole, etc.)
-            // role: selectedRole || "student",
-          }),
+          body: JSON.stringify(
+            buildRegisterPayload({
+              fullName: normalizedFullName,
+              email: normalizedEmail,
+              password: normalizedPassword,
+            })
+          ),
         });
 
         const completeData = await completeRes.json();
@@ -249,14 +282,16 @@ useEffect(() => {
       }
 
       // 2. تسجيل عادي جديد (Credentials) → يحتاج اسم + إيميل + كلمة مرور
-      const registerRes = await fetch("/api/auth/register", {
+      const registerRes = await fetch(API_ROUTES.auth.register, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password: password.trim(),
-        }),
+        body: JSON.stringify(
+          buildRegisterPayload({
+            fullName: normalizedFullName,
+            email: normalizedEmail,
+            password: normalizedPassword,
+          })
+        ),
       });
 
       const registerData = await registerRes.json();
@@ -269,8 +304,8 @@ useEffect(() => {
 
       // بعد التسجيل الناجح → نسجل الدخول تلقائيًا
       const signInResult = await signIn("credentials", {
-        email: email.trim(),
-        password: password.trim(),
+        email: normalizedEmail,
+        password: normalizedPassword,
         redirect: false,
       });
 
@@ -283,21 +318,23 @@ useEffect(() => {
 
       // Ensure legacy session cookie is set for middleware compatibility
       try {
-        await fetch("/api/auth/login", {
+        await fetch(API_ROUTES.auth.login, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+          body: JSON.stringify(
+            buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+          ),
         });
       } catch (err) {
         console.error("Legacy login cookie set failed:", err);
       }
 
       // جلب الجلسة الجديدة لمعرفة الدور
-      const sessionRes = await fetch("/api/auth/session");
+      const sessionRes = await fetch(API_ROUTES.auth.session);
       const currentSession = await sessionRes.json();
       const role = currentSession?.user?.role?.toLowerCase() || "student";
-      saveLocalCredential(email.trim(), password.trim());
-      await saveBrowserCredential(email.trim(), password.trim());
+      saveLocalCredential(normalizedEmail, normalizedPassword);
+      await saveBrowserCredential(normalizedEmail, normalizedPassword);
       setSuccess("Account created successfully. Redirecting...");
       window.setTimeout(() => {
         router.push(getRedirectTarget(role));
@@ -308,8 +345,8 @@ useEffect(() => {
 
     // ─── حالة تسجيل الدخول (Sign In) ───
     const result = await signIn("credentials", {
-      email: email.trim(),
-      password: password.trim(),
+      email: normalizedEmail,
+      password: normalizedPassword,
       redirect: false,
     });
 
@@ -325,21 +362,23 @@ useEffect(() => {
 
     // Ensure legacy session cookie is set for middleware compatibility
     try {
-      await fetch("/api/auth/login", {
+      await fetch(API_ROUTES.auth.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify(
+          buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+        ),
       });
     } catch (err) {
       console.error("Legacy login cookie set failed:", err);
     }
 
     // جلب الجلسة بعد تسجيل الدخول الناجح
-    const sessionRes = await fetch("/api/auth/session");
+    const sessionRes = await fetch(API_ROUTES.auth.session);
     const currentSession = await sessionRes.json();
     const role = currentSession?.user?.role?.toLowerCase() || "student";
-    saveLocalCredential(email.trim(), password.trim());
-    await saveBrowserCredential(email.trim(), password.trim());
+    saveLocalCredential(normalizedEmail, normalizedPassword);
+    await saveBrowserCredential(normalizedEmail, normalizedPassword);
     setSuccess("Login successful. Redirecting...");
     window.setTimeout(() => {
       router.push(getRedirectTarget(role));
@@ -376,7 +415,7 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-[#003153] md:bg-white flex items-center justify-center relative overflow-hidden">
       {/* الدائرة الخلفية - كما هي */}
       <motion.div
         animate={{
@@ -384,7 +423,7 @@ useEffect(() => {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -429,7 +468,7 @@ useEffect(() => {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -448,16 +487,26 @@ useEffect(() => {
 
       {/* الفورم */}
       <div className="w-full max-w-6xl relative z-10 px-4 sm:px-6 md:px-10 lg:px-12">
-        <div className="relative min-h-[80vh] flex items-center">
+        <div className="md:hidden flex justify-center mt-12 mb-2">
+          <Image
+            src="/aivora2.png"
+            alt="Aivora Logo"
+            width={180}
+            height={180}
+            className="w-40 h-40 object-contain drop-shadow-xl"
+            priority
+          />
+        </div>
+        <div className="relative min-h-[80vh] flex items-start md:items-center -mt-2 md:mt-0">
           <motion.div
             animate={{
-              marginLeft: isLogin ? "50%" : "0%",
-              marginRight: isLogin ? "0%" : "50%",
+              marginLeft: isMobile ? "0%" : isLogin ? "50%" : "0%",
+              marginRight: isMobile ? "0%" : isLogin ? "0%" : "50%",
             }}
             transition={{ duration: 1.2, ease: [0.25, 0.8, 0.25, 1] }}
             className="w-full md:w-1/2 flex justify-center"
           >
-            <div className="w-full max-w-md bg-blue/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
+            <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
               <div className="text-center mb-6 md:mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
                   {isLogin ? "Sign In" : "Create Account"}
@@ -591,17 +640,22 @@ useEffect(() => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!email) {
+                        const normalizedEmail = normalizeEmail(email);
+                        if (!normalizedEmail) {
                           alert("Please enter your email to receive reset link");
+                          return;
+                        }
+                        if (!isValidEmail(normalizedEmail)) {
+                          alert("Please enter a valid email address");
                           return;
                         }
 
                         try {
                           setLoading(true);
-                          const res = await fetch('/api/auth/forgot-password', {
+                          const res = await fetch(API_ROUTES.auth.forgotPassword, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: email.trim() }),
+                            body: JSON.stringify({ email: normalizedEmail }),
                           });
 
                           const data = await res.json();

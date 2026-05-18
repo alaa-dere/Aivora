@@ -1,29 +1,68 @@
 {
   "expo": {
-    "name": "Aivora-mobile",
+    "name": "Aivora",
     "slug": "Aivora-mobile",
+    "scheme": "aivora",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo2.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0d3b66"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Aivora to use your camera to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Allow Aivora to access your photos to choose a profile photo.",
+        "NSPhotoLibraryAddUsageDescription": "Allow Aivora to save selected profile photos when needed.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0d3b66"
+      },
+      "bundleIdentifier": "com.batool11.Aivoramobile"
     },
     "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0d3b66"
+      },
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0d3b66",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.batool11.Aivoramobile"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Aivora to access your photos to choose a profile photo.",
+          "cameraPermission": "Allow Aivora to use your camera to take a profile photo."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "311be7f9-58d7-429e-8a19-2ecf0ff63d8c"
+      }
     }
   }
 }

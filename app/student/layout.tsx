@@ -1,4 +1,4 @@
-// app/student/layout.tsx
+﻿// app/student/layout.tsx
 'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
@@ -13,6 +13,7 @@ import {
   HomeIcon,
   UserCircleIcon,
   HeartIcon,
+  CalendarDaysIcon as CalendarOutlineIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -22,6 +23,11 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
+import {
+  API_ROUTES,
+  normalizeStudentProfileResponse,
+} from '@aivora/shared';
+import { getStudentNotificationHref } from '@/lib/notification-links';
 
 const headerLinks = [
   { name: 'My Courses', href: '/student/my-courses' },
@@ -43,7 +49,18 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+    {
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+      read: boolean;
+      courseId?: string | null;
+      certificateId?: string | null;
+      conversationId?: string | null;
+      teacherId?: string | null;
+    }[]
   >([]);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -56,7 +73,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
  const handleLogout = async () => {
   try {
     await Promise.all([
-      fetch('/api/auth/logout', { method: 'POST' }),
+      fetch(API_ROUTES.auth.logout, { method: 'POST' }),
       signOut({ redirect: false }),
     ]);
     router.replace('/login');
@@ -70,14 +87,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     async function loadProfile() {
       try {
-        const res = await fetch('/api/student/profile', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.profile, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok && mounted) {
-          setProfile({
-            fullName: data?.student?.fullName || 'Student User',
-            email: data?.student?.email || 'student@aivora.com',
-            imageUrl: data?.student?.imageUrl || null,
-          });
+          setProfile(normalizeStudentProfileResponse(data));
         }
       } catch {
         if (mounted) {
@@ -102,7 +115,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     const loadMessageCount = async () => {
       try {
-        const res = await fetch('/api/student/chat/teachers?unreadCount=1', {
+        const res = await fetch(API_ROUTES.student.chatTeachersUnreadCount, {
           cache: 'no-store',
         });
         const data = await res.json();
@@ -125,7 +138,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     let mounted = true;
     const loadNotificationCount = async () => {
       try {
-        const res = await fetch('/api/student/dashboard?notifications=count', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.dashboardNotificationsCount, { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok || !mounted) return;
         setNotificationCount(Number(data.total || 0));
@@ -147,16 +160,35 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   const loadNotifications = async () => {
     try {
-      const res = await fetch('/api/student/dashboard?notifications=1', { cache: 'no-store' });
+      const res = await fetch(API_ROUTES.student.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      const items = (data.notifications || []).map((n: { id: string; title: string; message: string; createdAt: string; readAt?: string | null }) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        createdAt: n.createdAt,
-        read: Boolean(n.readAt),
-      }));
+      const items = (data.notifications || []).map(
+        (n: {
+          id: string;
+          type?: string;
+          title: string;
+          message: string;
+          createdAt: string;
+          readAt?: string | null;
+          read?: boolean;
+          courseId?: string | null;
+          certificateId?: string | null;
+          conversationId?: string | null;
+          teacherId?: string | null;
+        }) => ({
+          id: n.id,
+          type: String(n.type || 'live_session'),
+          title: n.title,
+          message: n.message,
+          createdAt: n.createdAt,
+          read: Boolean(n.readAt) || Boolean(n.read),
+          courseId: n.courseId || null,
+          certificateId: n.certificateId || null,
+          conversationId: n.conversationId || null,
+          teacherId: n.teacherId || null,
+        })
+      );
       setNotificationItems(items);
     } catch (error) {
       console.error('Failed to load student notifications', error);
@@ -200,7 +232,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
-      {/* Header - نفس ستايل الأدمن */}
+      {/* Header - Ù†ÙØ³ Ø³ØªØ§ÙŠÙ„ Ø§Ù„Ø£Ø¯Ù…Ù† */}
       <header className="sticky top-0 z-30 px-4 pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center">
@@ -272,11 +304,13 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     </div>
                   ) : (
                     notificationItems.map((n) => (
-                      <div
+                      <Link
                         key={n.id}
+                        href={getStudentNotificationHref(n)}
+                        onClick={() => setNotificationOpen(false)}
                         className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                        }`}
+                          ''
+                        } block hover:bg-slate-50 dark:hover:bg-slate-800/60`}
                       >
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                           {n.title}
@@ -287,7 +321,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>
@@ -379,6 +413,14 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 >
                   <HeartIcon className="w-4 h-4 text-slate-500" />
                   Favorite Courses
+                </Link>
+                <Link
+                  href="/student/calendar"
+                  onClick={() => setAccountOpen(false)}
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                >
+                  <CalendarOutlineIcon className="w-4 h-4 text-slate-500" />
+                  Calendar
                 </Link>
                 <button
                   onClick={() => {
@@ -504,3 +546,5 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     </div>
   );
 }
+
+

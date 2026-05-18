@@ -1,24 +1,38 @@
-'use client';
+﻿'use client';
 
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
+import LessonContentView from '@/components/lesson-content-view';
 
 type Lesson = {
   id: string;
   title: string;
   description?: string;
   content?: string;
+  quizQuestions?: Array<{
+    id?: string;
+    questionType: 'multiple_choice' | 'written' | 'true_false';
+    questionText: string;
+    options?: string[];
+    correctOptionIndex?: number;
+  }>;
   videoUrl?: string;
   durationMinutes: number;
   completed: boolean;
   unlocked: boolean;
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
 };
 
 type Module = {
@@ -184,6 +198,9 @@ export default function CoursePlayerPage() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
   const [showCertPrompt, setShowCertPrompt] = useState(false);
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [showModulePicker, setShowModulePicker] = useState(false);
+  const [showLessonPicker, setShowLessonPicker] = useState(false);
   const [liveSubmissionByLesson, setLiveSubmissionByLesson] = useState<
     Record<string, LiveEditorSubmission>
   >({});
@@ -259,6 +276,17 @@ export default function CoursePlayerPage() {
   }, [allLessons, requestedLessonId, lastActiveLessonId]);
 
   useEffect(() => {
+    if (!modules.length || !selectedLessonId) return;
+    const selectedLessonModule = modules.find((m) =>
+      m.lessons.some((lesson) => lesson.id === selectedLessonId)
+    );
+    if (!selectedLessonModule) return;
+    setExpandedModuleIds((prev) =>
+      prev.includes(selectedLessonModule.id) ? prev : [...prev, selectedLessonModule.id]
+    );
+  }, [modules, selectedLessonId]);
+
+  useEffect(() => {
     if (!selectedLessonId) return;
     setLessonInlineError(null);
     try {
@@ -298,30 +326,64 @@ export default function CoursePlayerPage() {
 
   const parseLessonContent = (content: string) => {
     const segments: { type: 'text' | 'code' | 'video' | 'starter' | 'answer'; value: string }[] = [];
-    const regex =
-      /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}|\{\{\s*(?:answer|expected)\s*:\s*([\s\S]*?)\}\}/gi;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
+    const tokenRegex = /```|\{\{\s*video\s*:|\{\{\s*starter\s*:|\{\{\s*(?:answer|expected)\s*:/gi;
+    let cursor = 0;
 
-    while ((match = regex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    while (cursor < content.length) {
+      tokenRegex.lastIndex = cursor;
+      const match = tokenRegex.exec(content);
+      if (!match) {
+        segments.push({ type: 'text', value: content.slice(cursor) });
+        break;
       }
-      if (match[1] !== undefined) {
-        segments.push({ type: 'code', value: match[1].trim() });
-      } else if (match[2] !== undefined) {
-        segments.push({ type: 'video', value: match[2].trim() });
-      } else if (match[3] !== undefined) {
-        segments.push({ type: 'starter', value: match[3].trim() });
-      } else if (match[4] !== undefined) {
-        segments.push({ type: 'answer', value: match[4].trim() });
+
+      const tokenStart = match.index;
+      const token = match[0];
+      if (tokenStart > cursor) {
+        segments.push({ type: 'text', value: content.slice(cursor, tokenStart) });
       }
-      lastIndex = regex.lastIndex;
+
+      if (token === '```') {
+        const codeStart = tokenRegex.lastIndex;
+        const codeEnd = content.indexOf('```', codeStart);
+        if (codeEnd === -1) {
+          segments.push({ type: 'text', value: content.slice(tokenStart) });
+          break;
+        }
+
+        let codeValue = content.slice(codeStart, codeEnd);
+        const newLineMatch = codeValue.match(/\r?\n/);
+        if (newLineMatch && newLineMatch.index !== undefined) {
+          const firstLine = codeValue.slice(0, newLineMatch.index).trim();
+          if (/^[a-zA-Z0-9_+-]+$/.test(firstLine)) {
+            codeValue = codeValue.slice(newLineMatch.index + newLineMatch[0].length);
+          }
+        }
+
+        segments.push({ type: 'code', value: codeValue.trim() });
+        cursor = codeEnd + 3;
+        continue;
+      }
+
+      const valueStart = tokenRegex.lastIndex;
+      const valueEnd = content.indexOf('}}', valueStart);
+      if (valueEnd === -1) {
+        segments.push({ type: 'text', value: content.slice(tokenStart) });
+        break;
+      }
+
+      const value = content.slice(valueStart, valueEnd).trim();
+      const normalizedToken = token.toLowerCase();
+      if (normalizedToken.includes('video')) {
+        segments.push({ type: 'video', value });
+      } else if (normalizedToken.includes('starter')) {
+        segments.push({ type: 'starter', value });
+      } else {
+        segments.push({ type: 'answer', value });
+      }
+      cursor = valueEnd + 2;
     }
 
-    if (lastIndex < content.length) {
-      segments.push({ type: 'text', value: content.slice(lastIndex) });
-    }
     return segments.filter((segment) => segment.value.trim() !== '' && segment.type !== 'answer');
   };
 
@@ -445,7 +507,7 @@ export default function CoursePlayerPage() {
         <p className="text-sm text-red-500">{error}</p>
       ) : (
         <>
-          <div className="mb-4">
+          <div className="relative z-40 mb-4">
             <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-3 sm:px-4 py-2 overflow-visible">
             <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:gap-4 min-h-[58px]">
               <div>
@@ -506,38 +568,85 @@ export default function CoursePlayerPage() {
               </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-                <select
-                  value={selectedModuleId}
-                  onChange={(e) => {
-                    const nextModule = modules.find((m) => m.id === e.target.value);
-                    if (!nextModule) return;
-                    const firstUnlockedLesson = nextModule.lessons.find((l) => l.unlocked);
-                    const firstLesson = nextModule.lessons[0];
-                    const target = firstUnlockedLesson || firstLesson;
-                    if (target) setSelectedLessonId(target.id);
-                  }}
-                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  {modules.map((m, idx) => (
-                    <option key={m.id} value={m.id}>
-                      {`CH${idx + 1}: ${m.title}`}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex flex-wrap items-center gap-4 justify-start lg:justify-end">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModulePicker((prev) => !prev);
+                      setShowLessonPicker(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    aria-expanded={showModulePicker}
+                  >
+                    <span>Chapters</span>
+                    {showModulePicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+                  </button>
+                  {showModulePicker && (
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
+                      {modules.map((m, idx) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            const firstUnlockedLesson = m.lessons.find((l) => l.unlocked);
+                            const firstLesson = m.lessons[0];
+                            const target = firstUnlockedLesson || firstLesson;
+                            if (target) setSelectedLessonId(target.id);
+                            setShowModulePicker(false);
+                          }}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            m.id === selectedModuleId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                          }`}
+                        >
+                          {`CH${idx + 1}: ${m.title}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                <select
-                  value={selectedLessonId || ''}
-                  onChange={(e) => setSelectedLessonId(e.target.value)}
-                  className="portal-surface w-56 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  {lessonsInSelectedModule.map((lesson, idx) => (
-                    <option key={lesson.id} value={lesson.id} disabled={!lesson.unlocked}>
-                      {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
-                    </option>
-                  ))}
-                </select>
-
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLessonPicker((prev) => !prev);
+                      setShowModulePicker(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    aria-expanded={showLessonPicker}
+                  >
+                    <span>Lessons</span>
+                    {showLessonPicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+                  </button>
+                  {showLessonPicker && (
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
+                      {lessonsInSelectedModule.map((lesson, idx) => (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          onClick={() => {
+                            if (!lesson.unlocked) return;
+                            setSelectedLessonId(lesson.id);
+                            setShowLessonPicker(false);
+                          }}
+                          disabled={!lesson.unlocked}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            lesson.id === selectedLessonId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : lesson.unlocked
+                              ? 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             </div>
@@ -549,23 +658,59 @@ export default function CoursePlayerPage() {
           <div className="space-y-4">
             <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
               <h2 className="font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
-              <div className="space-y-2">
-                {allLessons.map((lesson) => (
-                  <button
-                    key={lesson.id}
-                    onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
-                    disabled={!lesson.unlocked}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      lesson.unlocked
-                        ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-gray-800 dark:text-white">{lesson.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {lesson.completed ? 'Completed' : lesson.unlocked ? 'Unlocked' : 'Locked'}
-                    </p>
-                  </button>
+              <div className="space-y-3">
+                {modules.map((module, moduleIndex) => (
+                  <div key={module.id} className="rounded-lg border border-blue-100 dark:border-blue-800">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedModuleIds((prev) =>
+                          prev.includes(module.id)
+                            ? prev.filter((id) => id !== module.id)
+                            : [...prev, module.id]
+                        )
+                      }
+                      className="w-full px-3 py-2 flex items-center justify-between text-left bg-blue-50/40 dark:bg-blue-900/10 rounded-lg"
+                    >
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                        {`CH${moduleIndex + 1}: ${module.title}`}
+                      </span>
+                      {expandedModuleIds.includes(module.id) ? (
+                        <ChevronDownIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      ) : (
+                        <ChevronRightIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      )}
+                    </button>
+                    {expandedModuleIds.includes(module.id) && (
+                      <div className="p-2 space-y-2">
+                        {module.lessons.map((lesson, lessonIndex) => {
+                          const active = lesson.id === selectedLessonId;
+                          return (
+                            <button
+                              key={lesson.id}
+                              onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
+                              disabled={!lesson.unlocked}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                active
+                                  ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                                  : lesson.unlocked
+                                  ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <p className="text-sm font-medium text-gray-800 dark:text-white">
+                                {`L${lessonIndex + 1}: ${lesson.title}`}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
+                                {!lesson.unlocked && <LockClosedIcon className="w-3 h-3" />}
+                                {lesson.completed ? 'Completed' : lesson.unlocked ? 'Click to open' : 'Locked'}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -578,35 +723,39 @@ export default function CoursePlayerPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Ask about current lessons and course topics.
               </p>
-              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-3 h-64 overflow-y-auto space-y-2">
-                {assistantMessages.map((msg, idx) => (
-                  <div
-                    key={`${msg.role}-${idx}`}
-                    className={`rounded-lg px-3 py-2 text-xs ${
-                      msg.role === 'student'
-                        ? 'bg-blue-600 text-white ml-6'
-                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                ))}
-                {assistantLoading && (
-                  <div className="rounded-lg px-3 py-2 text-xs bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
-                    Thinking...
-                  </div>
-                )}
-              </div>
+                <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-4 h-[30rem] overflow-y-auto space-y-3">
+                  {assistantMessages.map((msg, idx) => (
+                    <div
+                      key={`${msg.role}-${idx}`}
+                      className={`rounded-lg px-3 py-2 text-xs ${
+                        msg.role === 'student'
+                          ? 'bg-blue-600 text-white ml-6'
+                          : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                    </div>
+                  ))}
+                  {assistantLoading && (
+                    <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                      Thinking...
+                    </div>
+                  )}
+                </div>
               <div className="mt-3 flex gap-2">
-                <input
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') askAssistant();
-                  }}
-                  placeholder="Ask about this lesson..."
-                  className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
+                  <textarea
+                    value={assistantInput}
+                    onChange={(e) => setAssistantInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        askAssistant();
+                      }
+                    }}
+                    placeholder="Ask about this lesson..."
+                    rows={2}
+                    className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  />
                 <button
                   onClick={askAssistant}
                   disabled={assistantLoading || !assistantInput.trim()}
@@ -636,68 +785,15 @@ export default function CoursePlayerPage() {
                   {selectedLesson.title}
                 </h2>
 
-                <div className="space-y-4">
-                  {parseLessonContent(selectedLesson.content || '').map((seg, idx) => {
-                    if (seg.type === 'code') {
-                      return (
-                        <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-                          <code>{seg.value}</code>
-                        </pre>
-                      );
-                    }
-                    if (seg.type === 'starter') {
-                      if (!selectedLesson.enableLiveEditor) {
-                        return (
-                          <div key={idx} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-200">
-                            Live editor is disabled for this lesson.
-                          </div>
-                        );
-                      }
-                      if (selectedLesson.liveEditorLanguage === 'javascript') {
-                        return (
-                          <LiveJsEditor
-                            key={idx}
-                            initialCode={seg.value}
-                            onSubmissionChange={handleLiveSubmissionChange}
-                          />
-                        );
-                      }
-                      if (selectedLesson.liveEditorLanguage === 'html_css') {
-                        return (
-                          <LiveHtmlPreview
-                            key={idx}
-                            initialCode={seg.value}
-                            onSubmissionChange={handleLiveSubmissionChange}
-                          />
-                        );
-                      }
-                      return (
-                        <LivePythonEditor
-                          key={idx}
-                          initialCode={seg.value}
-                          onSubmissionChange={handleLiveSubmissionChange}
-                        />
-                      );
-                    }
-                    if (seg.type === 'video') {
-                      const url = normalizeVideoUrl(seg.value);
-                      return (
-                        <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                          <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/80">
-                            <iframe
-                              src={url}
-                              className="h-full w-full"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              title="Lesson video"
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-                    return <div key={idx}>{renderMarkdownText(seg.value)}</div>;
-                  })}
-                </div>
+                <LessonContentView
+                  key={selectedLesson.id}
+                  content={selectedLesson.content || ''}
+                  quizQuestions={selectedLesson.quizQuestions || []}
+                  enableLiveEditor={selectedLesson.enableLiveEditor}
+                  liveEditorLanguage={selectedLesson.liveEditorLanguage || 'python'}
+                  onSubmissionChange={handleLiveSubmissionChange}
+                  starterDisabledMessage="Live editor is disabled for this lesson."
+                />
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400">No lesson available.</p>
@@ -776,6 +872,8 @@ export default function CoursePlayerPage() {
     </div>
   );
 }
+
+
 
 
 

@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Filter, MessageSquare, Trash2 } from 'lucide-react';
+import { getTeacherNotificationHref } from '@/lib/notification-links';
 
-type NotificationType = 'course_enroll' | 'admin_message' | 'student_message';
+type NotificationType = 'course_enroll' | 'admin_message' | 'student_message' | 'teacher_notification';
 
 type NotificationItem = {
   id: string;
@@ -15,6 +16,7 @@ type NotificationItem = {
   read: boolean;
   conversationId?: string;
   certificateId?: string | null;
+  courseId?: string | null;
 };
 
 type DashboardNotification = {
@@ -26,6 +28,7 @@ type DashboardNotification = {
   read?: boolean;
   conversationId?: string;
   certificateId?: string | null;
+  courseId?: string | null;
 };
 
 function getTypeIcon(type: NotificationType) {
@@ -73,6 +76,7 @@ export default function TeacherNotificationsPage() {
           read: readSet.has(n.id) || Boolean(n.read),
           conversationId: n.conversationId || undefined,
           certificateId: n.certificateId || null,
+          courseId: n.courseId || null,
         }));
         setItems(mapped.filter((n) => !deletedSet.has(n.id)));
       } catch (error: unknown) {
@@ -296,9 +300,7 @@ export default function TeacherNotificationsPage() {
           {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 md:p-4 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
-                !notification.read ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''
-              }`}
+              className="p-3 md:p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
               <div className="flex gap-3">
                 <div
@@ -340,6 +342,12 @@ export default function TeacherNotificationsPage() {
                         View certificate
                       </Link>
                     )}
+                    <Link
+                      href={getTeacherNotificationHref(notification)}
+                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open
+                    </Link>
                     {!notification.read && (
                       <button
                         onClick={() =>
@@ -381,3 +389,7 @@ export default function TeacherNotificationsPage() {
     </div>
   );
 }
+
+
+
+

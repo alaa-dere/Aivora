@@ -263,7 +263,7 @@ export default function AdminTeachersPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
@@ -349,6 +349,67 @@ export default function AdminTeachersPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden p-2.5 space-y-2.5">
+          {loading ? (
+            <div className="px-3 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">Loading...</div>
+          ) : filteredTeachers.length === 0 ? (
+            <div className="px-3 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">
+              No teachers found. Try changing filters or add a new teacher.
+            </div>
+          ) : (
+            filteredTeachers.map((teacher) => (
+              <div
+                key={`mobile-${teacher.id}`}
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+              >
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{teacher.fullName}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">{teacher.email}</p>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium border ${
+                      teacher.status === 'active'
+                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+                    }`}
+                  >
+                    {teacher.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {new Date(teacher.createdAt).toLocaleDateString('en-US')}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Link
+                    href={`/dashboard/teachers/${teacher.id}`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    View
+                  </Link>
+
+                  <button
+                    onClick={() => openEditModal(teacher)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <PencilSquareIcon className="w-4 h-4" />
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => openDeleteModal(teacher)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

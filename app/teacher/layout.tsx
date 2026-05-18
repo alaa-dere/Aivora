@@ -1,4 +1,4 @@
-// app/teacher/layout.tsx
+﻿// app/teacher/layout.tsx
 'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
@@ -30,6 +30,12 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
+import {
+  API_ROUTES,
+  normalizeNotificationList,
+  normalizeTeacherProfileResponse,
+} from '@aivora/shared';
+import { getTeacherNotificationHref } from '@/lib/notification-links';
 
 const menuItems = [
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
@@ -59,7 +65,17 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'course_enroll' | 'admin_message' | 'student_message'>('all');
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; type: string; title: string; message: string; createdAt: string; read: boolean }[]
+    {
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+      read: boolean;
+      conversationId?: string | null;
+      courseId?: string | null;
+      certificateId?: string | null;
+    }[]
   >([]);
   const [profile, setProfile] = useState<{
     fullName: string;
@@ -67,12 +83,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     imageUrl?: string | null;
   } | null>(null);
   const { theme, setTheme } = useTheme();
-
-  // لتجنب مشكلة hydration مع الثيم
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -103,9 +113,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const loadCount = async () => {
       try {
         const [notifRes, adminMsgRes, studentMsgRes] = await Promise.all([
-          fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' }),
-          fetch('/api/teacher/messages?unreadCount=1', { cache: 'no-store' }),
-          fetch('/api/teacher/chat/students?unreadCount=1', { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.dashboardNotificationsAll, { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.messagesUnreadCount, { cache: 'no-store' }),
+          fetch(API_ROUTES.teacher.chatStudentsUnreadCount, { cache: 'no-store' }),
         ]);
         const notifData = await notifRes.json();
         const adminMsgData = await adminMsgRes.json();
@@ -119,13 +129,13 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         const deletedSet = new Set<string>(
           JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
         );
-        const unreadNotifications = (notifData.notifications || [])
-          .map((n: { id: string; read?: boolean }) => ({
+        const unreadNotifications = normalizeNotificationList(notifData.notifications)
+          .map((n) => ({
             id: n.id,
-            read: readSet.has(n.id) || Boolean(n.read),
+            read: readSet.has(n.id) || n.read,
           }))
-          .filter((n: { id: string; read: boolean }) => !deletedSet.has(n.id))
-          .filter((n: { read: boolean }) => !n.read).length;
+          .filter((n) => !deletedSet.has(n.id))
+          .filter((n) => !n.read).length;
         if (mounted) {
           setNotificationCount(Number(unreadNotifications || 0));
           setMessageCount(totalMessages);
@@ -151,14 +161,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
     const loadProfile = async () => {
       try {
-        const res = await fetch('/api/teacher/profile', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.teacher.profile, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok && mounted) {
-          setProfile({
-            fullName: data?.teacher?.fullName || 'Teacher User',
-            email: data?.teacher?.email || 'teacher@aivora.com',
-            imageUrl: data?.teacher?.imageUrl || null,
-          });
+          setProfile(normalizeTeacherProfileResponse(data));
         }
       } catch {
         if (mounted) {
@@ -184,7 +190,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   async function loadNotifications() {
     try {
-      const res = await fetch('/api/teacher/dashboard?notifications=all', { cache: 'no-store' });
+      const res = await fetch(API_ROUTES.teacher.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
       const readSet = new Set<string>(
@@ -193,13 +199,16 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       const deletedSet = new Set<string>(
         JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
       );
-      const allItems = (data.notifications || []).map((n: { id: string; type?: string; title: string; message: string; createdAt: string; read?: boolean }) => ({
+      const allItems = (data.notifications || []).map((n: { id: string; type?: string; title: string; message: string; createdAt: string; read?: boolean; conversationId?: string | null; courseId?: string | null; certificateId?: string | null; }) => ({
         id: n.id,
         type: String(n.type || 'course_enroll'),
         title: n.title,
         message: n.message,
         createdAt: n.createdAt,
         read: readSet.has(n.id) || Boolean(n.read),
+        conversationId: n.conversationId || null,
+        courseId: n.courseId || null,
+        certificateId: n.certificateId || null,
       }));
       const items = allItems
         .filter((n: { id: string }) => !deletedSet.has(n.id))
@@ -225,7 +234,7 @@ const router = useRouter();
 const handleLogout = async () => {
   try {
     await Promise.all([
-      fetch('/api/auth/logout', { method: 'POST' }),
+      fetch(API_ROUTES.auth.logout, { method: 'POST' }),
       signOut({ redirect: false }),
     ]);
     router.replace('/login');
@@ -235,13 +244,9 @@ const handleLogout = async () => {
   }
 };
 
-  if (!mounted) {
-    return null; // أو skeleton loader إذا حابب
-  }
-
   return (
     <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
-      {/* ──────────────── Topbar ──────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <header className="sticky top-0 z-30 px-4 pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center">
@@ -334,11 +339,13 @@ const handleLogout = async () => {
                     </div>
                   ) : (
                     notificationItems.map((n) => (
-                      <div
+                      <Link
                         key={n.id}
+                        href={getTeacherNotificationHref(n)}
+                        onClick={() => setNotificationOpen(false)}
                           className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                            n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                          }`}
+                            ''
+                          } block hover:bg-slate-50 dark:hover:bg-slate-800/60`}
                         >
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {n.title}
@@ -349,7 +356,7 @@ const handleLogout = async () => {
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>
@@ -444,7 +451,7 @@ const handleLogout = async () => {
         </div>
       </header>
 
-      {/* ──────────────── Sidebar + Content ──────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sidebar + Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex">
         {/* Sidebar */}
         <aside
@@ -657,3 +664,5 @@ const handleLogout = async () => {
     </div>
   );
 }
+
+

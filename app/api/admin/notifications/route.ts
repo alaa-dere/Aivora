@@ -11,6 +11,7 @@ type NotificationRow = RowDataPacket & {
   message: string;
   createdAt: string;
   readAt: string | null;
+  studentId: string | null;
   courseId: string | null;
   courseTitle: string | null;
   certificateId: string | null;
@@ -46,6 +47,7 @@ export async function GET(req: Request) {
         n.message,
         n.createdAt,
         n.readAt,
+        ${useUnified ? 'n.relatedUserId' : 'n.studentId'} AS studentId,
         n.courseId,
         c.title AS courseTitle,
         cert.id AS certificateId
@@ -76,6 +78,7 @@ export async function GET(req: Request) {
         message,
         createdAt: row.createdAt,
         readAt: row.readAt,
+        studentId: row.studentId || null,
         courseId: row.courseId,
         courseTitle: row.courseTitle,
         certificateId: row.certificateId || null,
@@ -124,7 +127,6 @@ export async function PATCH(req: Request) {
         await pool.query(`UPDATE admin_notification SET readAt = NOW() WHERE readAt IS NULL`);
       }
     }
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Admin notifications mark-all error:', error);

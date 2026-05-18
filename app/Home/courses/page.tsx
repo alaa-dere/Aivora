@@ -173,47 +173,47 @@ export default function AllCoursesPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 pt-4">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <Link href="/" className="flex items-center shrink-0">
               <Image
                 src="/alaa.png"
                 alt="Aivora Logo"
                 width={100}
                 height={35}
-                className="h-7 w-auto dark:brightness-100 brightness-25"
+                className="h-6 sm:h-7 w-auto dark:brightness-100 brightness-25"
               />
             </Link>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <SunIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <SunIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 ) : (
-                  <MoonIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 )}
               </button>
 
               <button
                 onClick={toggleLanguage}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle language"
                 title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
               >
-                <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
 
               {status === 'authenticated' ? (
                 <HomeUserMenu isArabic={isArabic} />
               ) : (
                 <Link href="/login">
-                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
                       {isArabic ? 'تسجيل الدخول' : 'Login'}
                     </span>
@@ -227,9 +227,9 @@ export default function AllCoursesPage() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-8 pb-16 px-5 sm:px-6 lg:px-8">
+      <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-8 flex justify-center">
+          <div className="mb-6 sm:mb-8 flex justify-center">
             <div className="w-full max-w-2xl">
               <div className="relative">
                 <input
@@ -237,14 +237,14 @@ export default function AllCoursesPage() {
                   placeholder={isArabic ? 'ابحث عن الدورات...' : 'Search courses...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-sm sm:text-base text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
                 />
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
               </div>
             </div>
           </div>
-          <div className="mb-12 text-center">
-            <p className="mt-4 text-slate-300 text-lg max-w-2xl mx-auto">
+          <div className="mb-8 sm:mb-12 text-center">
+            <p className="mt-3 sm:mt-4 text-slate-300 text-sm sm:text-lg max-w-2xl mx-auto">
               {isArabic
                 ? 'استكشف مجموعتنا الكاملة من الدورات في البرمجة والذكاء الاصطناعي والتصميم والتسويق وغيرها.'
                 : 'Explore our complete collection of courses in programming, AI, design, marketing, and more.'}
@@ -252,19 +252,19 @@ export default function AllCoursesPage() {
           </div>
 
           {loadingCourses ? (
-            <div className="text-center py-20 text-slate-300 text-xl">
+            <div className="text-center py-16 sm:py-20 text-slate-300 text-base sm:text-xl">
               {isArabic ? 'جاري تحميل الدورات...' : 'Loading courses...'}
             </div>
           ) : errorMsg ? (
-            <div className="text-center py-20 text-red-300 text-xl">
+            <div className="text-center py-16 sm:py-20 text-red-300 text-base sm:text-xl">
               {errorMsg}
             </div>
           ) : filteredCourses.length === 0 ? (
-            <div className="text-center py-20 text-slate-300 text-xl">
+            <div className="text-center py-16 sm:py-20 text-slate-300 text-base sm:text-xl">
               {isArabic ? 'لا توجد دورات تطابق بحثك.' : 'No courses found matching your search.'}
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
               {filteredCourses.map((course) => {
                 const rating = Number(course.averageRating || 0);
                 const reviewCount = Number(course.evaluationCount || 0);
@@ -275,7 +275,7 @@ export default function AllCoursesPage() {
                     key={course.id}
                     className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                   >
-                    <div className="relative h-40 overflow-hidden">
+                    <div className="relative h-36 sm:h-40 overflow-hidden">
                       <img
                         src={course.imageUrl || '/default-course.jpg'}
                         alt={course.title}
@@ -289,16 +289,16 @@ export default function AllCoursesPage() {
                       />
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-4 sm:p-4">
                       <p className="text-sm text-blue-200 mb-2 font-medium">
                         {isArabic ? '??????' : 'By'} {course.teacherName}
                       </p>
 
-                      <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                      <h3 className="text-sm sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
                         {course.title}
                       </h3>
 
-                      <p className="text-sm text-slate-300 mb-4 line-clamp-2 min-h-[40px]">
+                      <p className="text-xs sm:text-sm text-slate-300 mb-4 line-clamp-2 min-h-[36px] sm:min-h-[40px]">
                         {course.description}
                       </p>
 
@@ -337,7 +337,7 @@ export default function AllCoursesPage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-black text-blue-300">
+                        <span className="text-lg sm:text-xl font-black text-blue-300">
                           ${course.price}
                         </span>
 
@@ -345,7 +345,7 @@ export default function AllCoursesPage() {
                           <Link
                             href={`/student/my-courses/${course.id}`}
                             onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
                           >
                             {isArabic ? '?? ???????' : 'Enrolled'}
                           </Link>
@@ -353,7 +353,7 @@ export default function AllCoursesPage() {
                           <Link
                             href={`/Home/courses/${course.id}`}
                             onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
                           >
                             View Course
                           </Link>

@@ -106,8 +106,8 @@ export default function AdminFinanceForecastPage() {
   const trendUp = forecast.trendPct >= 0;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
         <div>
           <Link
             href="/dashboard/finance/reports"
@@ -117,11 +117,11 @@ export default function AdminFinanceForecastPage() {
             Back To Reports
           </Link>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Finance Forecast</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Deep view of projected revenue, trend movement, and AI recommendations.
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right w-full sm:w-auto">
           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
             Source: {forecast.source === 'openai' ? 'OpenAI' : forecast.source === 'rule-based' ? 'Rule-based' : 'Unknown'}
           </div>
@@ -149,17 +149,17 @@ export default function AdminFinanceForecastPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div
-          className="admin-surface forecast-card relative h-full min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-md"
+          className="admin-surface forecast-card relative h-full min-h-[120px] sm:min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-md"
           style={{ animationDelay: '0ms' }}
         >
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400">Projected Next Month</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{money(forecast.forecastMonthly)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">{money(forecast.forecastMonthly)}</p>
         </div>
         <div
-          className="admin-surface forecast-card relative h-full min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-md"
+          className="admin-surface forecast-card relative h-full min-h-[120px] sm:min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-md"
           style={{ animationDelay: '90ms' }}
         >
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600" />
@@ -170,11 +170,11 @@ export default function AdminFinanceForecastPage() {
             ) : (
               <ArrowTrendingDownIcon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             )}
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{trendPercentLabel}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{trendPercentLabel}</p>
           </div>
         </div>
         <div
-          className="admin-surface forecast-card relative h-full min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-md"
+          className="admin-surface forecast-card relative h-full min-h-[120px] sm:min-h-[150px] overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-md"
           style={{ animationDelay: '180ms' }}
         >
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />

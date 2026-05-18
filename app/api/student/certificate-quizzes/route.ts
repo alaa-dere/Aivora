@@ -33,15 +33,14 @@ export async function GET(req: Request) {
       JOIN course c ON c.id = e.courseId
       LEFT JOIN certificate cert
         ON cert.courseId = e.courseId AND cert.studentId = e.studentId
-      JOIN course_question_bank qb ON qb.courseId = c.id
+      LEFT JOIN course_question_bank qb ON qb.courseId = c.id
       LEFT JOIN course_quiz_attempt qa
         ON qa.courseId = c.id AND qa.studentId = e.studentId
       WHERE e.studentId = ?
         AND (e.status = 'completed' OR e.progressPercentage >= 100)
         AND cert.id IS NULL
       GROUP BY c.id, c.title
-      HAVING COUNT(DISTINCT qb.id) >= 10
-         AND COALESCE(MAX(qa.scorePercentage), 0) < ?
+      HAVING COALESCE(MAX(qa.scorePercentage), 0) < ?
       ORDER BY c.title ASC
       `,
       [user.id, PASSING_SCORE_PERCENTAGE]
@@ -49,7 +48,7 @@ export async function GET(req: Request) {
 
     const grouped: Record<
       string,
-      { courseId: string; courseTitle: string; quizzes: { id: string; title: string }[] }
+      { courseId: string; courseTitle: string; quizzes: { id: string; title: string; quizReady: boolean }[] }
     > = {};
 
     for (const row of rows) {
@@ -60,9 +59,14 @@ export async function GET(req: Request) {
           quizzes: [],
         };
       }
+      const questionCount = Number(row.questionCount || 0);
+      const quizReady = questionCount >= 10;
       grouped[row.courseId].quizzes.push({
         id: `${row.courseId}-final`,
-        title: `Final Course Quiz (pass at least ${PASSING_SCORE_PERCENTAGE}% from ${Number(row.questionCount || 0)} bank items)`,
+        quizReady,
+        title: quizReady
+          ? `Final Course Quiz (pass at least ${PASSING_SCORE_PERCENTAGE}% from ${questionCount} bank items)`
+          : `Final Course Quiz unavailable (${questionCount}/10 bank items added by teacher)`,
       });
     }
 

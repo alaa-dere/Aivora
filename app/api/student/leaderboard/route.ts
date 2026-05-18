@@ -17,6 +17,27 @@ type RankedRow = LeaderboardRow & {
   rank: number;
 };
 
+async function ensureStudySessionTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS lesson_study_session (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      enrollmentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      lessonId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      startedAt DATETIME NOT NULL,
+      endedAt DATETIME NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_lss_enrollment (enrollmentId),
+      INDEX idx_lss_lesson (lessonId),
+      INDEX idx_lss_started (startedAt),
+      INDEX idx_lss_ended (endedAt),
+      CONSTRAINT fk_lss_enrollment FOREIGN KEY (enrollmentId) REFERENCES enrollment(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT fk_lss_lesson FOREIGN KEY (lessonId) REFERENCES lesson(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+}
+
 function computeRankedRows(rows: LeaderboardRow[]): RankedRow[] {
   const sorted = rows
     .map((row) => ({
@@ -53,52 +74,72 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureStudySessionTable();
     const [rows] = await db.query<RowDataPacket[]>(
       `
         SELECT
           u.id,
           u.fullName,
           u.imageUrl,
-          COALESCE(SUM(COALESCE(
-            NULLIF(lesson.durationMinutes, 0),
+          COALESCE(SUM(
             LEAST(
-              GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
-              180
-            ),
-            0
-          )), 0) AS minutesAllTime,
-          COALESCE(SUM(CASE
-            WHEN COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            THEN COALESCE(
-              NULLIF(lesson.durationMinutes, 0),
-              LEAST(
-                GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
-                180
+              GREATEST(
+                TIMESTAMPDIFF(
+                  MINUTE,
+                  s.startedAt,
+                  CASE
+                    WHEN s.endedAt IS NOT NULL AND s.endedAt >= s.startedAt THEN s.endedAt
+                    ELSE NOW()
+                  END
+                ),
+                0
               ),
-              0
+              180
             )
+          ), 0) AS minutesAllTime,
+          COALESCE(SUM(CASE
+            WHEN s.startedAt >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            THEN
+              LEAST(
+                GREATEST(
+                  TIMESTAMPDIFF(
+                    MINUTE,
+                    s.startedAt,
+                    CASE
+                      WHEN s.endedAt IS NOT NULL AND s.endedAt >= s.startedAt THEN s.endedAt
+                      ELSE NOW()
+                    END
+                  ),
+                  0
+                ),
+                180
+              )
             ELSE 0
           END), 0) AS minutesLast7,
           COALESCE(SUM(CASE
-            WHEN COALESCE(lp.completedAt, lp.startedAt) >= DATE_SUB(NOW(), INTERVAL 14 DAY)
-             AND COALESCE(lp.completedAt, lp.startedAt) < DATE_SUB(NOW(), INTERVAL 7 DAY)
-            THEN COALESCE(
-              NULLIF(lesson.durationMinutes, 0),
+            WHEN s.startedAt >= DATE_SUB(CURDATE(), INTERVAL 13 DAY)
+             AND s.startedAt < DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            THEN
               LEAST(
-                GREATEST(TIMESTAMPDIFF(MINUTE, lp.startedAt, lp.completedAt), 0),
+                GREATEST(
+                  TIMESTAMPDIFF(
+                    MINUTE,
+                    s.startedAt,
+                    CASE
+                      WHEN s.endedAt IS NOT NULL AND s.endedAt >= s.startedAt THEN s.endedAt
+                      ELSE NOW()
+                    END
+                  ),
+                  0
+                ),
                 180
-              ),
-              0
-            )
+              )
             ELSE 0
           END), 0) AS minutesPrev7
         FROM user u
         JOIN role r ON r.id = u.roleId AND r.name = 'student'
         LEFT JOIN enrollment e ON e.studentId = u.id
-        LEFT JOIN lessonprogress lp
-          ON lp.enrollmentId = e.id
-        LEFT JOIN lesson
-          ON lesson.id = lp.lessonId
+        LEFT JOIN lesson_study_session s ON s.enrollmentId = e.id
         GROUP BY u.id, u.fullName, u.imageUrl
       `
     );

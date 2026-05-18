@@ -8,19 +8,28 @@ import { ChevronDown, ChevronRight, Plus, FileText, Code, Play, Video, HelpCircl
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
+import LessonContentView from '@/components/lesson-content-view';
 
 type Lesson = {
   id: string;
   title: string;
   type: 'text' | 'code_example' | 'live_python' | 'video_embed' | 'quiz' | 'mixed';
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
   durationMinutes: number;
   isPublished: boolean;
   content?: string;
   codeContent?: string;
   description?: string;
   videoUrl?: string;
+  quizQuestions?: Array<{
+    id?: string;
+    questionType: 'multiple_choice' | 'written' | 'true_false';
+    questionText: string;
+    options?: string[];
+    correctOptionIndex?: number;
+    writtenAnswer?: string;
+  }>;
 };
 
 type Module = {
@@ -58,6 +67,13 @@ export default function CourseContentPage() {
   });
   const [openModuleMenuId, setOpenModuleMenuId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [aiOutlinePrompt, setAiOutlinePrompt] = useState('');
+  const [aiGeneratingOutline, setAiGeneratingOutline] = useState(false);
+  const [aiGeneratingDetails, setAiGeneratingDetails] = useState(false);
+  const [aiRegeneratingLessons, setAiRegeneratingLessons] = useState(false);
+  const [aiOutlineDraft, setAiOutlineDraft] = useState<any[] | null>(null);
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [regenLessonStatus, setRegenLessonStatus] = useState<Record<string, 'idle' | 'generating' | 'done' | 'error'>>({});
 
   const fetchContent = async () => {
     try {
@@ -410,47 +426,201 @@ export default function CourseContentPage() {
 
   const parseLessonContent = (content: string) => {
     const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
-    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}/gi;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
+    const tokenRegex = /```|\{\{\s*video\s*:|\{\{\s*starter\s*:/gi;
+    let cursor = 0;
 
-    while ((match = regex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    while (cursor < content.length) {
+      tokenRegex.lastIndex = cursor;
+      const match = tokenRegex.exec(content);
+      if (!match) {
+        segments.push({ type: 'text', value: content.slice(cursor) });
+        break;
       }
-      if (match[1] !== undefined) {
-        segments.push({ type: 'code', value: match[1].trim() });
-      } else if (match[2] !== undefined) {
-        segments.push({ type: 'video', value: match[2].trim() });
-      } else if (match[3] !== undefined) {
-        segments.push({ type: 'starter', value: match[3].trim() });
-      }
-      lastIndex = regex.lastIndex;
-    }
 
-    if (lastIndex < content.length) {
-      segments.push({ type: 'text', value: content.slice(lastIndex) });
+      const tokenStart = match.index;
+      const token = match[0];
+      if (tokenStart > cursor) {
+        segments.push({ type: 'text', value: content.slice(cursor, tokenStart) });
+      }
+
+      if (token === '```') {
+        const codeStart = tokenRegex.lastIndex;
+        const codeEnd = content.indexOf('```', codeStart);
+        if (codeEnd === -1) {
+          segments.push({ type: 'text', value: content.slice(tokenStart) });
+          break;
+        }
+
+        let codeValue = content.slice(codeStart, codeEnd);
+        const newLineMatch = codeValue.match(/\r?\n/);
+        if (newLineMatch && newLineMatch.index !== undefined) {
+          const firstLine = codeValue.slice(0, newLineMatch.index).trim();
+          if (/^[a-zA-Z0-9_+-]+$/.test(firstLine)) {
+            codeValue = codeValue.slice(newLineMatch.index + newLineMatch[0].length);
+          }
+        }
+
+        segments.push({ type: 'code', value: codeValue.trim() });
+        cursor = codeEnd + 3;
+        continue;
+      }
+
+      const valueStart = tokenRegex.lastIndex;
+      const valueEnd = content.indexOf('}}', valueStart);
+      if (valueEnd === -1) {
+        segments.push({ type: 'text', value: content.slice(tokenStart) });
+        break;
+      }
+
+      const value = content.slice(valueStart, valueEnd).trim();
+      if (token.toLowerCase().includes('video')) {
+        segments.push({ type: 'video', value });
+      } else {
+        segments.push({ type: 'starter', value });
+      }
+      cursor = valueEnd + 2;
     }
 
     return segments.filter((segment) => segment.value.trim() !== '');
   };
 
+  const generateOutlineWithAi = async () => {
+    const prompt = aiOutlinePrompt.trim();
+    if (!prompt) {
+      setError('Please write a short course idea first');
+      return;
+    }
+    try {
+      setAiGeneratingOutline(true);
+      setError(null);
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, phase: 1, mode: 'outline_only' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to generate outline');
+      setAiOutlineDraft(Array.isArray(data.outline) ? data.outline : null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate outline');
+    } finally {
+      setAiGeneratingOutline(false);
+    }
+  };
+
+  const generateDetailsWithAi = async () => {
+const prompt = aiOutlinePrompt.trim() || 
+  aiOutlineDraft?.map((m: any) => m.title).join(', ') || 
+  'Programming course';
+
+    if (!aiOutlineDraft || aiOutlineDraft.length === 0) {
+      setError('Generate outline first (Phase 1)');
+      return;
+    }
+    try {
+      setAiGeneratingDetails(true);
+      setError(null);
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          phase: 2,
+          mode: 'details',
+          outline: aiOutlineDraft,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to generate lesson details');
+      await fetchContent();
+      setAiOutlineDraft(null);
+      setSelectedLessonIds([]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate lesson details');
+    } finally {
+      setAiGeneratingDetails(false);
+    }
+  };
+
+  const regenerateSelectedLessons = async () => {
+    const prompt = aiOutlinePrompt.trim();
+    if (!prompt) {
+      setError('Please write a short course idea first');
+      return;
+    }
+    if (selectedLessonIds.length === 0) {
+      setError('Select at least one lesson to regenerate');
+      return;
+    }
+    try {
+      setAiRegeneratingLessons(true);
+      setError(null);
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'regenerate_lessons',
+          prompt,
+          lessonIds: selectedLessonIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to regenerate selected lessons');
+      await fetchContent();
+      setSelectedLessonIds([]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to regenerate selected lessons');
+    } finally {
+      setAiRegeneratingLessons(false);
+    }
+  };
+const regenerateSingleLesson = async (lessonId: string) => {
+  const prompt = aiOutlinePrompt.trim() ||
+    aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+    modules.map((m) => m.title).join(', ') ||
+    'Programming course';
+  setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
+  try {
+    const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed');
+    await fetchContent();
+    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
+    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
+  } catch {
+    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
+    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
+  }
+};
+
+  const toggleSelectLesson = (lessonId: string) => {
+    setSelectedLessonIds((prev) =>
+      prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]
+    );
+  };
+
   const renderTextWithLinks = (text: string) => {
-    const parts: Array<{ type: 'text' | 'link'; value: string; href?: string }> = [];
-    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|\bhttps?:\/\/[^\s)]+/gi;
+    const parts: Array<{ type: 'text' | 'link' | 'code'; value: string; href?: string }> = [];
+    const tokenRegex = /`([^`\n]+)`|\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s)]+)/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = tokenRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
       }
-      if (match[1] && match[2]) {
-        parts.push({ type: 'link', value: match[1], href: match[2] });
-      } else if (match[0]) {
-        parts.push({ type: 'link', value: match[0], href: match[0] });
+      if (match[1] !== undefined) {
+        parts.push({ type: 'code', value: match[1] });
+      } else if (match[2] && match[3]) {
+        parts.push({ type: 'link', value: match[2], href: match[3] });
+      } else if (match[4]) {
+        parts.push({ type: 'link', value: match[4], href: match[4] });
       }
-      lastIndex = linkRegex.lastIndex;
+      lastIndex = tokenRegex.lastIndex;
     }
 
     if (lastIndex < text.length) {
@@ -458,6 +628,16 @@ export default function CourseContentPage() {
     }
 
     return parts.map((part, idx) => {
+      if (part.type === 'code') {
+        return (
+          <code
+            key={`code-${idx}`}
+            className="rounded bg-gray-200 dark:bg-gray-700 px-1 py-0.5 text-[0.92em]"
+          >
+            {part.value}
+          </code>
+        );
+      }
       if (part.type === 'link' && part.href) {
         return (
           <a
@@ -586,6 +766,131 @@ export default function CourseContentPage() {
             </h3>
             <span className="text-[10px] text-slate-400">Build faster</span>
           </div>
+
+          <div className="mb-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+            <input
+              type="text"
+              value={aiOutlinePrompt}
+              onChange={(e) => setAiOutlinePrompt(e.target.value)}
+              placeholder="Example: Beginner Node.js backend course with projects"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <button
+              type="button"
+              onClick={generateOutlineWithAi}
+              disabled={aiGeneratingOutline}
+              className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-100 dark:bg-sky-900/40 px-3 py-2 text-sm font-semibold text-sky-700 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-900/60 disabled:opacity-60"
+            >
+              {aiGeneratingOutline ? 'Generating...' : 'Generate Outline (Phase 1)'}
+            </button>
+          </div>
+          {!aiOutlineDraft && (
+  <p className="mb-2 text-xs text-slate-400">
+    Generate an outline first, then you can build the full course.
+  </p>
+)}
+          {aiOutlineDraft && aiOutlineDraft.length > 0 && (
+  <div className="mb-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3">
+    <div className="flex items-center justify-between mb-2">
+      <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+        Outline Preview — edit before generating
+      </p>
+      <span className="text-[10px] text-slate-400">
+        {aiOutlineDraft.length} modules · {aiOutlineDraft.reduce((a: number, m: any) => a + (m.lessons?.length || 0), 0)} lessons
+      </span>
+    </div>
+    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+      {aiOutlineDraft.map((mod: any, mIdx: number) => (
+        <div key={mIdx} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700/60">
+            <span className="text-[10px] text-slate-400 min-w-[20px]">M{mIdx + 1}</span>
+            <input
+              value={mod.title || ''}
+              onChange={(e) => {
+                const next = [...aiOutlineDraft];
+                next[mIdx] = { ...next[mIdx], title: e.target.value };
+                setAiOutlineDraft(next);
+              }}
+              className="flex-1 text-sm font-semibold bg-transparent border-none outline-none text-slate-800 dark:text-slate-100"
+              placeholder="Module title"
+            />
+            <button
+              type="button"
+              onClick={() => setAiOutlineDraft(aiOutlineDraft.filter((_: any, i: number) => i !== mIdx))}
+              className="text-[10px] text-red-400 hover:text-red-600 px-1"
+            >✕</button>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {(mod.lessons || []).map((lesson: any, lIdx: number) => (
+              <div key={lIdx} className="flex items-center gap-2 px-3 py-1.5">
+                <span className="text-[10px] text-slate-400 min-w-[20px]">L{lIdx + 1}</span>
+                <input
+                  value={lesson.title || ''}
+                  onChange={(e) => {
+                    const next = [...aiOutlineDraft];
+                    const lessons = [...(next[mIdx].lessons || [])];
+                    lessons[lIdx] = { ...lessons[lIdx], title: e.target.value };
+                    next[mIdx] = { ...next[mIdx], lessons };
+                    setAiOutlineDraft(next);
+                  }}
+                  className="flex-1 text-xs font-medium bg-transparent border-none outline-none text-slate-700 dark:text-slate-200"
+                  placeholder="Lesson title"
+                />
+                <input
+                  value={lesson.objective || ''}
+                  onChange={(e) => {
+                    const next = [...aiOutlineDraft];
+                    const lessons = [...(next[mIdx].lessons || [])];
+                    lessons[lIdx] = { ...lessons[lIdx], objective: e.target.value };
+                    next[mIdx] = { ...next[mIdx], lessons };
+                    setAiOutlineDraft(next);
+                  }}
+                  className="flex-1 text-xs bg-transparent border-none outline-none text-slate-400"
+                  placeholder="Objective"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = [...aiOutlineDraft];
+                    next[mIdx] = { ...next[mIdx], lessons: (next[mIdx].lessons || []).filter((_: any, i: number) => i !== lIdx) };
+                    setAiOutlineDraft(next);
+                  }}
+                  className="text-[10px] text-red-400 hover:text-red-600 px-1"
+                >✕</button>
+              </div>
+            ))}
+            <div className="px-3 py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...aiOutlineDraft];
+                  next[mIdx] = { ...next[mIdx], lessons: [...(next[mIdx].lessons || []), { title: 'New Lesson', objective: '' }] };
+                  setAiOutlineDraft(next);
+                }}
+                className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline"
+              >+ Add lesson</button>
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => setAiOutlineDraft([...aiOutlineDraft, { title: 'New Module', description: '', lessons: [{ title: 'Lesson 1', objective: '' }] }])}
+        className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline mt-1"
+      >+ Add module</button>
+    </div>
+    <div className="mt-3 flex justify-end">
+      <button
+        type="button"
+        onClick={generateDetailsWithAi}
+        disabled={aiGeneratingDetails}
+        className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-100 dark:bg-emerald-900/40 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-200 hover:bg-emerald-200 disabled:opacity-60"
+      >
+        {aiGeneratingDetails ? 'Generating details...' : 'Build course from this outline →'}
+      </button>
+    </div>
+  </div>
+)}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
@@ -814,9 +1119,10 @@ export default function CourseContentPage() {
                       }
                       className="admin-surface w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
-                      <option value="python">Python</option>
-                      <option value="javascript">JavaScript</option>
-                      <option value="html_css">HTML/CSS</option>
+                      <option value="python">Python (Replit / OneCompiler)</option>
+                      <option value="javascript">JavaScript / Node.js (Replit / StackBlitz)</option>
+                      <option value="html_css">HTML/CSS (CodePen / StackBlitz)</option>
+                      <option value="sql">SQL (Query Practice)</option>
                     </select>
                   </div>
                 )}
@@ -946,21 +1252,25 @@ export default function CourseContentPage() {
                       </div>
                     </div>
                     
-                    <div className="relative flex items-center gap-3 self-end" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative flex items-center gap-3 self-end">
                       <span className="text-sm text-slate-500 dark:text-slate-400">
                         {module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}
                       </span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setOpenModuleMenuId((prev) => (prev === module.id ? null : module.id))
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenModuleMenuId((prev) => (prev === module.id ? null : module.id));
+                        }}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
                       >
                         <MoreVertical className="w-4 h-4 text-gray-500" />
                       </button>
                       {openModuleMenuId === module.id && (
-                        <div className="admin-surface absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg">
+                        <div
+                          className="admin-surface absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={() => {
@@ -1008,6 +1318,14 @@ export default function CourseContentPage() {
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedLessonIds.includes(lesson.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => toggleSelectLesson(lesson.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                aria-label={`Select lesson ${lesson.title}`}
+                              />
                               {getLessonIcon(lesson.type, lesson.enableLiveEditor)}
                               <div>
                                 <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -1044,6 +1362,28 @@ export default function CourseContentPage() {
                                 className="px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               >
                                 Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => regenerateSingleLesson(lesson.id)}
+                                disabled={regenLessonStatus[lesson.id] === 'generating'}
+                                className={`px-2 py-0.5 rounded-md border text-[11px] transition-colors ${
+                                  regenLessonStatus[lesson.id] === 'done'
+                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+                                    : regenLessonStatus[lesson.id] === 'error'
+                                    ? 'border-red-300 bg-red-50 text-red-600 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
+                                    : regenLessonStatus[lesson.id] === 'generating'
+                                    ? 'border-amber-300 bg-amber-50 text-amber-700 opacity-70'
+                                    : 'border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/30'
+                                }`}
+                              >
+                                {regenLessonStatus[lesson.id] === 'generating'
+                                  ? '↻ Regenerating...'
+                                  : regenLessonStatus[lesson.id] === 'done'
+                                  ? '✓ Done'
+                                  : regenLessonStatus[lesson.id] === 'error'
+                                  ? '✗ Failed'
+                                  : '↻ Regen'}
                               </button>
                               <button
                                 type="button"
@@ -1099,7 +1439,6 @@ export default function CourseContentPage() {
                   return <p className="text-sm text-slate-500 dark:text-slate-400">Select a lesson to preview.</p>;
                 }
                 const { lesson, module } = selected;
-                const segments = parseLessonContent(lesson.content || '');
                 return (
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -1119,58 +1458,14 @@ export default function CourseContentPage() {
                         </p>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      {segments.length === 0 && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400">No lesson content yet.</p>
-                      )}
-                      {segments.map((seg, idx) => {
-                        if (seg.type === 'code') {
-                          return (
-                            <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-                              <code>{seg.value}</code>
-                            </pre>
-                          );
-                        }
-                        if (seg.type === 'starter') {
-                          if (!lesson.enableLiveEditor) {
-                            return (
-                              <div key={idx} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-200">
-                                Starter code found, but Live Editor is disabled for this lesson.
-                              </div>
-                            );
-                          }
-                          if (lesson.liveEditorLanguage === 'javascript') {
-                            return <LiveJsEditor key={idx} initialCode={seg.value} />;
-                          }
-                          if (lesson.liveEditorLanguage === 'html_css') {
-                            return <LiveHtmlPreview key={idx} initialCode={seg.value} />;
-                          }
-                          return <LivePythonEditor key={idx} initialCode={seg.value} />;
-                        }
-                        if (seg.type === 'video') {
-                          const url = normalizeVideoUrl(seg.value);
-                          return (
-                            <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Embedded Video</p>
-                              <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/80">
-                                <iframe
-                                  src={url}
-                                  className="h-full w-full"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  title="Lesson video"
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div key={idx} className="space-y-1">
-                            {renderFormattedText(seg.value)}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <LessonContentView
+                      key={lesson.id}
+                      content={lesson.content || ''}
+                      quizQuestions={lesson.quizQuestions || []}
+                      enableLiveEditor={lesson.enableLiveEditor}
+                      liveEditorLanguage={lesson.liveEditorLanguage || 'python'}
+                      starterDisabledMessage="Starter code found, but Live Editor is disabled for this lesson."
+                    />
                   </div>
                 );
               })()}
@@ -1262,5 +1557,6 @@ export default function CourseContentPage() {
     </div>
   );
 }
+
 
 

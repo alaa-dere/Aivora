@@ -5,6 +5,12 @@ import { useTheme } from 'next-themes';
 import { FaInstagram } from "react-icons/fa";
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from "next-auth/react";
+import {
+  API_ROUTES,
+  normalizeCourseList,
+  normalizeFeedbackList,
+  toTestimonialRecord,
+} from "@aivora/shared";
 import HomeUserMenu from "@/components/home-user-menu";
 import CourseFavoriteButton from "@/components/course-favorite-button";
 import {
@@ -83,7 +89,7 @@ const testimonialsAr = [
   },
 ];
 
-const SECTION_HEIGHT_CLASS = 'h-[620px]';
+const SECTION_HEIGHT_CLASS = 'min-h-[520px] md:h-[620px]';
 
 type Course = {
   id: string;
@@ -160,7 +166,7 @@ export default function HomePage() {
         setCoursesLoading(true);
         setCoursesError('');
 
-        const res = await fetch('/api/home', {
+        const res = await fetch(API_ROUTES.home, {
           method: 'GET',
           cache: 'no-store',
         });
@@ -171,9 +177,9 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to fetch courses');
         }
 
-        setCourses(data.data || []);
-        setFeedbacks(Array.isArray(data.feedbacks) ? data.feedbacks : []);
-        setEnrolledCourses(Array.isArray(data.enrolledCourses) ? data.enrolledCourses : []);
+        setCourses(normalizeCourseList(data.data));
+        setFeedbacks(normalizeFeedbackList(data.feedbacks));
+        setEnrolledCourses(normalizeCourseList(data.enrolledCourses));
       } catch (error) {
         console.error('Failed to load courses:', error);
         setCoursesError('Failed to load courses');
@@ -194,7 +200,7 @@ export default function HomePage() {
         setRecentLoading(true);
         setRecentError('');
 
-        const res = await fetch('/api/recent-courses', {
+        const res = await fetch(API_ROUTES.recentCourses, {
           method: 'GET',
           cache: 'no-store',
         });
@@ -204,27 +210,7 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to load recent courses');
         }
 
-        const normalized = Array.isArray(data.courses)
-          ? data.courses.map((course: any) => ({
-              id: course.id,
-              title: course.title,
-              description: course.description,
-              price: Number(course.price || 0),
-              image: course.imageUrl || course.image || '/default-course.jpg',
-              imageUrl: course.imageUrl || course.image || '/default-course.jpg',
-              instructor: course.instructor,
-              duration: `${Number(course.durationWeeks || 0)} Weeks`,
-              students: String(Number(course.students || 0)),
-              enrolled: Boolean(course.enrolled),
-              averageRating:
-                course.averageRating === null || course.averageRating === undefined
-                  ? 0
-                  : Number(course.averageRating),
-              evaluationCount: Number(course.evaluationCount || 0),
-            }))
-          : [];
-
-        setRecentCourses(normalized);
+        setRecentCourses(normalizeCourseList(data.courses));
       } catch (error) {
         console.error('Failed to load recent courses:', error);
         setRecentError('Failed to load recent courses');
@@ -243,7 +229,7 @@ export default function HomePage() {
         return;
       }
       try {
-        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.student.favoriteIds, { cache: 'no-store' });
         const data = await res.json();
         if (res.ok) {
           setFavoriteIds(new Set((data.ids || []) as string[]));
@@ -278,7 +264,7 @@ export default function HomePage() {
     const role = (session?.user?.role || '').toLowerCase();
     if (status !== 'authenticated' || role !== 'student') return;
     try {
-      fetch('/api/recent-courses', {
+      fetch(API_ROUTES.recentCourses, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
@@ -301,13 +287,7 @@ export default function HomePage() {
   const navItems = isArabic ? navItemsAr : navItemsEn;
   const testimonials =
     feedbacks.length > 0
-      ? feedbacks.map((item) => ({
-          name: item.name,
-          role: item.role,
-          content: item.content,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=2563eb&color=fff`,
-          rating: Number(item.rating || 0),
-        }))
+      ? feedbacks.map((item) => toTestimonialRecord(item))
       : isArabic
         ? testimonialsAr
         : testimonialsEn;
@@ -341,20 +321,20 @@ export default function HomePage() {
       />
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+      <header className="fixed top-0 left-0 right-0 z-50 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <Link href="/" className="flex items-center shrink-0">
               <Image
                 src="/alaa.png"
                 alt="Aivora Logo"
                 width={100}
                 height={35}
-                className="h-7 w-auto dark:brightness-100 brightness-25"
+                className="h-6 sm:h-7 w-auto dark:brightness-100 brightness-25"
               />
             </Link>
 
-            <div className="hidden md:flex items-center justify-center gap-2">
+            <div className="hidden lg:flex items-center justify-center gap-2">
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -370,34 +350,34 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <SunIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <SunIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 ) : (
-                  <MoonIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 )}
               </button>
 
               <button
                 onClick={toggleLanguage}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle language"
                 title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
               >
-                <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
 
               {status === "authenticated" ? (
                 <HomeUserMenu isArabic={isArabic} />
               ) : (
                 <Link href="/login">
-                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
                       {isArabic ? 'تسجيل الدخول' : 'Login'}
                     </span>
@@ -407,12 +387,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-3 flex md:hidden overflow-x-auto gap-2 pb-1">
+          <div className="mt-2.5 flex lg:hidden overflow-x-auto gap-1.5 pb-1">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => scrollTo(item.id)}
-                className={`text-xs font-medium transition-all px-3 py-2 rounded-full whitespace-nowrap ${
+                className={`text-[11px] font-medium transition-all px-2.5 py-1.5 rounded-full whitespace-nowrap ${
                   activeSection === item.id
                     ? 'bg-blue-950 dark:bg-blue-700 text-white shadow-sm'
                     : 'text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800'
@@ -425,47 +405,47 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative z-10 space-y-10 md:space-y-14 pb-14 pt-28 md:pt-32">
+      <main className="relative z-10 space-y-8 md:space-y-14 pb-12 md:pb-14 pt-24 md:pt-32">
         {/* Home Section */}
         <section id="home" className={sectionBase}>
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div className={`text-center ${isArabic ? 'md:text-right' : 'md:text-left'}`}>
+            <div className={`${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
               <p className="inline-block mb-4 px-4 py-1.5 rounded-full bg-white/10 text-blue-100 text-sm md:text-base font-medium backdrop-blur-md border border-white/20 shadow-md">
                 {isArabic ? 'مرحباً بك في أيفورا' : 'Welcome to Aivora'}
               </p>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[0.95] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.35)]">
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[0.95] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.35)]">
                 Ai<span className="text-blue-300">vora</span>
               </h1>
 
-              <h2 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold text-blue-100">
+              <h2 className="mt-3 text-xl sm:text-3xl lg:text-4xl font-semibold text-blue-100">
                 {isArabic ? 'تعلم أذكى. بنِ أسرع.' : 'Learn Smarter. Build Faster.'}
               </h2>
 
-              <p className="mt-6 max-w-2xl mx-auto md:mx-0 text-base sm:text-lg lg:text-xl leading-8 text-slate-200">
+              <p className="mt-4 max-w-2xl mx-auto md:mx-0 text-sm sm:text-lg lg:text-xl leading-7 sm:leading-8 text-slate-200">
                 {isArabic
                   ? 'أيفورا منصة تعلم حديثة تساعد الطلاب والمحترفين على إتقان الذكاء الاصطناعي والبرمجة والمهارات الرقمية من خلال دورات عملية ومشاريع حقيقية ومسار تعليمي واضح.'
                   : 'Aivora is a modern learning platform that helps students and professionals master AI, programming, and digital skills through practical courses, real projects, and a clear learning path.'}
               </p>
 
-              <div className="mt-8 flex flex-col sm:flex-row items-center md:items-start gap-4 justify-center md:justify-start">
+              <div className="mt-6 flex flex-row flex-wrap items-center md:items-start gap-3 sm:gap-4 justify-start md:justify-start">
                 <button
                   onClick={() => scrollTo('courses')}
-                  className="px-8 py-4 rounded-2xl bg-blue-950 dark:bg-blue-700 hover:bg-blue-500 text-white text-lg font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition-all duration-300 hover:-translate-y-1"
+                  className="px-6 py-3 sm:px-8 sm:py-4 rounded-2xl bg-blue-950 dark:bg-blue-700 hover:bg-blue-500 text-white text-base sm:text-lg font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition-all duration-300 hover:-translate-y-1"
                 >
                   {isArabic ? 'استكشف الدورات' : 'Explore Courses'}
                 </button>
 
                 <button
                   onClick={() => scrollTo('about')}
-                  className="px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-lg font-semibold border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300"
+                  className="px-6 py-3 sm:px-8 sm:py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-base sm:text-lg font-semibold border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300"
                 >
                   {isArabic ? 'تعرف أكثر' : 'Learn More'}
                 </button>
               </div>
             </div>
 
-            <div className="relative flex justify-center md:justify-end">
+            <div className="relative hidden md:flex justify-center md:justify-end">
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full bg-blue-400/20 blur-3xl" />
               </div>
@@ -482,11 +462,11 @@ export default function HomePage() {
         <section id="about" className={sectionBase}>
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-start">
             <div className="text-left md:col-span-2">
-              <p className="text-blue-300 text-sm tracking-widest uppercase mb-4 text-center md:text-left">
+              <p className={`text-blue-300 text-sm tracking-widest uppercase mb-4 ${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
                 {isArabic ? 'عن أيفورا' : 'About Aivora'}
               </p>
 
-              <h2 className="text-5xl md:text-6xl font-black text-white text-center md:text-left tracking-tight leading-tight mb-8">
+              <h2 className={`text-3xl sm:text-4xl md:text-6xl font-black text-white tracking-tight leading-tight mb-6 md:mb-8 ${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
                 {isArabic ? 'اكتشف' : 'Discover'}{' '}
                 <span className="text-blue-300">{isArabic ? 'أيفورا' : 'Aivora'}</span>
               </h2>
@@ -544,7 +524,7 @@ export default function HomePage() {
                   <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
                     {isArabic ? 'مسارك الحالي' : 'Your Path'}
                   </p>
-                  <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
+                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
                     {isArabic ? 'الكورسات' : 'Your'}{' '}
                     <span className="text-blue-300">
                       {isArabic ? 'اللي مشارك فيها' : 'Courses'}
@@ -574,7 +554,7 @@ export default function HomePage() {
                         key={`enrolled-${course.id}`}
                         className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                       >
-                        <div className="relative h-40 overflow-hidden">
+                        <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
                             src={course.image || '/default-course.jpg'}
                             alt={course.title}
@@ -594,7 +574,7 @@ export default function HomePage() {
                           </p>
 
                           <div className="flex items-start justify-between gap-3">
-                            <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                            <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
                               {course.title}
                             </h3>
                             <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30">
@@ -637,14 +617,14 @@ export default function HomePage() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <span className="text-xl font-black text-blue-300">
+                            <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
 
                             <Link
                               href={`/student/my-courses/${course.id}`}
                               onClick={() => trackCourseView(course.id)}
-                              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                              className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
                             >
                               {isArabic ? 'مسجل' : 'Enrolled'}
                             </Link>
@@ -668,7 +648,7 @@ export default function HomePage() {
                   <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
                     {isArabic ? 'آخر ما فتحته' : 'Recently Opened'}
                   </p>
-                  <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
+                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
                     {isArabic ? 'آخر' : 'Last'}{' '}
                     <span className="text-blue-300">
                       {isArabic ? 'الكورسات المفتوحة' : 'Viewed Courses'}
@@ -701,7 +681,7 @@ export default function HomePage() {
                         key={`recent-${course.id}`}
                         className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                       >
-                        <div className="relative h-40 overflow-hidden">
+                        <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
                             src={course.image || '/default-course.jpg'}
                             alt={course.title}
@@ -721,7 +701,7 @@ export default function HomePage() {
                           </p>
 
                           <div className="flex items-start justify-between gap-3">
-                            <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                            <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
                               {course.title}
                             </h3>
                             {course.enrolled && (
@@ -766,7 +746,7 @@ export default function HomePage() {
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <span className="text-xl font-black text-blue-300">
+                            <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
 
@@ -777,7 +757,7 @@ export default function HomePage() {
                                   : `/Home/courses/${course.id}`
                               }
                               onClick={() => trackCourseView(course.id)}
-                              className={`inline-flex items-center justify-center px-4 py-2 rounded-xl text-white text-sm font-semibold border transition-all duration-300 ${
+                              className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white text-xs sm:text-sm font-semibold border transition-all duration-300 ${
                                 course.enrolled
                                   ? 'bg-emerald-600/80 hover:bg-emerald-500 border-emerald-300/40'
                                   : 'bg-white/10 hover:bg-blue-600 border-white/15'
@@ -797,14 +777,14 @@ export default function HomePage() {
         )}
 
         {/* Courses Section */}
-        <section id="courses" className="px-5 sm:px-6 lg:px-8 py-20">
+        <section id="courses" className="px-5 sm:px-6 lg:px-8 py-12 md:py-20">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12">
               <div>
                 <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
                   {isArabic ? 'استكشف التعلم' : 'Explore Learning'}
                 </p>
-                <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
+                <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
                   {isArabic ? 'الشائعة' : 'Popular'}{' '}
                   <span className="text-blue-300">{isArabic ? 'الدورات' : 'Courses'}</span>
                 </h2>
@@ -842,7 +822,7 @@ export default function HomePage() {
                       key={course.id}
                       className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
                     >
-                    <div className="relative h-40 overflow-hidden">
+                    <div className="relative h-36 sm:h-40 overflow-hidden">
                       <img
                         src={course.image || '/default-course.jpg'}
                         alt={course.title}
@@ -862,7 +842,7 @@ export default function HomePage() {
                       </p>
 
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
+                        <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
                           {course.title}
                         </h3>
                         {course.enrolled && (
@@ -907,7 +887,7 @@ export default function HomePage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-xl font-black text-blue-300">
+                        <span className="text-lg sm:text-xl font-black text-blue-300">
                           ${course.price}
                         </span>
 
@@ -915,7 +895,7 @@ export default function HomePage() {
                           <Link
                             href={`/student/my-courses/${course.id}`}
                             onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
                           >
                             {isArabic ? 'مسجل' : 'Enrolled'}
                           </Link>
@@ -923,7 +903,7 @@ export default function HomePage() {
                           <Link
                             href={`/Home/courses/${course.id}`}
                             onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
                           >
                             {isArabic ? '  عرض الدورة' : 'View Course'}
                           </Link>
@@ -939,13 +919,13 @@ export default function HomePage() {
         </section>
 
         {/* Testimonials Section */}
-        <section id="testimonials" className="px-5 sm:px-6 lg:px-8 py-20">
+        <section id="testimonials" className="px-5 sm:px-6 lg:px-8 py-12 md:py-20">
           <div className="max-w-7xl mx-auto">
             <div className="mb-14">
               <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
                 {isArabic ? 'أصوات الطلاب' : 'Student Voices'}
               </p>
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white">
+              <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white">
                 {isArabic ? 'الطلاب' : 'Student'}{' '}
                 <span className="text-blue-300">{isArabic ? 'تعليقات' : 'Feedback'}</span>
               </h2>
@@ -993,13 +973,13 @@ export default function HomePage() {
         </section>
 
         {/* Contact Section */}
-        <section id="contact" className="px-5 sm:px-6 lg:px-8 py-20">
+        <section id="contact" className="px-5 sm:px-6 lg:px-8 py-12 md:py-20">
           <div className="max-w-7xl mx-auto">
             <div className="mb-14">
               <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
                 {isArabic ? 'ابق على اتصال' : 'Get In Touch'}
               </p>
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white">
+              <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white">
                 {isArabic ? 'اتصل بـ' : 'Contact'}{' '}
                 <span className="text-blue-300">{isArabic ? 'أيفورا' : 'Aivora'}</span>
               </h2>

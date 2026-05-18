@@ -101,11 +101,11 @@ export default function AdminFinanceReportsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5 sm:mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Reports</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Monthly finance summary with exportable metrics.</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Monthly finance summary with exportable metrics.</p>
           <Link
             href="/dashboard/finance/forecast"
             className="inline-flex mt-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
@@ -114,20 +114,20 @@ export default function AdminFinanceReportsPage() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {loading ? 'Loading report...' : errorMsg ? errorMsg : 'Monthly summary'}
           </div>
           <button
             onClick={() => window.print()}
-            className="admin-surface inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 dark:bg-slate-900/70 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-slate-200 dark:border-slate-800 shadow-md transition-all duration-200 active:scale-95"
+            className="admin-surface inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-white/80 dark:bg-slate-900/70 text-blue-700 dark:text-blue-300 font-semibold text-[11px] sm:text-xs border border-slate-200 dark:border-slate-800 shadow-md transition-all duration-200 active:scale-95"
           >
             <PrinterIcon className="w-4 h-4" />
             Print
           </button>
           <button
             onClick={exportCSV}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-xs shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-[11px] sm:text-xs shadow-md border border-blue-500/50 transition-all duration-200 active:scale-95"
           >
             <ArrowDownTrayIcon className="w-4 h-4" />
             Download
@@ -147,7 +147,7 @@ export default function AdminFinanceReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
         {[
           { label: 'Income', value: money(stats.income), icon: CurrencyDollarIcon },
           { label: 'Teacher Profit', value: money(stats.teacherProfit), icon: Squares2X2Icon },
@@ -155,7 +155,7 @@ export default function AdminFinanceReportsPage() {
         ].map((card, idx) => (
           <div
             key={card.label}
-            className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-6 min-h-[140px] hover:-translate-y-1 hover:shadow-lg transition-all duration-200 animate-[fadeIn_.4s_ease-out_both]"
+            className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-4 sm:p-6 min-h-[120px] sm:min-h-[140px] hover:-translate-y-1 hover:shadow-lg transition-all duration-200 animate-[fadeIn_.4s_ease-out_both]"
             style={{ animationDelay: `${idx * 80}ms` }}
           >
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
@@ -164,8 +164,8 @@ export default function AdminFinanceReportsPage() {
                 <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">{card.value}</p>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>

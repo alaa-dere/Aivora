@@ -122,19 +122,13 @@ export default function StudentLeaderboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Improvement</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? `${data.current.improvement >= 0 ? '+' : ''}${data.current.improvement}` : '—'} min
+                    {data.current ? `${data.current.improvement >= 0 ? '+' : ''}${data.current.improvement}` : '-'} min
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 dark:text-gray-400">Last 7 days</span>
                   <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? formatMinutes(data.current.minutesLast7) : '—'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Previous 7 days</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
-                    {data.current ? formatMinutes(data.current.minutesPrev7) : '—'}
+                    {data.current ? formatMinutes(data.current.minutesLast7) : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -165,6 +159,7 @@ export default function StudentLeaderboardPage() {
           <div className="lg:col-span-2">
             <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+              <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Top 10 Students</p>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{data.metric}</span>
@@ -178,7 +173,7 @@ export default function StudentLeaderboardPage() {
                       <th className="px-4 py-3 font-medium">Student</th>
                       <th className="px-4 py-3 font-medium">Improvement</th>
                       <th className="px-4 py-3 font-medium">Last 7 Days</th>
-                      <th className="px-4 py-3 font-medium">Prev 7 Days</th>
+                      <th className="px-4 py-3 font-medium">Previous 7 Days</th>
                       <th className="px-4 py-3 font-medium">All Time</th>
                     </tr>
                   </thead>
@@ -253,6 +248,7 @@ export default function StudentLeaderboardPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
             </div>
 
             {data.current && !data.top.some((row) => row.id === data.current?.id) && (

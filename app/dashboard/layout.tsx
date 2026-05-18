@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation'; // ← أضف useRouter
+import { usePathname, useRouter } from 'next/navigation'; // â† Ø£Ø¶Ù useRouter
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
 import {
@@ -30,6 +30,8 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
+import { API_ROUTES } from '@aivora/shared';
+import { getAdminNotificationHref } from '@/lib/notification-links';
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -37,7 +39,7 @@ const manrope = Manrope({
 });
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter(); // ← أضف هذا السطر
+  const router = useRouter(); // â† Ø£Ø¶Ù Ù‡Ø°Ø§ Ø§Ù„Ø³Ø·Ø±
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
@@ -49,7 +51,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; type: string; title: string; message: string; createdAt: string; read: boolean }[]
+    {
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+      read: boolean;
+      courseId?: string | null;
+      certificateId?: string | null;
+      studentId?: string | null;
+      teacherId?: string | null;
+    }[]
   >([]);
   const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'student_signup' | 'course_enroll' | 'teacher_message'>('all');
   const [messageNotifItems, setMessageNotifItems] = useState<
@@ -70,8 +83,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const loadCount = async () => {
       try {
         const [notifRes, msgRes] = await Promise.all([
-          fetch('/api/admin/notifications/count', { cache: 'no-store' }),
-          fetch('/api/admin/messages?unreadCount=1', { cache: 'no-store' }),
+          fetch(API_ROUTES.admin.notificationsCount, { cache: 'no-store' }),
+          fetch(API_ROUTES.admin.messagesUnreadCount, { cache: 'no-store' }),
         ]);
         const notifData = await notifRes.json();
         const msgData = await msgRes.json();
@@ -129,13 +142,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const notifData = await notifRes.json();
       const msgData = await msgRes.json();
       if (!notifRes.ok) return;
-      const items = (notifData.notifications || []).slice(0, 5).map((n: { id: string; type: string; title: string; message: string; createdAt: string; readAt?: string | null }) => ({
+      const items = (notifData.notifications || []).slice(0, 5).map((n: { id: string; type: string; title: string; message: string; createdAt: string; readAt?: string | null; courseId?: string | null; certificateId?: string | null; studentId?: string | null; teacherId?: string | null; }) => ({
         id: n.id,
         type: n.type,
         title: n.title,
         message: n.message,
         createdAt: n.createdAt,
         read: Boolean(n.readAt),
+        courseId: n.courseId || null,
+        certificateId: n.certificateId || null,
+        studentId: n.studentId || null,
+        teacherId: n.teacherId || null,
       }));
       setNotificationItems(items);
 
@@ -169,11 +186,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
-  // ← أضف دالة handleLogout هنا
+  // â† Ø£Ø¶Ù Ø¯Ø§Ù„Ø© handleLogout Ù‡Ù†Ø§
   const handleLogout = async () => {
     try {
       await Promise.all([
-        fetch('/api/auth/logout', { method: 'POST' }),
+        fetch(API_ROUTES.auth.logout, { method: 'POST' }),
         signOut({ redirect: false }),
       ]);
       router.replace('/login');
@@ -187,8 +204,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
 
       {/* HEADER */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
-        <div className="admin-topbar rounded-3xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="admin-topbar rounded-3xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
         <div className="flex items-center">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -227,8 +244,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
 
             {notificationOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+              <div className="fixed left-3 right-3 top-24 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[85vw] rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Notifications
                   </p>
@@ -240,10 +257,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           e.target.value as 'all' | 'student_signup' | 'course_enroll' | 'teacher_message'
                         )
                       }
-                      className="text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                      className="text-xs px-2 py-1 rounded-none border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
                     >
                       <option value="all">All</option>
-                      <option value="student_signup">Signups</option>
+                      <option value="student_signup">New Students</option>
                       <option value="course_enroll">Enrollments</option>
                       <option value="teacher_message">Teacher Msg</option>
                     </select>
@@ -267,7 +284,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           key={n.id}
                           href={`/dashboard/messages?teacherId=${n.teacherId}`}
                           onClick={() => setNotificationOpen(false)}
-                          className="block px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-blue-50/60 dark:hover:bg-blue-900/20"
+                          className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
                         >
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {n.title}
@@ -281,11 +298,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </Link>
                       ))}
                       {notificationItems.map((n) => (
-                        <div
+                        <Link
                           key={n.id}
+                          href={getAdminNotificationHref(n)}
+                          onClick={() => setNotificationOpen(false)}
                           className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                            n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                          }`}
+                            ''
+                          } block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none`}
                         >
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                             {n.title}
@@ -296,12 +315,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                             {new Date(n.createdAt).toLocaleString()}
                           </p>
-                        </div>
+                        </Link>
                       ))}
                     </>
                   )}
                 </div>
-                <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
+                <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
                   <Link
                     href="/dashboard/notifications"
                     onClick={() => setNotificationOpen(false)}
@@ -349,18 +368,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="relative" ref={accountMenuRef}>
             <button
               onClick={() => setAccountOpen((v) => !v)}
-              className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold hover:bg-blue-100 dark:hover:bg-slate-700 transition"
+              className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold"
               aria-label="Account menu"
             >
               A
             </button>
 
             {accountOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="fixed left-3 right-3 top-24 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-52 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden z-50">
                 <Link
                   href="/dashboard"
                   onClick={() => setAccountOpen(false)}
-                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 >
                   <ChartBarIcon className="w-4 h-4 text-slate-500" />
                   Dashboard
@@ -370,7 +389,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     setAccountOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 >
                   <ArrowRightOnRectangleIcon className="w-4 h-4 text-slate-500" />
                   Logout
@@ -382,7 +401,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      {/* باقي الكود كما هو... */}
+      {/* Ø¨Ø§Ù‚ÙŠ Ø§Ù„ÙƒÙˆØ¯ ÙƒÙ…Ø§ Ù‡Ùˆ... */}
       <div className="flex">
 
         {/* SIDEBAR */}
@@ -806,3 +825,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
+

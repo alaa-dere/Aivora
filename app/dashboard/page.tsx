@@ -293,7 +293,7 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         {statCards.map((stat, index) => (
           <Card
             key={stat.name}
@@ -443,7 +443,7 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3 sm:gap-6 lg:grid-cols-2">
         <div className="admin-surface dashboard-card relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300" style={{ animationDelay: '320ms' }}>
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500" />
           <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">

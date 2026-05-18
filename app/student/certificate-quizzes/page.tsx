@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 
-type QuizItem = { id: string; title: string };
+type QuizItem = { id: string; title: string; quizReady: boolean };
 type CourseItem = { courseId: string; courseTitle: string; quizzes: QuizItem[] };
 
 export default function CertificateQuizzesPage() {
@@ -79,12 +79,18 @@ export default function CertificateQuizzesPage() {
                     className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 px-4 py-3"
                   >
                     <span className="text-sm text-gray-700 dark:text-gray-200">{quiz.title}</span>
-                    <Link
-                      href={`/student/my-courses/${course.courseId}/quizzes`}
-                      className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
-                    >
-                      Go to quizzes
-                    </Link>
+                    {quiz.quizReady ? (
+                      <Link
+                        href={`/student/my-courses/${course.courseId}/quizzes`}
+                        className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                      >
+                        Go to quizzes
+                      </Link>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        Waiting for teacher question bank (10 required)
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

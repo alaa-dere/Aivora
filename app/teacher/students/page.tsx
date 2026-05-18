@@ -25,6 +25,9 @@ type StudentRow = {
   imageUrl?: string | null;
   progress: number;
   status: string;
+  completedAt?: string | null;
+  bestQuizScore?: number;
+  quizAttempts?: number;
 };
 
 export default function StudentsPage() {
@@ -35,6 +38,8 @@ export default function StudentsPage() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [studentView, setStudentView] = useState<"active" | "completed">("active");
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -59,7 +64,7 @@ export default function StudentsPage() {
       if (!selectedCourseId) return;
       try {
         setLoadingStudents(true);
-        const res = await fetch(`/api/teacher/courses?courseId=${selectedCourseId}`, {
+        const res = await fetch(`/api/teacher/courses?courseId=${selectedCourseId}&view=${studentView}`, {
           cache: "no-store",
         });
         const data = await res.json();
@@ -73,7 +78,29 @@ export default function StudentsPage() {
     };
 
     loadStudents();
-  }, [selectedCourseId]);
+  }, [selectedCourseId, studentView]);
+
+  const removeCompletedStudent = async (studentId: string) => {
+    if (!selectedCourseId) return;
+    const ok = window.confirm("Delete this completed student from your list?");
+    if (!ok) return;
+
+    try {
+      setDeletingStudentId(studentId);
+      const res = await fetch("/api/teacher/courses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: selectedCourseId, studentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to remove student");
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove student");
+    } finally {
+      setDeletingStudentId(null);
+    }
+  };
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) || null;
 
@@ -108,8 +135,10 @@ export default function StudentsPage() {
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {selectedCourse
-                ? `Students currently taking ${selectedCourse.name}`
-                : "Choose a course to view students currently taking it."}
+                ? studentView === "active"
+                  ? `Students currently taking ${selectedCourse.name}`
+                  : `Students who completed ${selectedCourse.name}`
+                : "Choose a course to view students."}
             </p>
           </div>
         </div>
@@ -152,6 +181,7 @@ export default function StudentsPage() {
                     onClick={() => {
                       setError(null);
                       setSelectedCourseId(course.id);
+                      setStudentView("active");
                     }}
                     className="admin-surface relative overflow-hidden text-left bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
                   >
@@ -277,6 +307,28 @@ export default function StudentsPage() {
 
             <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <button
+                    onClick={() => setStudentView("active")}
+                    className={`px-3 py-2 text-xs font-semibold ${
+                      studentView === "active"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    Active Students
+                  </button>
+                  <button
+                    onClick={() => setStudentView("completed")}
+                    className={`px-3 py-2 text-xs font-semibold border-l border-slate-200 dark:border-slate-700 ${
+                      studentView === "completed"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    Completed Students
+                  </button>
+                </div>
                 <div className="relative flex-1 max-w-md">
                   <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -297,13 +349,15 @@ export default function StudentsPage() {
                 <div className="p-5 text-sm text-red-500">{error}</div>
               ) : filteredStudents.length === 0 ? (
                 <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
-                  No active students currently taking this course.
+                  {studentView === "active"
+                    ? "No active students currently taking this course."
+                    : "No completed students in this course yet."}
                 </div>
               ) : (
                 <>
                   <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      Students Table
+                      {studentView === "active" ? "Active Students" : "Completed Students"}
                     </h3>
                     <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
                       {filteredStudents.length} students
@@ -317,6 +371,7 @@ export default function StudentsPage() {
                           <th className="px-4 py-3 font-medium">Email</th>
                           <th className="px-4 py-3 font-medium">Status</th>
                           <th className="px-4 py-3 font-medium">Progress</th>
+                          <th className="px-4 py-3 font-medium">Quiz Score</th>
                           <th className="px-4 py-3 font-medium text-right">Action</th>
                         </tr>
                       </thead>
@@ -379,13 +434,28 @@ export default function StudentsPage() {
                                 </span>
                               </div>
                             </td>
+                            <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
+                              {Number(student.quizAttempts || 0) > 0
+                                ? `${Math.round(Number(student.bestQuizScore || 0))}%`
+                                : "No attempts"}
+                            </td>
                             <td className="px-4 py-3 text-right">
-                              <Link
-                                href={`/teacher/students/${student.id}`}
-                                className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                              >
-                                View Student
-                              </Link>
+                              {studentView === "completed" ? (
+                                <button
+                                  onClick={() => removeCompletedStudent(student.id)}
+                                  disabled={deletingStudentId === student.id}
+                                  className="text-xs px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
+                                >
+                                  {deletingStudentId === student.id ? "Deleting..." : "Delete"}
+                                </button>
+                              ) : (
+                                <Link
+                                  href={`/teacher/students/${student.id}`}
+                                  className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                                >
+                                  View Student
+                                </Link>
+                              )}
                             </td>
                           </tr>
                         ))}

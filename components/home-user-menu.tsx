@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { API_ROUTES, normalizeSessionProfileResponse } from "@aivora/shared";
 
 const roleRoute: Record<string, string> = {
   admin: "/dashboard",
@@ -14,29 +15,28 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
   const name = session?.user?.name || session?.user?.email || "User";
   const initial = name.trim().charAt(0).toUpperCase();
   const sessionImageUrl =
     (session?.user as { image?: string; imageUrl?: string | null } | undefined)?.image ||
     (session?.user as { imageUrl?: string | null } | undefined)?.imageUrl ||
     null;
-  const [imageUrl, setImageUrl] = useState<string | null>(sessionImageUrl);
+  const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
   const role = session?.user?.role?.toLowerCase() || "student";
+  const imageUrl = sessionImageUrl || fetchedImageUrl;
   const dashboard = roleRoute[role] || "/student";
 
   useEffect(() => {
     if (status !== "authenticated") return;
     let mounted = true;
-    if (sessionImageUrl) {
-      setImageUrl(sessionImageUrl);
-      return;
-    }
+    if (sessionImageUrl) return;
     const loadProfile = async () => {
       try {
-        const res = await fetch('/api/profile/me', { cache: 'no-store' });
+        const res = await fetch(API_ROUTES.profileMe, { cache: "no-store" });
         const data = await res.json();
         if (mounted && res.ok) {
-          setImageUrl(data?.user?.imageUrl || null);
+          setFetchedImageUrl(normalizeSessionProfileResponse(data).imageUrl);
         }
       } catch {
         // ignore
@@ -66,12 +66,14 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     };
   }, []);
 
+  if (status !== "authenticated") return null;
+
   return (
-    status === "authenticated" ? (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white max-w-[170px] sm:max-w-[220px]"
+        title={name}
       >
         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold overflow-hidden">
           {imageUrl ? (
@@ -79,13 +81,15 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               src={imageUrl}
               alt="Profile"
               className="h-full w-full object-cover"
-              onError={() => setImageUrl(null)}
+              onError={() => setFetchedImageUrl(null)}
             />
           ) : (
             initial
           )}
         </div>
-        <span className="hidden sm:inline text-sm">{name}</span>
+        <span className="hidden sm:inline text-sm truncate max-w-[95px] md:max-w-[130px] lg:max-w-[170px]">
+          {name}
+        </span>
       </button>
 
       {open && (
@@ -95,7 +99,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? "???? ??????" : "Dashboard"}
+            {isArabic ? "\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645" : "Dashboard"}
           </Link>
           {role !== "admin" ? (
             <Link
@@ -103,7 +107,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
             >
-              {isArabic ? "????? ??????" : "Profile"}
+              {isArabic ? "\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A" : "Profile"}
             </Link>
           ) : null}
           {role === "student" ? (
@@ -112,18 +116,17 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
             >
-              {isArabic ? "??????? ???????" : "Favorite Courses"}
+              {isArabic ? "\u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u0645\u0641\u0636\u0644\u0629" : "Favorite Courses"}
             </Link>
           ) : null}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? "????? ??????" : "Logout"}
+            {isArabic ? "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C" : "Logout"}
           </button>
         </div>
       )}
     </div>
-    ) : null
   );
 }

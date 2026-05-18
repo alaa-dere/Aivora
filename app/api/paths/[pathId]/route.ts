@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2';
 import { requirePermission } from '@/lib/request-auth';
+import { ensureLearningPathSchema } from '@/lib/ensure-learning-path-schema';
 
 interface Params {
   params: Promise<{ pathId: string }>;
@@ -13,6 +14,7 @@ type PathStatus = 'draft' | 'published' | 'archived';
 export async function PUT(req: Request, { params }: Params) {
   const authError = await requirePermission(req, 'course:edit');
   if (authError) return authError;
+  await ensureLearningPathSchema();
 
   const { pathId } = await params;
   const id = decodeURIComponent(pathId).trim();
@@ -152,6 +154,7 @@ export async function PUT(req: Request, { params }: Params) {
 export async function DELETE(req: Request, { params }: Params) {
   const authError = await requirePermission(req, 'course:delete');
   if (authError) return authError;
+  await ensureLearningPathSchema();
 
   const { pathId } = await params;
   const id = decodeURIComponent(pathId).trim();

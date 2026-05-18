@@ -216,8 +216,8 @@ export default function TeacherProfilePage() {
                 <EnvelopeIcon className="w-4 h-4" />
                 {data?.teacher.email || '-'}
               </p>
-              <div className="mt-3">
-                <div className="flex items-center gap-6 text-sm font-semibold">
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-center gap-3 sm:gap-6 text-[13px] sm:text-sm font-semibold overflow-x-auto whitespace-nowrap pb-1 pr-2">
                 {[
                   { key: 'overview', label: 'Overview' },
                   { key: 'courses', label: 'Courses' },
@@ -227,7 +227,7 @@ export default function TeacherProfilePage() {
                   <Link
                     key={item.key}
                     href={`/dashboard/teachers/${teacherId}?tab=${item.key}`}
-                    className={`transition-colors ${
+                    className={`shrink-0 transition-colors ${
                       tab === item.key
                         ? 'text-blue-700 dark:text-blue-300'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -261,7 +261,7 @@ export default function TeacherProfilePage() {
           <div className="space-y-6">
             {tab === 'overview' && (
               <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 {overviewCards.map((card) => (
                   <InfoCard key={card.title} title={card.title} value={card.value} icon={card.icon} />
                 ))}
@@ -306,7 +306,6 @@ export default function TeacherProfilePage() {
                     <SummaryRow label="Gross Sales" value={money(stats?.grossSales ?? 0)} />
                     <SummaryRow label="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} />
                     <SummaryRow label="This Month" value={money(stats?.monthRevenue ?? 0)} />
-                    <SummaryRow label="Total Paid" value={money(stats?.totalPaid ?? 0)} />
                   </div>
                 </div>
               </div>
@@ -321,7 +320,8 @@ export default function TeacherProfilePage() {
                 <Pill label={`Archived ${stats?.archivedCourses ?? 0}`} />
               </div>
 
-              <div className="overflow-x-auto">
+              <div>
+                <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
@@ -364,6 +364,37 @@ export default function TeacherProfilePage() {
                     )}
                   </tbody>
                 </table>
+                </div>
+
+                <div className="md:hidden space-y-2">
+                  {data.courses.length === 0 ? (
+                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
+                      No courses found for this teacher.
+                    </div>
+                  ) : (
+                    data.courses.map((course) => (
+                      <div
+                        key={`mobile-course-${course.id}`}
+                        className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
+                      >
+                        <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{course.title}</p>
+                        <div className="mt-2">
+                          <StatusPill status={course.status} />
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div className="text-slate-500 dark:text-slate-400">Price</div>
+                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{money(course.price)}</div>
+                          <div className="text-slate-500 dark:text-slate-400">Students</div>
+                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{course.students}</div>
+                          <div className="text-slate-500 dark:text-slate-400">Revenue</div>
+                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{money(course.revenue)}</div>
+                          <div className="text-slate-500 dark:text-slate-400">Created</div>
+                          <div className="text-right text-slate-700 dark:text-slate-300">{formatDate(course.createdAt)}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -377,7 +408,8 @@ export default function TeacherProfilePage() {
                     <span className="text-gray-400 font-normal">({data.students.length})</span>
                   </p>
                 </div>
-                <div className="overflow-x-auto">
+                <div>
+                  <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                       <tr className="text-left">
@@ -427,6 +459,43 @@ export default function TeacherProfilePage() {
                       )}
                     </tbody>
                   </table>
+                  </div>
+
+                  <div className="md:hidden space-y-2">
+                    {data.students.length === 0 ? (
+                      <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
+                        No active students currently taking this teacher&apos;s courses.
+                      </div>
+                    ) : (
+                      data.students.map((student) => (
+                        <div
+                          key={`mobile-student-${student.enrollmentId}`}
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
+                        >
+                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{student.fullName}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 break-words">{student.email}</p>
+                          <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-1.5">{student.courseTitle}</p>
+                          <div className="mt-2">
+                            <EnrollmentStatus status={student.status} />
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                              <div
+                                className="h-2 rounded-full bg-blue-600"
+                                style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">
+                              {Number(student.progressPercentage || 0).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            Enrolled: <span className="text-slate-700 dark:text-slate-300">{formatDate(student.enrolledAt)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -437,10 +506,10 @@ export default function TeacherProfilePage() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <InfoCard title="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} icon={BanknotesIcon} />
                 <InfoCard title="This Month" value={money(stats?.monthRevenue ?? 0)} icon={ArrowTrendingUpIcon} />
-                <InfoCard title="Total Paid" value={money(stats?.totalPaid ?? 0)} icon={CurrencyDollarIcon} />
               </div>
 
-              <div className="overflow-x-auto">
+              <div>
+                <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
@@ -483,6 +552,37 @@ export default function TeacherProfilePage() {
                     )}
                   </tbody>
                 </table>
+                </div>
+
+                <div className="md:hidden space-y-2">
+                  {data.transactions.length === 0 ? (
+                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
+                      No transactions recorded yet.
+                    </div>
+                  ) : (
+                    data.transactions.map((tx) => (
+                      <div
+                        key={`mobile-earning-${tx.id}`}
+                        className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{tx.studentName || '-'}</p>
+                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+                            {money(tx.teacherShare || 0, tx.currency || 'USD')}
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{tx.courseTitle || '-'}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{formatDateTime(tx.dateTime)}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
+                            {tx.type}
+                          </span>
+                          <TransactionStatus status={tx.status} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -494,15 +594,15 @@ export default function TeacherProfilePage() {
 
 function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
   return (
-    <div className="group relative overflow-hidden h-full min-h-[150px] bg-white dark:bg-slate-900/70 p-5 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
-      <div className="flex justify-between mb-3">
-        <span className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+    <div className="group relative overflow-hidden h-full min-h-[132px] sm:min-h-[150px] bg-white/85 dark:bg-slate-900/75 backdrop-blur p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
+      <div className="flex justify-between mb-2 sm:mb-3">
+        <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-sky-600 dark:text-sky-300" />
         </span>
       </div>
-      <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{title}</p>
+      <p className="text-[28px] sm:text-2xl leading-none font-bold text-gray-800 dark:text-white">{value}</p>
+      <p className="text-xs sm:text-sm text-gray-500 mt-1">{title}</p>
     </div>
   );
 }
