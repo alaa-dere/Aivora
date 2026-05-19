@@ -1,10 +1,11 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
 import LiveSqlEditor from '@/components/live-sql-editor';
+import LiveCEditor from '@/components/live-c-editor';
 
 type LiveEditorSubmission = {
   code: string;
@@ -17,7 +18,7 @@ type LessonContentViewProps = {
   content: string;
   quizQuestions?: any[];
   enableLiveEditor?: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
   starterDisabledMessage?: string;
   emptyMessage?: string;
@@ -169,10 +170,10 @@ const normalizeFenceText = (content: string) => {
 
 const normalizeStarterFormatting = (value: string) => {
   if (!value) return value;
-  return value
-    .replace(/\\r\\n/g, '\n')
-    .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t');
+  // Only normalize escaped Windows newlines token to real newlines.
+  // Do NOT convert generic "\\n" because it may be part of C/JS string literals
+  // (e.g. printf("hello\\n")), and converting it breaks compilable code.
+  return value.replace(/\\r\\n/g, '\n');
 };
 
 const parseLessonContent = (content: string) => {
@@ -277,7 +278,33 @@ export default function LessonContentView({
   emptyMessage = 'No lesson content yet.',
   quizQuestions = [],
 }: LessonContentViewProps) {
+  const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
   const segments = parseLessonContent(content || '');
+
+  const copyCode = async (value: string, index: number) => {
+    const text = value || '';
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedCodeIndex(index);
+      setTimeout(() => {
+        setCopiedCodeIndex((current) => (current === index ? null : current));
+      }, 1400);
+    } catch {
+      setCopiedCodeIndex(null);
+    }
+  };
 
   if (segments.length === 0) {
     return <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>;
@@ -288,9 +315,18 @@ export default function LessonContentView({
       {segments.map((seg, idx) => {
         if (seg.type === 'code') {
           return (
-            <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-              <code>{seg.value}</code>
-            </pre>
+            <div key={idx} className="relative">
+              <button
+                type="button"
+                onClick={() => copyCode(seg.value, idx)}
+                className="absolute top-2 right-2 z-10 rounded-md border border-gray-600 bg-gray-800/90 px-2 py-1 text-[11px] font-medium text-gray-100 hover:bg-gray-700"
+              >
+                {copiedCodeIndex === idx ? 'Copied' : 'Copy'}
+              </button>
+              <pre className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
+                <code>{seg.value}</code>
+              </pre>
+            </div>
           );
         }
         if (seg.type === 'starter') {
@@ -309,6 +345,9 @@ export default function LessonContentView({
           }
           if (liveEditorLanguage === 'sql') {
             return <LiveSqlEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
+          }
+          if (liveEditorLanguage === 'c') {
+            return <LiveCEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
           }
           return <LivePythonEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
         }

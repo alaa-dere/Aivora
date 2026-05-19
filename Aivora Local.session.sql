@@ -12,7 +12,7 @@ MODIFY COLUMN type ENUM('text', 'code_example', 'live_python', 'video_embed', 'q
 MODIFY COLUMN enableLiveEditor BOOLEAN DEFAULT FALSE;
 
 ALTER TABLE Lesson
-ADD COLUMN liveEditorLanguage ENUM('python', 'javascript', 'html_css') DEFAULT 'python';
+ADD COLUMN liveEditorLanguage ENUM('python', 'javascript', 'html_css', 'sql', 'c') DEFAULT 'python';
 
 -- Fix finance_transaction split based on course price and teacher share
 UPDATE finance_transaction ft
@@ -38,3 +38,4 @@ WHERE title = 'Python Programming';
 UPDATE course
 SET descriptionAr = 'دورة تطوير الويب تغطي أساسيات بناء المواقع باستخدام HTML وCSS وJavaScript، مع تطبيقات عملية لبناء صفحات تفاعلية.'
 WHERE title = 'web development';
+

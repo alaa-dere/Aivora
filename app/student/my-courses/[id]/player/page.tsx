@@ -32,7 +32,7 @@ type Lesson = {
   completed: boolean;
   unlocked: boolean;
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
 };
 
 type Module = {

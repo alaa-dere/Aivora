@@ -78,7 +78,7 @@ export default function LiveJsEditor({
         </button>
       </div>
       <textarea
-        rows={6}
+        rows={12}
         value={code}
         onChange={(e) => {
           setCode(e.target.value);

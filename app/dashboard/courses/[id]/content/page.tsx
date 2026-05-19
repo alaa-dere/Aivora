@@ -15,7 +15,7 @@ type Lesson = {
   title: string;
   type: 'text' | 'code_example' | 'live_python' | 'video_embed' | 'quiz' | 'mixed';
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
   durationMinutes: number;
   isPublished: boolean;
   content?: string;
@@ -92,11 +92,13 @@ export default function CourseContentPage() {
       setCourseTitle(data.course?.title || '');
 
       if (Array.isArray(data.modules) && data.modules.length > 0) {
-        const initialExpanded: Record<string, boolean> = {};
-        data.modules.slice(0, 2).forEach((m: Module) => {
-          initialExpanded[m.id] = true;
+        setExpandedModules((prev) => {
+          const next: Record<string, boolean> = {};
+          data.modules.forEach((m: Module) => {
+            next[m.id] = Boolean(prev[m.id]);
+          });
+          return next;
         });
-        setExpandedModules(initialExpanded);
         const allLessons = data.modules.flatMap((m: Module) => m.lessons || []);
         const stillExists =
           selectedLessonId && allLessons.some((lesson: Lesson) => lesson.id === selectedLessonId);
@@ -118,6 +120,28 @@ export default function CourseContentPage() {
       fetchContent();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    if (!courseId || typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(`course-content-expanded:${courseId}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, boolean>;
+      if (parsed && typeof parsed === 'object') {
+        setExpandedModules(parsed);
+      }
+    } catch {
+      // ignore invalid saved state
+    }
+  }, [courseId]);
+
+  useEffect(() => {
+    if (!courseId || typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      `course-content-expanded:${courseId}`,
+      JSON.stringify(expandedModules)
+    );
+  }, [courseId, expandedModules]);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev => ({
@@ -1123,6 +1147,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                       <option value="javascript">JavaScript / Node.js (Replit / StackBlitz)</option>
                       <option value="html_css">HTML/CSS (CodePen / StackBlitz)</option>
                       <option value="sql">SQL (Query Practice)</option>
+                      <option value="c">C (Practice Mode)</option>
                     </select>
                   </div>
                 )}

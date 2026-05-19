@@ -82,7 +82,7 @@ export default function LiveSqlEditor({
         </button>
       </div>
       <textarea
-        rows={8}
+        rows={12}
         value={code}
         onChange={(e) => {
           setCode(e.target.value);
@@ -103,4 +103,5 @@ export default function LiveSqlEditor({
     </div>
   );
 }
+
 

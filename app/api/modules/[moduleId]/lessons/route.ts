@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: Params) {
     const enableLiveEditor = Boolean(body?.enableLiveEditor);
     const liveEditorLanguageRaw = String(body?.liveEditorLanguage ?? 'python');
     const liveEditorLanguage =
-      liveEditorLanguageRaw === 'javascript' || liveEditorLanguageRaw === 'html_css' || liveEditorLanguageRaw === 'sql'
+      liveEditorLanguageRaw === 'javascript' || liveEditorLanguageRaw === 'html_css' || liveEditorLanguageRaw === 'sql' || liveEditorLanguageRaw === 'c'
         ? liveEditorLanguageRaw
         : 'python';
 
