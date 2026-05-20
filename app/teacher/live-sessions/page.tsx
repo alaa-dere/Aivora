@@ -28,8 +28,10 @@ type CourseOption = {
 
 type SessionItem = {
   id: string;
+  teacherId?: string;
   courseId: string;
   courseTitle: string;
+  teacherName?: string;
   title: string;
   description: string | null;
   startAt: string;
@@ -49,14 +51,22 @@ type AttendanceStudent = {
 };
 
 type DerivedSessionStatus = "scheduled" | "completed" | "past";
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const CALENDAR_START_HOUR = 13;
+const CALENDAR_END_HOUR = 20;
+const HOUR_ROW_HEIGHT = 72;
 
 export default function LiveSessionsPage() {
   const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
   const [searchTerm, setSearchTerm] = useState("");
+  const [weekOffset, setWeekOffset] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [sharedSessions, setSharedSessions] = useState<SessionItem[]>([]);
+  const [currentTeacherId, setCurrentTeacherId] = useState("");
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [attendanceSession, setAttendanceSession] = useState<SessionItem | null>(null);
@@ -94,10 +104,17 @@ export default function LiveSessionsPage() {
   const loadSessions = async () => {
     try {
       setLoadingSessions(true);
-      const res = await fetch("/api/teacher/dashboard?liveSessions=1", { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) return;
-      setSessions(data.sessions || []);
+      const [ownRes, sharedRes] = await Promise.all([
+        fetch("/api/teacher/dashboard?liveSessions=1", { cache: "no-store" }),
+        fetch("/api/teacher/dashboard?liveSessions=1&sharedSchedule=1", { cache: "no-store" }),
+      ]);
+      const ownData = await ownRes.json();
+      const sharedData = await sharedRes.json();
+      if (ownRes.ok) setSessions(ownData.sessions || []);
+      if (sharedRes.ok) {
+        setSharedSessions(sharedData.sessions || []);
+        setCurrentTeacherId(String(sharedData.currentTeacherId || ""));
+      }
     } catch (error) {
       console.error("Failed to load sessions", error);
     } finally {
@@ -133,6 +150,95 @@ export default function LiveSessionsPage() {
       session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       session.courseTitle.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  const weekStart = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(now.getDate() - day + weekOffset * 7);
+    return start;
+  }, [weekOffset]);
+
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i)),
+    [weekStart]
+  );
+
+  const hourLabels = useMemo(
+    () =>
+      Array.from(
+        { length: CALENDAR_END_HOUR - CALENDAR_START_HOUR },
+        (_, idx) => CALENDAR_START_HOUR + idx
+      ),
+    []
+  );
+
+  const filteredSharedSessions = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return sharedSessions;
+    return sharedSessions.filter((session) =>
+      [session.title, session.courseTitle, session.teacherName]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [sharedSessions, searchTerm]);
+
+  const calendarEvents = useMemo(() => {
+    const weekStartMs = weekStart.getTime();
+    const weekEndMs = weekStartMs + 7 * 24 * 60 * 60 * 1000;
+    const maxMinutes = (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * 60;
+
+    return filteredSharedSessions
+      .map((session) => {
+        const start = new Date(session.startAt);
+        const end = new Date(session.endAt);
+        const startMs = start.getTime();
+        if (Number.isNaN(startMs) || startMs < weekStartMs || startMs >= weekEndMs) return null;
+        const dayIndex = start.getDay();
+        const startMinutes = start.getHours() * 60 + start.getMinutes();
+        const endMinutes = end.getHours() * 60 + end.getMinutes();
+        const minStart = CALENDAR_START_HOUR * 60;
+        const topMinutes = Math.max(0, startMinutes - minStart);
+        const snappedTopMinutes = Math.floor(topMinutes / 60) * 60;
+        const rawDuration = Math.max(1, endMinutes - startMinutes);
+        const snappedDurationMinutes = Math.max(60, Math.ceil(rawDuration / 60) * 60);
+        const durationMinutes = Math.min(maxMinutes - snappedTopMinutes, snappedDurationMinutes);
+        return {
+          ...session,
+          dayIndex,
+          top: (snappedTopMinutes / 60) * HOUR_ROW_HEIGHT,
+          height: Math.max(28, (durationMinutes / 60) * HOUR_ROW_HEIGHT),
+        };
+      })
+      .filter(Boolean) as Array<
+      SessionItem & { dayIndex: number; top: number; height: number }
+    >;
+  }, [filteredSharedSessions, weekStart]);
+
+  const weeklySchedule = useMemo(() => {
+    const map: Record<number, SessionItem[]> = {
+      0: [],
+      1: [],
+      2: [],
+      3: [],
+      4: [],
+      5: [],
+      6: [],
+    };
+    sharedSessions.forEach((session) => {
+      const status = getDerivedStatus(session);
+      if (status !== "scheduled") return;
+      const date = new Date(session.startAt);
+      map[date.getDay()].push(session);
+    });
+    Object.values(map).forEach((daySessions) => {
+      daySessions.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    });
+    return map;
+  }, [sharedSessions]);
 
   const handleCopyLink = (link: string | null) => {
     if (!link) return;
@@ -206,7 +312,11 @@ export default function LiveSessionsPage() {
       if (!res.ok) {
         throw new Error(data.error || data.message || "Failed to schedule");
       }
-      toast.success("Session scheduled successfully!");
+      if (Array.isArray(data?.conflicts) && data.conflicts.length > 0) {
+        toast(`Created ${data.sessionIds?.length || 0} session(s). Some weeks were skipped due to conflicts.`);
+      } else {
+        toast.success("Session scheduled successfully!");
+      }
       setShowScheduleModal(false);
       setFormData({
         title: "",
@@ -353,10 +463,24 @@ export default function LiveSessionsPage() {
 
           <div className="flex gap-2">
             <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                onClick={() => setDisplayMode("calendar")}
+                className={`px-3 py-2 text-sm ${displayMode === "calendar" ? "bg-blue-600 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300"}`}
+              >
+                Calendar
+              </button>
+              <button
+                onClick={() => setDisplayMode("list")}
+                className={`px-3 py-2 text-sm ${displayMode === "list" ? "bg-blue-600 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300"}`}
+              >
+                List
+              </button>
+            </div>
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {["upcoming", "past", "all"].map((v) => (
                 <button
                   key={v}
-                  onClick={() => setView(v as any)}
+                  onClick={() => setView(v as "upcoming" | "past" | "all")}
                   className={`px-4 py-2 text-sm font-medium transition-all ${
                     view === v
                       ? "bg-blue-600 text-white"
@@ -379,9 +503,110 @@ export default function LiveSessionsPage() {
       <div className="space-y-4">
         {loadingSessions ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">Loading sessions...</div>
-        ) : filteredSessions.length === 0 ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">No sessions yet.</div>
+        ) : displayMode === "calendar" ? (
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-[#f7f7f8] dark:bg-gray-900 overflow-hidden">
+            <div className="flex items-center gap-3 p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-700"
+              >
+                Today
+              </button>
+              <button onClick={() => setWeekOffset((v) => v - 1)} className="px-2 text-xl leading-none text-gray-700 dark:text-gray-200">
+                ‹
+              </button>
+              <button onClick={() => setWeekOffset((v) => v + 1)} className="px-2 text-xl leading-none text-gray-700 dark:text-gray-200">
+                ›
+              </button>
+              <p className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+                {weekStart.toLocaleDateString([], { month: "long", year: "numeric" })}
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <div className="min-w-[980px]">
+                <div className="grid" style={{ gridTemplateColumns: "60px repeat(7, minmax(130px, 1fr))" }}>
+                  <div className="border-r border-gray-200 dark:border-gray-700 bg-[#f7f7f8] dark:bg-gray-900" />
+                  {weekDays.map((day) => {
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    return (
+                      <div
+                        key={`header-${day.toISOString()}`}
+                        className={`px-3 py-2 border-r border-gray-200 dark:border-gray-700 bg-[#f7f7f8] dark:bg-gray-900 ${isToday ? "border-t-2 border-t-indigo-500" : ""}`}
+                      >
+                        <p className={`text-4xl leading-none ${isToday ? "text-indigo-600 font-semibold" : "text-gray-700 dark:text-gray-200"}`}>
+                          {day.getDate()}
+                        </p>
+                        <p className={`text-sm ${isToday ? "text-indigo-600 font-semibold" : "text-gray-500 dark:text-gray-400"}`}>
+                          {WEEKDAY_LABELS[day.getDay()]}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="grid" style={{ gridTemplateColumns: "60px repeat(7, minmax(130px, 1fr))" }}>
+                  <div className="bg-[#f7f7f8] dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
+                    {hourLabels.map((hour) => (
+                      <div
+                        key={`time-${hour}`}
+                        className="text-xs text-gray-500 dark:text-gray-400 px-2 pt-1 border-b border-gray-200 dark:border-gray-700"
+                        style={{ height: `${HOUR_ROW_HEIGHT}px` }}
+                      >
+                        {new Date(2026, 0, 1, hour).toLocaleTimeString([], {
+                          hour: "numeric",
+                          hour12: true,
+                        })}
+                      </div>
+                    ))}
+                  </div>
+
+                  {weekDays.map((day) => (
+                    <div
+                      key={`col-${day.toISOString()}`}
+                      className="relative border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950"
+                      style={{ height: `${hourLabels.length * HOUR_ROW_HEIGHT}px` }}
+                    >
+                      {hourLabels.map((hour) => (
+                        <div
+                          key={`line-${day.toISOString()}-${hour}`}
+                          className="border-b border-gray-200 dark:border-gray-700"
+                          style={{ height: `${HOUR_ROW_HEIGHT}px` }}
+                        />
+                      ))}
+                      {calendarEvents
+                        .filter((event) => event.dayIndex === day.getDay())
+                        .map((event) => (
+                          <button
+                            key={event.id}
+                            onClick={() => {
+                              if (event.teacherId && currentTeacherId && event.teacherId !== currentTeacherId) return;
+                              openAttendance(event);
+                            }}
+                            className="absolute left-1 right-1 rounded-md border border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-left shadow-sm hover:shadow"
+                            style={{ top: `${event.top}px`, height: `${event.height}px` }}
+                          >
+                            <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 truncate">
+                              {event.title}
+                            </p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-300 truncate">
+                              {event.teacherName || ""}
+                            </p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-300">
+                              {formatTime(event.startAt)} - {formatTime(event.endAt)}
+                            </p>
+                          </button>
+                        ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
+          filteredSessions.length === 0 ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400">No sessions yet.</div>
+          ) : (
           filteredSessions.map((session) => (
             (() => {
               const derivedStatus = getDerivedStatus(session);
@@ -501,7 +726,7 @@ export default function LiveSessionsPage() {
             </div>
               );
             })()
-          ))
+          )))
         )}
       </div>
 
@@ -596,6 +821,49 @@ export default function LiveSessionsPage() {
 
               <section>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Date & Time</h3>
+                <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-900/20 p-3">
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2">
+                    Weekly schedule snapshot (booked slots)
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
+                    {WEEKDAY_LABELS.map((day, idx) => {
+                      const daySessions = weeklySchedule[idx] || [];
+                      return (
+                        <div
+                          key={day}
+                          className={`rounded-lg border border-amber-100 dark:border-amber-800 p-2 overflow-hidden ${
+                            daySessions.length === 0 ? "min-h-[60px]" : "min-h-[96px]"
+                          }`}
+                        >
+                          <p className="font-semibold text-amber-900 dark:text-amber-100 mb-1">{day}</p>
+                          {daySessions.length === 0 ? (
+                            <p className="text-emerald-700 dark:text-emerald-300">Free</p>
+                          ) : (
+                            <div className="space-y-1 max-h-[92px] overflow-y-auto pr-1">
+                              {daySessions.map((session) => (
+                                <div
+                                  key={session.id}
+                                  className="rounded-md bg-amber-100/70 dark:bg-amber-900/30 px-1.5 py-1"
+                                  title={`${session.courseTitle} (${formatTime(session.startAt)} - ${formatTime(session.endAt)})`}
+                                >
+                                  <p className="text-amber-900 dark:text-amber-100 text-[10px] leading-tight truncate">
+                                    {formatTime(session.startAt)} - {formatTime(session.endAt)}
+                                  </p>
+                                  <p className="text-amber-700 dark:text-amber-300 text-[10px] truncate">
+                                    {session.courseTitle}
+                                  </p>
+                                  <p className="text-amber-700/90 dark:text-amber-300 text-[10px] truncate">
+                                    {session.teacherName || "Teacher"}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
