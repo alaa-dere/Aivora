@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { getAdminNotificationHref } from "@/lib/notification-links";
 
 type NotificationType = "student_signup" | "course_enroll" | "teacher_message";
 
@@ -21,6 +22,8 @@ type NotificationItem = {
   time: string;
   read: boolean;
   certificateId?: string | null;
+  studentId?: string | null;
+  courseId?: string | null;
 };
 
 type NotificationApiItem = {
@@ -31,6 +34,8 @@ type NotificationApiItem = {
   createdAt: string;
   readAt: string | null;
   certificateId?: string | null;
+  studentId?: string | null;
+  courseId?: string | null;
 };
 
 function getTypeIcon(type: NotificationType) {
@@ -96,6 +101,8 @@ export default function NotificationsPage() {
           time: new Date(n.createdAt).toLocaleString(),
           read: Boolean(n.readAt),
           certificateId: n.certificateId || null,
+          studentId: n.studentId || null,
+          courseId: n.courseId || null,
         }));
         setItems(mapped);
       } catch (error) {
@@ -212,9 +219,7 @@ export default function NotificationsPage() {
           {visibleNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 md:p-4 transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${
-                !notification.read ? "bg-blue-50/40 dark:bg-blue-900/10" : ""
-              }`}
+              className="p-3 md:p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
               <div className="flex gap-3">
                 <div
@@ -256,6 +261,12 @@ export default function NotificationsPage() {
                         View certificate
                       </Link>
                     )}
+                    <Link
+                      href={getAdminNotificationHref(notification)}
+                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open
+                    </Link>
                     {!notification.read && (
                       <button
                         onClick={() => markAsRead(notification.id)}
@@ -292,3 +303,7 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+
+
+

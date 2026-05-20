@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -25,14 +26,16 @@ import { downloadCertificatePdfNative } from '../../services/certificate-downloa
 import AdminDashboardView from './AdminDashboardView';
 import CertificatePreviewCard from './CertificatePreviewCard';
 import RevenueAreaChart from './RevenueAreaChart';
+import AdminForecastView from './AdminForecastView';
+import AdminChatbotView from './AdminChatbotView';
 
 const getThemeColors = (mode) => {
   const isDark = mode === 'dark';
   return {
     isDark,
     pageBg: isDark ? '#0b1220' : '#f1f5f9',
-    topBg: isDark ? '#111827' : '#ffffff',
-    border: isDark ? '#243041' : '#dbe4ef',
+    topBg: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(250, 250, 249, 0.8)',
+    border: isDark ? 'rgba(51, 65, 85, 0.8)' : 'rgba(231, 229, 228, 0.8)',
     cardBg: isDark ? '#111827' : '#ffffff',
     cardBorder: isDark ? '#243041' : '#e2e8f0',
     textPrimary: isDark ? '#f8fafc' : '#0f172a',
@@ -57,6 +60,8 @@ const FEATURE_ICON_MAP = {
   'admin-messages': 'message-text',
   'admin-transactions': 'cash-multiple',
   'admin-reports': 'file-chart',
+  'admin-forecast': 'chart-timeline-variant',
+  'admin-chatbot': 'robot-outline',
 };
 
 function SectionCard({ title, children, theme }) {
@@ -5017,9 +5022,23 @@ export default function AdminWorkspace({
   };
 
   const renderActivePage = () => {
+    const navigateToFeature = (featureId) => {
+      if (!featureId) return;
+      setActiveFeatureId(featureId);
+      const ownerTab = adminTabs.find((tab) => (tab.featureIds || []).includes(featureId));
+      if (ownerTab?.id) setActiveTabId(ownerTab.id);
+    };
+
     switch (activeFeature.id) {
       case 'admin-stats':
-        return <AdminDashboardView apiFetch={apiFetch} theme={theme} />;
+        return (
+          <AdminDashboardView
+            apiFetch={apiFetch}
+            theme={theme}
+            onOpenForecast={() => navigateToFeature('admin-forecast')}
+            onOpenChatbot={() => navigateToFeature('admin-chatbot')}
+          />
+        );
       case 'admin-recent-activity':
         return (
           <DataListPage
@@ -5116,20 +5135,51 @@ export default function AdminWorkspace({
         return <FinanceTransactionsPage apiFetch={apiFetch} theme={theme} />;
       case 'admin-reports':
         return <FinanceReportsPage apiFetch={apiFetch} theme={theme} />;
+      case 'admin-forecast':
+        return <AdminForecastView apiFetch={apiFetch} theme={theme} />;
+      case 'admin-chatbot':
+        return <AdminChatbotView apiFetch={apiFetch} theme={theme} />;
       default:
-        return <AdminDashboardView apiFetch={apiFetch} theme={theme} />;
+        return (
+          <AdminDashboardView
+            apiFetch={apiFetch}
+            theme={theme}
+            onOpenForecast={() => navigateToFeature('admin-forecast')}
+            onOpenChatbot={() => navigateToFeature('admin-chatbot')}
+          />
+        );
     }
   };
 
   return (
-    <View style={[portalStyles.adminShellPage, { backgroundColor: theme.pageBg }]}>
+    <View style={[portalStyles.adminShellPage, { backgroundColor: 'transparent' }]}>
+      <ImageBackground
+        source={
+          theme.isDark
+            ? require('../../../assets/plain2dd.png')
+            : require('../../../assets/plain2.png')
+        }
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+        imageStyle={{ resizeMode: 'cover' }}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          backgroundColor: theme.isDark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.14)',
+        }}
+      />
       <Animated.View
         style={[
           portalStyles.adminShellTopBar,
           {
-            paddingTop: Math.max(insets.top, 8),
+            paddingTop: 8,
             backgroundColor: theme.topBg,
-            borderBottomColor: theme.border,
+            borderColor: theme.border,
             transform: [{ translateY: topBarOffset }],
           },
         ]}
@@ -5178,7 +5228,7 @@ export default function AdminWorkspace({
         style={[
           portalStyles.adminShellBody,
           {
-            marginTop: topBarHeight,
+            marginTop: topBarHeight + 28,
             transform: [{ translateY: topBarOffset }],
           },
         ]}
@@ -5196,7 +5246,7 @@ export default function AdminWorkspace({
           style={portalStyles.adminContent}
           contentContainerStyle={[
             portalStyles.adminContentInner,
-            { backgroundColor: theme.pageBg },
+            { backgroundColor: 'transparent' },
             !isDesktop && { paddingBottom: Math.max(insets.bottom + 84, 96) },
           ]}
           scrollEventThrottle={16}

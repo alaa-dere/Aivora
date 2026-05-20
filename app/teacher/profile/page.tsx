@@ -236,7 +236,8 @@ export default function TeacherProfilePage() {
       </div>
 
       {loading && (
-        <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+        <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
           Loading your profile...
         </div>
       )}
@@ -251,7 +252,8 @@ export default function TeacherProfilePage() {
       {!loading && profile && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
+            <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center overflow-hidden">
                   {profile.imageUrl ? (
@@ -276,7 +278,7 @@ export default function TeacherProfilePage() {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Profile Photo
                 </label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                   <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden flex items-center justify-center">
                     {photoPreview ? (
                       <img
@@ -294,18 +296,18 @@ export default function TeacherProfilePage() {
                       <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     )}
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 w-full sm:w-auto">
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/jpg"
                       onChange={(e) => handlePhotoSelect(e.target.files?.[0] || null)}
-                      className="text-sm text-gray-600 dark:text-gray-300"
+                      className="w-full text-xs sm:text-sm text-gray-600 dark:text-gray-300"
                     />
                     <button
                       type="button"
                       onClick={handlePhotoUpload}
                       disabled={!photoFile || photoUploading}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800 transition disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800 transition disabled:opacity-60 w-fit"
                     >
                       {photoUploading ? 'Uploading...' : 'Upload Photo'}
                     </button>
@@ -354,8 +356,9 @@ export default function TeacherProfilePage() {
           <div className="lg:col-span-2">
             <form
               onSubmit={handleSubmit}
-              className="portal-surface bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
+              className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
             >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
               <div className="flex items-center gap-2">
                 <UserCircleIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-white">

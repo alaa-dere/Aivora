@@ -220,12 +220,12 @@ export default function AdminCoursesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Courses</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">All Courses</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage courses, pricing, and publishing status.
           </p>
         </div>
@@ -283,7 +283,7 @@ export default function AdminCoursesPage() {
               Add Categories
             </Link>
 
-            <div className="relative flex-[1.5] min-w-[320px]">
+            <div className="relative flex-1 min-w-0">
               <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={q}
@@ -310,10 +310,10 @@ export default function AdminCoursesPage() {
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
             Selected courses: <span className="font-semibold">{selectedCourseIds.length}</span>
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={bulkCategoryId}
               onChange={(e) => setBulkCategoryId(e.target.value)}
@@ -365,7 +365,7 @@ export default function AdminCoursesPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-white dark:bg-slate-900/60">
               <tr className="text-left text-slate-600 dark:text-slate-300">
@@ -488,6 +488,85 @@ export default function AdminCoursesPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden p-2.5 space-y-2.5">
+          {loading ? (
+            <div className="px-3 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-3 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">
+              No matching courses found. Try changing filters or add a new course.
+            </div>
+          ) : (
+            filtered.map((c) => (
+              <div
+                key={`mobile-${c.id}`}
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedCourseIds.includes(c.id)}
+                      onChange={() => toggleCourseSelection(c.id)}
+                      aria-label={`Select course ${c.title}`}
+                    />
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 line-clamp-2">
+                      {c.title}
+                    </span>
+                  </label>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium border ${
+                      c.status === 'published'
+                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
+                        : c.status === 'archived'
+                        ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                        : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+                    }`}
+                  >
+                    {c.status === 'published' ? 'Published' : c.status === 'archived' ? 'Archived' : 'Draft'}
+                  </span>
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                  <div className="text-slate-500 dark:text-slate-400">Category</div>
+                  <div className="text-right text-slate-700 dark:text-slate-300">{c.categoryName || 'Uncategorized'}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Teacher</div>
+                  <div className="text-right text-slate-700 dark:text-slate-300">{c.teacherName || 'Not specified'}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Price</div>
+                  <div className="text-right font-semibold text-slate-800 dark:text-slate-100">${Number(c.price).toFixed(2)}</div>
+                  <div className="text-slate-500 dark:text-slate-400">Teacher Share</div>
+                  <div className="text-right text-slate-700 dark:text-slate-300">{Number(c.teacherSharePct ?? 70).toFixed(0)}%</div>
+                  <div className="text-slate-500 dark:text-slate-400">Students</div>
+                  <div className="text-right text-slate-700 dark:text-slate-300">{c.students || 0}</div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Link
+                    href={`/dashboard/courses/${c.id}/content`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                    Content
+                  </Link>
+                  <Link
+                    href={`/dashboard/courses/${c.id}/edit`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <PencilSquareIcon className="w-4 h-4" />
+                    Edit
+                  </Link>
+                  <button
+                    onClick={() => openDeleteModal(c.id, c.title)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

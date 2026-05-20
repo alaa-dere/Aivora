@@ -37,6 +37,7 @@ export default function AuthPage() {
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [savedCredentials, setSavedCredentials] = useState<Record<string, string>>({});
   const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const saveBrowserCredential = async (emailValue: string, passwordValue: string) => {
     try {
       if (
@@ -82,6 +83,15 @@ export default function AuthPage() {
     } catch {
       // ignore storage errors
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
 
   const saveLocalCredential = (emailValue: string, passwordValue: string) => {
@@ -405,7 +415,7 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-[#003153] md:bg-white flex items-center justify-center relative overflow-hidden">
       {/* الدائرة الخلفية - كما هي */}
       <motion.div
         animate={{
@@ -413,7 +423,7 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -458,7 +468,7 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -477,16 +487,26 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 
       {/* الفورم */}
       <div className="w-full max-w-6xl relative z-10 px-4 sm:px-6 md:px-10 lg:px-12">
-        <div className="relative min-h-[80vh] flex items-center">
+        <div className="md:hidden flex justify-center mt-12 mb-2">
+          <Image
+            src="/aivora2.png"
+            alt="Aivora Logo"
+            width={180}
+            height={180}
+            className="w-40 h-40 object-contain drop-shadow-xl"
+            priority
+          />
+        </div>
+        <div className="relative min-h-[80vh] flex items-start md:items-center -mt-2 md:mt-0">
           <motion.div
             animate={{
-              marginLeft: isLogin ? "50%" : "0%",
-              marginRight: isLogin ? "0%" : "50%",
+              marginLeft: isMobile ? "0%" : isLogin ? "50%" : "0%",
+              marginRight: isMobile ? "0%" : isLogin ? "0%" : "50%",
             }}
             transition={{ duration: 1.2, ease: [0.25, 0.8, 0.25, 1] }}
             className="w-full md:w-1/2 flex justify-center"
           >
-            <div className="w-full max-w-md bg-blue/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
+            <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
               <div className="text-center mb-6 md:mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
                   {isLogin ? "Sign In" : "Create Account"}

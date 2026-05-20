@@ -190,47 +190,47 @@ export default function CourseDetailsPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 pt-4">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <Link href="/" className="flex items-center shrink-0">
               <Image
                 src="/alaa.png"
                 alt="Aivora Logo"
                 width={100}
                 height={35}
-                className="h-7 w-auto dark:brightness-100 brightness-25"
+                className="h-6 sm:h-7 w-auto dark:brightness-100 brightness-25"
               />
             </Link>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <SunIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <SunIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 ) : (
-                  <MoonIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 )}
               </button>
 
               <button
                 onClick={toggleLanguage}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle language"
                 title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
               >
-                <GlobeAltIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
 
               {status === 'authenticated' ? (
                 <HomeUserMenu isArabic={isArabic} />
               ) : (
                 <Link href="/login">
-                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                    <ArrowLeftOnRectangleIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
                       {isArabic ? 'تسجيل الدخول' : 'Login'}
                     </span>
@@ -243,43 +243,43 @@ export default function CourseDetailsPage() {
         </div>
       </header>
 
-      <main className="relative z-10 pt-8 pb-16 px-5 sm:px-6 lg:px-8">
+      <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
 
-          <div className="grid lg:grid-cols-2 gap-10 items-start">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 items-start">
             <div className="overflow-hidden rounded-3xl border border-white/15 bg-white/10 backdrop-blur-lg shadow-xl">
               <img
                 src={course.imageUrl || '/default-course.jpg'}
                 alt={course.title}
-                className="w-full h-[260px] sm:h-[380px] object-cover"
+                className="w-full h-[190px] sm:h-[380px] object-cover"
               />
             </div>
 
             <div>
-              <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-4 text-white">
+              <h1 className="text-2xl sm:text-5xl font-black leading-tight mb-3 sm:mb-4 text-white">
                 {course.title}
               </h1>
 
-              <p className="text-slate-200 text-lg leading-8 mb-6 whitespace-pre-line">
+              <p className="text-slate-200 text-sm sm:text-lg leading-7 sm:leading-8 mb-5 sm:mb-6 whitespace-pre-line">
                 {descriptionText}
               </p>
 
-              <div className="grid sm:grid-cols-2 gap-4 mb-8">
-                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4">
                   <p className="text-sm text-slate-300 mb-1">
                     {isArabic ? 'المدرب' : 'Instructor'}
                   </p>
                   <p className="font-semibold text-white">{course.teacherName}</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4">
+                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4">
                   <p className="text-sm text-slate-300 mb-1">
                     {isArabic ? 'السعر' : 'Price'}
                   </p>
-                  <p className="font-semibold text-blue-300 text-xl">${course.price}</p>
+                  <p className="font-semibold text-blue-300 text-lg sm:text-xl">${course.price}</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 flex items-center gap-3">
+                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4 flex items-center gap-3">
                   <ClockIcon className="w-6 h-6 text-blue-300" />
                   <div>
                     <p className="text-sm text-slate-300">
@@ -291,7 +291,7 @@ export default function CourseDetailsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-4 flex items-center gap-3">
+                <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4 flex items-center gap-3">
                   <UserGroupIcon className="w-6 h-6 text-blue-300" />
                   <div>
                     <p className="text-sm text-slate-300">
@@ -306,7 +306,7 @@ export default function CourseDetailsPage() {
               {course.enrolled ? (
                 <Link
                   href={`/student/my-courses/${courseId}`}
-                  className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 transition text-white text-lg font-semibold shadow-lg"
+                  className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 transition text-white text-base sm:text-lg font-semibold shadow-lg"
                 >
                   {isArabic ? 'أنت مسجل بالفعل' : 'Already Enrolled'}
                 </Link>
@@ -319,7 +319,7 @@ export default function CourseDetailsPage() {
                       setAuthOpen(true);
                     }
                   }}
-                  className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 transition text-white text-lg font-semibold shadow-lg"
+                  className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 transition text-white text-base sm:text-lg font-semibold shadow-lg"
                 >
                   {isArabic ? 'سجّل الآن' : 'Enroll Now'}
                 </button>

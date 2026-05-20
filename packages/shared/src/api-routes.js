@@ -29,6 +29,7 @@ export const API_ROUTES = {
     chatTeachers: '/api/student/chat/teachers',
     chatTeachersUnreadCount: '/api/student/chat/teachers?unreadCount=1',
     profile: '/api/student/profile',
+    calendar: '/api/student/calendar',
     favorites: '/api/student/favorites',
     favoriteIds: '/api/student/favorites/ids',
   },
@@ -53,7 +54,11 @@ export const API_ROUTES = {
     notificationsCount: '/api/admin/notifications/count',
     messages: '/api/admin/messages',
     messagesUnreadCount: '/api/admin/messages?unreadCount=1',
+    instructorApplications: '/api/admin/instructor-applications',
+    jobPostings: '/api/admin/job-postings',
   },
+  instructorApplications: '/api/instructor-applications',
+  jobPostings: '/api/job-postings',
   dashboard: {
     stats: '/api/dashboard/stats',
     recentActivity: '/api/dashboard/recent-activity',
@@ -89,6 +94,8 @@ export const mapApiEndpointToWebPath = (rawEndpoint, role) => {
   if (rawEndpoint.startsWith('/api/admin/notifications')) return '/dashboard/notifications';
   if (rawEndpoint.startsWith('/api/admin/messages')) return '/dashboard/messages';
   if (rawEndpoint.startsWith('/api/admin/certificates')) return '/dashboard/certificates';
+  if (rawEndpoint.startsWith('/api/admin/instructor-applications')) return '/dashboard/instructor-applications';
+  if (rawEndpoint.startsWith('/api/admin/job-postings')) return '/dashboard/job-postings';
   if (rawEndpoint.startsWith('/api/teachers')) return '/dashboard/teachers';
   if (rawEndpoint.startsWith('/api/students')) return '/dashboard/students';
   if (rawEndpoint.startsWith('/api/courses')) return '/dashboard/courses';

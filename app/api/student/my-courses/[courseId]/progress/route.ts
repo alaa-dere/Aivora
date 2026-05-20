@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 import { randomUUID } from 'crypto';
-import { createAdminNotification, createTeacherNotification } from '@/lib/notifications-write';
+import { createTeacherNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -280,14 +280,6 @@ export async function POST(req: Request, { params }: Params) {
           });
         }
 
-        await createAdminNotification({
-          type: 'course_enroll',
-          title,
-          message,
-          studentId: user.id,
-          courseId: id,
-        });
-
         return NextResponse.json({ success: true, certificateId: certId });
       }
 
@@ -448,4 +440,5 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 }
+
 

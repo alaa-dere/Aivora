@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import {
+  CurrencyDollarIcon,
+  ChartBarIcon,
+  ShoppingBagIcon,
+} from '@heroicons/react/24/outline';
 
 type EarningsSummary = {
   totalRevenue: number;
@@ -61,9 +66,9 @@ export default function TeacherEarningsPage() {
 
   const cards = useMemo(
     () => [
-      { label: 'My Total Revenue', value: fmtCurrency(summary.totalRevenue) },
-      { label: 'This Month Revenue', value: fmtCurrency(summary.monthRevenue) },
-      { label: 'Gross Sales (My Courses)', value: fmtCurrency(summary.grossSales) },
+      { label: 'My Total Revenue', value: fmtCurrency(summary.totalRevenue), icon: CurrencyDollarIcon },
+      { label: 'This Month Revenue', value: fmtCurrency(summary.monthRevenue), icon: ChartBarIcon },
+      { label: 'Gross Sales (My Courses)', value: fmtCurrency(summary.grossSales), icon: ShoppingBagIcon },
     ],
     [summary]
   );
@@ -87,12 +92,16 @@ export default function TeacherEarningsPage() {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="portal-surface rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-5"
+            className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
           >
-            <p className="text-sm text-gray-500 dark:text-gray-400">{card.label}</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">
-              {loading ? '...' : card.value}
-            </p>
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                {card.icon && <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />}
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{loading ? '...' : card.value}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
           </div>
         ))}
       </div>
@@ -104,34 +113,75 @@ export default function TeacherEarningsPage() {
         ) : transactions.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">No transactions yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900/40">
                 <tr>
-                  <th className="text-left">Date</th>
-                  <th className="text-left">Course</th>
-                  <th className="text-left">Student</th>
-                  <th className="text-left">Type</th>
-                  <th className="text-left">Status</th>
-                  <th className="text-right">Amount</th>
-                  <th className="text-right">My Share</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">My Share</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
                 {transactions.map((tx) => (
-                  <tr key={tx.id}>
-                    <td>{new Date(tx.dateTime).toLocaleString()}</td>
-                    <td>{tx.courseTitle || '-'}</td>
-                    <td>{tx.studentName || '-'}</td>
-                    <td className="capitalize">{tx.type}</td>
-                    <td className="capitalize">{tx.status}</td>
-                    <td className="text-right">{fmtCurrency(tx.amount, tx.currency || 'USD')}</td>
-                    <td className="text-right">{fmtCurrency(tx.teacherShare, tx.currency || 'USD')}</td>
+                  <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                    <td className="px-4 py-3 align-top">{new Date(tx.dateTime).toLocaleString()}</td>
+                    <td className="px-4 py-3 align-top">{tx.courseTitle || '-'}</td>
+                    <td className="px-4 py-3 align-top">{tx.studentName || '-'}</td>
+                    <td className="px-4 py-3 align-top capitalize">{tx.type}</td>
+                    <td className="px-4 py-3 align-top capitalize">{tx.status}</td>
+                    <td className="px-4 py-3 text-right align-top">{fmtCurrency(tx.amount, tx.currency || 'USD')}</td>
+                    <td className="px-4 py-3 text-right align-top">{fmtCurrency(tx.teacherShare, tx.currency || 'USD')}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+            <div className="md:hidden space-y-3">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(tx.dateTime).toLocaleString()}</p>
+                    <span className="text-xs capitalize px-2 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      {tx.status}
+                    </span>
+                  </div>
+
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white mt-2">
+                    {tx.courseTitle || '-'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Student: {tx.studentName || '-'}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Type</p>
+                      <p className="capitalize text-gray-800 dark:text-gray-200">{tx.type}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Amount</p>
+                      <p className="text-gray-800 dark:text-gray-200">{fmtCurrency(tx.amount, tx.currency || 'USD')}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-gray-500 dark:text-gray-400">My Share</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {fmtCurrency(tx.teacherShare, tx.currency || 'USD')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -190,18 +190,18 @@ export default function AdminMessagesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-2.5 sm:p-4 md:p-6 transition-colors duration-300 overflow-x-hidden">
+      <div className="mb-3 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
           Chat directly with teachers and keep track of replies.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-4">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
-          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+          <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
               <span className="text-xs text-gray-400">{filteredTeachers.length}</span>
@@ -212,11 +212,11 @@ export default function AdminMessagesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search teacher..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                className="w-full pl-9 pr-3 py-2 sm:py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-xs sm:text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
               />
             </div>
           </div>
-          <div className="max-h-[70vh] overflow-y-auto p-2 space-y-2 messages-scroll">
+          <div className="max-h-[90px] sm:max-h-[70vh] overflow-y-auto p-2 space-y-2 messages-scroll">
             {filteredTeachers.length === 0 && (
               <div className="p-4 text-sm text-slate-500 dark:text-slate-400">No teachers found.</div>
             )}
@@ -233,7 +233,7 @@ export default function AdminMessagesPage() {
                 <button
                   key={teacher.id}
                   onClick={() => setSelectedTeacherId(teacher.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                  className={`w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border transition-all ${
                     selectedTeacherId === teacher.id
                       ? "bg-sky-50/80 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 shadow-sm"
                       : "bg-white/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800/50"
@@ -241,7 +241,7 @@ export default function AdminMessagesPage() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold overflow-hidden">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs sm:text-sm font-semibold overflow-hidden">
                         {teacher.imageUrl ? (
                           <img
                             src={teacher.imageUrl}
@@ -273,15 +273,15 @@ export default function AdminMessagesPage() {
           </div>
         </div>
 
-        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm">
+        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm min-h-[50vh] sm:min-h-0">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
-          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+          <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-200/70 dark:border-slate-800">
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {selectedTeacher ? `Chat with ${selectedTeacher.fullName}` : "Select a teacher"}
             </p>
           </div>
 
-          <div className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3 messages-scroll">
+          <div className="flex-1 max-h-[32vh] sm:max-h-[60vh] overflow-y-auto px-2.5 sm:px-4 py-2 sm:py-4 space-y-2 sm:space-y-3 messages-scroll">
             {loadingMessages && (
               <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
             )}
@@ -299,7 +299,7 @@ export default function AdminMessagesPage() {
                 className={`flex ${msg.senderRole === "admin" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm border ${
+                  className={`group relative max-w-[86%] sm:max-w-[80%] rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm border ${
                     msg.senderRole === "admin"
                       ? "bg-blue-600 text-white border-blue-500 shadow-sm"
                       : "bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100 border-gray-200 dark:border-gray-600"
@@ -314,8 +314,8 @@ export default function AdminMessagesPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <p>{msg.body}</p>
-                  <p className="text-[10px] opacity-70 mt-2">
+                  <p className="break-words">{msg.body}</p>
+                  <p className="text-[9px] sm:text-[10px] opacity-70 mt-1.5 sm:mt-2">
                     {new Date(msg.createdAt).toLocaleString()}
                   </p>
                 </div>
@@ -324,18 +324,18 @@ export default function AdminMessagesPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
-            <div className="flex items-center gap-2">
+          <div className="px-2.5 sm:px-4 py-2.5 sm:py-3 border-t border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a message..."
-                className="admin-surface flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-surface flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={sendMessage}
                 disabled={sending || !selectedTeacherId}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition disabled:opacity-60"
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold transition disabled:opacity-60"
               >
                 <Send className="w-4 h-4" />
                 Send

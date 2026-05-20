@@ -29,8 +29,11 @@ export const ROLE_FEATURES = {
       params: ['courseId'],
     },
     { id: 'student-paths', title: 'Learning Paths', endpoint: API_ROUTES.student.paths },
+    { id: 'student-calendar', title: 'Calendar', endpoint: API_ROUTES.student.calendar },
     { id: 'student-leaderboard', title: 'Leaderboard', endpoint: API_ROUTES.student.leaderboard },
     { id: 'student-wallet', title: 'Wallet', endpoint: API_ROUTES.student.wallet },
+    { id: 'student-favorites', title: 'Favorites', endpoint: API_ROUTES.student.favorites },
+    { id: 'student-recent-courses', title: 'Recent Courses', endpoint: API_ROUTES.recentCourses },
     {
       id: 'student-certificate-quizzes',
       title: 'Certificate Quizzes',
@@ -96,5 +99,15 @@ export const ROLE_FEATURES = {
       endpoint: API_ROUTES.finance.transactions,
     },
     { id: 'admin-reports', title: 'Finance Reports', endpoint: API_ROUTES.finance.reports },
+    {
+      id: 'admin-forecast',
+      title: 'Finance Forecast',
+      endpoint: '/api/admin/ai/revenue-forecast',
+    },
+    {
+      id: 'admin-chatbot',
+      title: 'Admin Chatbot',
+      endpoint: '/api/admin/chatbot',
+    },
   ],
 };

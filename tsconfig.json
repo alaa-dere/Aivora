@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@aivora/shared": ["./packages/shared/src/index.js"],
+      "@aivora/shared/*": ["./packages/shared/src/*"]
     },
     "types": ["node", "react", "react-dom"]   // ← أضف السطر ده
   },

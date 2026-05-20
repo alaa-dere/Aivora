@@ -36,9 +36,9 @@ export default function CertificatesPage() {
         if (mounted) {
           setItems([...(data.ready || []), ...(data.locked || [])]);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (mounted) {
-          setError(err?.message || 'Failed to load certificates');
+          setError(err instanceof Error ? err.message : 'Failed to load certificates');
         }
       } finally {
         if (mounted) {
@@ -64,19 +64,20 @@ export default function CertificatesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       {/* Title */}
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Certificates
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          View your ready certificates and track what's still locked.
+          View your ready certificates and track what&apos;s still locked.
         </p>
       </div>
 
       {/* Ready */}
-      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 mb-6">
+      <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5 mb-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
         <div className="flex items-center gap-2 mb-4">
           <CheckBadgeIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ready</h2>
@@ -93,7 +94,7 @@ export default function CertificatesPage() {
             {ready.map((c) => (
               <div
                 key={c.id}
-                className="rounded-xl border border-blue-100 dark:border-blue-800 p-4 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 p-4 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -126,7 +127,8 @@ export default function CertificatesPage() {
       </div>
 
       {/* Locked */}
-      <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+      <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
         <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Locked</h2>
 
         {loading ? (
@@ -140,7 +142,7 @@ export default function CertificatesPage() {
             {locked.map((c) => (
               <div
                 key={c.id}
-                className="rounded-xl border border-blue-100 dark:border-blue-800 p-4"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>

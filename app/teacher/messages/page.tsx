@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Trash2 } from 'lucide-react';
+import { Search, Send, Trash2 } from 'lucide-react';
 
 type TabMode = 'students' | 'admin';
 
@@ -369,21 +369,21 @@ export default function TeacherMessagesPage() {
   }, [adminMessages]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Chat with your students and administration.
         </p>
       </div>
 
-      <div className="portal-surface mb-4 inline-flex rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 p-1">
+      <div className="admin-surface mb-4 inline-flex rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 backdrop-blur p-1">
         <button
           onClick={() => setMode('students')}
           className={`px-4 py-2 text-sm rounded-md transition border ${
             mode === 'students'
               ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-blue-100/60'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
           }`}
         >
           Students
@@ -393,7 +393,7 @@ export default function TeacherMessagesPage() {
           className={`px-4 py-2 text-sm rounded-md transition border ${
             mode === 'admin'
               ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-blue-100/60'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
           }`}
         >
           Administration
@@ -409,22 +409,24 @@ export default function TeacherMessagesPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 overflow-hidden max-h-[68vh]">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm max-h-[68vh]">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+              <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Students</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Students</p>
                   <span className="text-xs text-gray-400">{filteredStudents.length}</span>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     value={inputSearch}
                     onChange={(e) => setInputSearch(e.target.value)}
                     placeholder="Search student or course..."
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
                   />
                 </div>
               </div>
-              <div className="max-h-[56vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="max-h-[56vh] overflow-y-auto p-2 space-y-2 messages-scroll">
                 {loadingStudents ? (
                   <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
                 ) : filteredStudents.length === 0 ? (
@@ -443,11 +445,11 @@ export default function TeacherMessagesPage() {
                       <button
                         key={`${s.courseId}-${s.studentId}`}
                         onClick={() => setSelected(s)}
-                        className={`w-full text-left px-3 py-2 mx-2 my-1.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
+                        className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
                           selected?.courseId === s.courseId &&
                           selected?.studentId === s.studentId
-                            ? 'bg-blue-50/60 dark:bg-blue-900/20'
-                            : ''
+                            ? 'bg-sky-50/80 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 shadow-sm'
+                            : 'bg-white/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800/50'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -456,13 +458,13 @@ export default function TeacherMessagesPage() {
                               {initials || 'S'}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
                                 {s.studentName}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                                 {s.courseTitle}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                                 {s.lastMessage || 'No messages yet'}
                               </p>
                             </div>
@@ -480,13 +482,14 @@ export default function TeacherMessagesPage() {
               </div>
             </div>
 
-            <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-blue-200 dark:border-blue-800 flex flex-col min-h-[60vh]">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm min-h-[60vh]">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+              <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                   {selected ? `Chat with ${selected.studentName}` : 'Select a student'}
                 </p>
                 {selected && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {selected.courseTitle}
                   </p>
                 )}
@@ -494,15 +497,15 @@ export default function TeacherMessagesPage() {
 
               <div
                 ref={studentMessagesContainerRef}
-                className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3"
+                className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3 messages-scroll"
               >
                 {loadingMessages && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
                     Loading messages...
                   </div>
                 )}
                 {!loadingMessages && messages.length === 0 && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
                     No messages yet. Start the conversation.
                   </div>
                 )}
@@ -514,16 +517,16 @@ export default function TeacherMessagesPage() {
                     }`}
                   >
                     <div
-                      className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                      className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm border ${
                         msg.senderRole === 'teacher'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                          ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100 border-gray-200 dark:border-gray-600'
                       }`}
                     >
                       {msg.senderRole === 'teacher' && (
                         <button
                           onClick={() => setDeleteTarget({ id: msg.id, channel: 'student' })}
-                          className="portal-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                          className="admin-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
                           title="Delete message"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -539,7 +542,7 @@ export default function TeacherMessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+              <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <input
                     value={input}
@@ -548,7 +551,7 @@ export default function TeacherMessagesPage() {
                       if (e.key === 'Enter') handleSend();
                     }}
                     placeholder="Write a message..."
-                    className="portal-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="admin-surface flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     onClick={handleSend}
@@ -566,25 +569,26 @@ export default function TeacherMessagesPage() {
       )}
 
       {mode === 'admin' && (
-        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 flex flex-col min-h-[65vh]">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col min-h-[65vh] shadow-sm">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {adminName ? `Administration: ${adminName}` : 'Administration Chat'}
             </p>
           </div>
 
           <div
             ref={adminMessagesContainerRef}
-            className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3"
+            className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3 messages-scroll"
           >
             {adminLoading && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">Loading messages...</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
             )}
             {!adminLoading && adminErrorMsg && (
               <div className="text-sm text-red-600 dark:text-red-300">{adminErrorMsg}</div>
             )}
             {!adminLoading && !adminErrorMsg && adminMessages.length === 0 && (
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
                 No messages yet. Say hello!
               </div>
             )}
@@ -594,16 +598,16 @@ export default function TeacherMessagesPage() {
                 className={`flex ${msg.senderRole === 'teacher' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm border ${
                     msg.senderRole === 'teacher'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+                      : 'bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100 border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   {msg.senderRole === 'teacher' && (
                     <button
                       onClick={() => setDeleteTarget({ id: msg.id, channel: 'admin' })}
-                      className="portal-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      className="admin-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
                       title="Delete message"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -619,7 +623,7 @@ export default function TeacherMessagesPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <input
                 value={adminDraft}
@@ -628,7 +632,7 @@ export default function TeacherMessagesPage() {
                   if (e.key === 'Enter') sendAdminMessage();
                 }}
                 placeholder="Write a message to administration..."
-                className="portal-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="admin-surface flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={sendAdminMessage}
@@ -650,17 +654,17 @@ export default function TeacherMessagesPage() {
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="portal-surface w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-4">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+          <div className="admin-surface w-full max-w-sm rounded-2xl bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
               Delete message
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Choose how you want to delete this message.
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => handleDelete('self')}
-                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700"
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Delete for me
               </button>
@@ -680,6 +684,21 @@ export default function TeacherMessagesPage() {
           </div>
         </div>
       )}
+      <style jsx global>{`
+        .messages-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .messages-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.8);
+          border-radius: 999px;
+        }
+        .dark .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(71, 85, 105, 0.9);
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BookOpenIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
-  ArrowLeftIcon,
   UsersIcon,
   AcademicCapIcon,
 } from "@heroicons/react/24/outline";
@@ -25,6 +25,9 @@ type StudentRow = {
   imageUrl?: string | null;
   progress: number;
   status: string;
+  completedAt?: string | null;
+  bestQuizScore?: number;
+  quizAttempts?: number;
 };
 
 export default function StudentsPage() {
@@ -35,6 +38,8 @@ export default function StudentsPage() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [studentView, setStudentView] = useState<"active" | "completed">("active");
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -44,8 +49,8 @@ export default function StudentsPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to load courses");
         setCourses(data.courses || []);
-      } catch (err: any) {
-        setError(err.message || "Failed to load courses");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load courses");
       } finally {
         setLoadingCourses(false);
       }
@@ -59,21 +64,43 @@ export default function StudentsPage() {
       if (!selectedCourseId) return;
       try {
         setLoadingStudents(true);
-        const res = await fetch(`/api/teacher/courses?courseId=${selectedCourseId}`, {
+        const res = await fetch(`/api/teacher/courses?courseId=${selectedCourseId}&view=${studentView}`, {
           cache: "no-store",
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to load students");
         setStudents(data.students || []);
-      } catch (err: any) {
-        setError(err.message || "Failed to load students");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load students");
       } finally {
         setLoadingStudents(false);
       }
     };
 
     loadStudents();
-  }, [selectedCourseId]);
+  }, [selectedCourseId, studentView]);
+
+  const removeCompletedStudent = async (studentId: string) => {
+    if (!selectedCourseId) return;
+    const ok = window.confirm("Delete this completed student from your list?");
+    if (!ok) return;
+
+    try {
+      setDeletingStudentId(studentId);
+      const res = await fetch("/api/teacher/courses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: selectedCourseId, studentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to remove student");
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove student");
+    } finally {
+      setDeletingStudentId(null);
+    }
+  };
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId) || null;
 
@@ -108,8 +135,10 @@ export default function StudentsPage() {
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {selectedCourse
-                ? `Students currently taking ${selectedCourse.name}`
-                : "Choose a course to view students currently taking it."}
+                ? studentView === "active"
+                  ? `Students currently taking ${selectedCourse.name}`
+                  : `Students who completed ${selectedCourse.name}`
+                : "Choose a course to view students."}
             </p>
           </div>
         </div>
@@ -124,16 +153,9 @@ export default function StudentsPage() {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className="portal-surface 
-                    bg-white dark:bg-gray-800
-                    rounded-xl
-                    border border-blue-200 dark:border-blue-800
-                    shadow-sm
-                    p-5
-                    hover:-translate-y-1 hover:shadow-lg
-                    transition-all duration-200
-                  "
+                  className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
                 >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
                   <div className="flex items-center justify-between mb-2">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                       <card.icon className="w-5 h-5 text-blue-700 dark:text-blue-400" />
@@ -159,17 +181,9 @@ export default function StudentsPage() {
                     onClick={() => {
                       setError(null);
                       setSelectedCourseId(course.id);
+                      setStudentView("active");
                     }}
-                    className="portal-surface 
-                      text-left
-                      bg-white dark:bg-gray-800
-                      rounded-xl
-                      border border-blue-200 dark:border-blue-800
-                      shadow-sm
-                      p-5
-                      hover:-translate-y-1 hover:shadow-lg
-                      transition-all duration-200
-                    "
+                    className="admin-surface relative overflow-hidden text-left bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -197,7 +211,7 @@ export default function StudentsPage() {
                       {course.description || "No description yet."}
                     </p>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Students</p>
                         <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -218,23 +232,9 @@ export default function StudentsPage() {
 
         {selectedCourse && (
           <div className="space-y-5">
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name / email..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5">
+              <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -280,7 +280,8 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 p-5">
+              <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-500 via-orange-400 to-amber-400" />
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
                   Risk Snapshot
                 </h3>
@@ -297,85 +298,247 @@ export default function StudentsPage() {
                       {Math.max(0, filteredStudents.length - atRiskCount)}
                     </span>
                   </div>
-                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-gray-500 dark:text-gray-400">
                     Students with progress below 40% are flagged as at risk.
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-blue-200 dark:border-blue-800 overflow-hidden">
+            <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <button
+                    onClick={() => setStudentView("active")}
+                    className={`px-3 py-2 text-xs font-semibold ${
+                      studentView === "active"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    Active Students
+                  </button>
+                  <button
+                    onClick={() => setStudentView("completed")}
+                    className={`px-3 py-2 text-xs font-semibold border-l border-slate-200 dark:border-slate-700 ${
+                      studentView === "completed"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    Completed Students
+                  </button>
+                </div>
+                <div className="relative flex-1 max-w-md">
+                  <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name / email..."
+                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-surface bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
               {loadingStudents ? (
                 <div className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading students...</div>
               ) : error ? (
                 <div className="p-5 text-sm text-red-500">{error}</div>
               ) : filteredStudents.length === 0 ? (
                 <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
-                  No active students currently taking this course.
+                  {studentView === "active"
+                    ? "No active students currently taking this course."
+                    : "No completed students in this course yet."}
                 </div>
               ) : (
-                <div className="divide-y divide-blue-100 dark:divide-blue-800">
-                  {filteredStudents.map((student) => (
-                    <div
-                      key={student.id}
-                      className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        {student.imageUrl ? (
-                          <img
-                            src={student.imageUrl}
-                            alt={student.name}
-                            className="w-10 h-10 rounded-full object-cover border border-blue-100 dark:border-blue-800"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-sm font-bold">
-                            {student.name
-                              .split(" ")
-                              .map((part) => part[0])
-                              .slice(0, 2)
-                              .join("")
-                              .toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-gray-800 dark:text-gray-100">
-                            {student.name}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{student.email}</p>
-                        </div>
-                      </div>
+                <>
+                  <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {studentView === "active" ? "Active Students" : "Completed Students"}
+                    </h3>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                      {filteredStudents.length} students
+                    </span>
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+                        <tr className="text-left">
+                          <th className="px-4 py-3 font-medium">Student</th>
+                          <th className="px-4 py-3 font-medium">Email</th>
+                          <th className="px-4 py-3 font-medium">Status</th>
+                          <th className="px-4 py-3 font-medium">Progress</th>
+                          <th className="px-4 py-3 font-medium">Quiz Score</th>
+                          <th className="px-4 py-3 font-medium text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {filteredStudents.map((student) => (
+                          <tr key={student.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                {student.imageUrl ? (
+                                  <img
+                                    src={student.imageUrl}
+                                    alt={student.name}
+                                    className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 text-xs font-bold">
+                                    {student.name
+                                      .split(" ")
+                                      .map((part) => part[0])
+                                      .slice(0, 2)
+                                      .join("")
+                                      .toUpperCase()}
+                                  </div>
+                                )}
+                                <span className="font-medium text-gray-800 dark:text-gray-100">
+                                  {student.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{student.email}</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`text-xs px-2.5 py-1 rounded-full ${
+                                  student.status === "completed"
+                                    ? "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
+                                    : student.status === "dropped"
+                                    ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                                }`}
+                              >
+                                {(student.status || "in progress").replace("_", " ")}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      student.progress >= 70
+                                        ? "bg-blue-400"
+                                        : student.progress >= 40
+                                        ? "bg-yellow-500"
+                                        : "bg-red-500"
+                                    }`}
+                                    style={{ width: `${student.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  {student.progress}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-700 dark:text-gray-200">
+                              {Number(student.quizAttempts || 0) > 0
+                                ? `${Math.round(Number(student.bestQuizScore || 0))}%`
+                                : "No attempts"}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {studentView === "completed" ? (
+                                <button
+                                  onClick={() => removeCompletedStudent(student.id)}
+                                  disabled={deletingStudentId === student.id}
+                                  className="text-xs px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
+                                >
+                                  {deletingStudentId === student.id ? "Deleting..." : "Delete"}
+                                </button>
+                              ) : (
+                                <Link
+                                  href={`/teacher/students/${student.id}`}
+                                  className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                                >
+                                  View Student
+                                </Link>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`text-xs px-3 py-1.5 rounded-full ${
-                            student.status === "completed"
-                              ? "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
-                              : student.status === "dropped"
-                              ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                              : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                          }`}
-                        >
-                          {(student.status || "in progress").replace("_", " ")}
-                        </span>
-                        <div className="w-28 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              student.progress >= 70
-                                ? "bg-blue-400"
-                                : student.progress >= 40
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
+                  <div className="md:hidden p-2.5 space-y-2.5">
+                    {filteredStudents.map((student) => (
+                      <div
+                        key={`mobile-${student.id}`}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                              {student.name}
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {student.email}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full ${
+                              student.status === "completed"
+                                ? "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300"
+                                : student.status === "dropped"
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                             }`}
-                            style={{ width: `${student.progress}%` }}
-                          />
+                          >
+                            {(student.status || "in progress").replace("_", " ")}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {student.progress}%
-                        </span>
+
+                        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div className="text-slate-500 dark:text-slate-400">Progress</div>
+                          <div className="text-right text-slate-700 dark:text-slate-300">{student.progress}%</div>
+                          <div className="text-slate-500 dark:text-slate-400">Quiz Score</div>
+                          <div className="text-right text-slate-700 dark:text-slate-300">
+                            {Number(student.quizAttempts || 0) > 0
+                              ? `${Math.round(Number(student.bestQuizScore || 0))}%`
+                              : "No attempts"}
+                          </div>
+                        </div>
+
+                        <div className="mt-2">
+                          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                student.progress >= 70
+                                  ? "bg-blue-400"
+                                  : student.progress >= 40
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{ width: `${student.progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          {studentView === "completed" ? (
+                            <button
+                              onClick={() => removeCompletedStudent(student.id)}
+                              disabled={deletingStudentId === student.id}
+                              className="text-[11px] px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
+                            >
+                              {deletingStudentId === student.id ? "Deleting..." : "Delete"}
+                            </button>
+                          ) : (
+                            <Link
+                              href={`/teacher/students/${student.id}`}
+                              className="text-[11px] px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                            >
+                              View Student
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

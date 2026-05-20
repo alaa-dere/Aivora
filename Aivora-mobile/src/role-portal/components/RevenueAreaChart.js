@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { PanResponder, Text, View } from 'react-native';
 import { portalStyles } from '../styles';
 
-const CHART_HEIGHT = 220;
-const PADDING = { top: 16, right: 12, bottom: 34, left: 8 };
+const CHART_HEIGHT = 204;
+const PADDING = { top: 14, right: 12, bottom: 34, left: 8 };
 
 const interpolateCatmullRom = (p0, p1, p2, p3, t) => {
   const t2 = t * t;
@@ -43,8 +43,24 @@ const buildSmoothLinePoints = (points) => {
   return smooth;
 };
 
-export default function RevenueAreaChart({ trend = [] }) {
+export default function RevenueAreaChart({ trend = [], theme }) {
   const [width, setWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const activeIndexRef = useRef(-1);
+  const isDark = Boolean(theme?.isDark);
+  const colors = {
+    wrapBg: isDark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(248, 251, 255, 0.65)',
+    wrapBorder: isDark ? '#334155' : 'rgba(219, 234, 254, 0.9)',
+    grid: isDark ? 'rgba(148, 163, 184, 0.28)' : '#dbeafe',
+    line: isDark ? '#93c5fd' : '#2563eb',
+    dot: isDark ? '#60a5fa' : '#1d4ed8',
+    dotBorder: isDark ? '#0f172a' : '#ffffff',
+    focusLine: isDark ? 'rgba(147, 197, 253, 0.35)' : 'rgba(37, 99, 235, 0.35)',
+    tooltipBg: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255,255,255,0.95)',
+    tooltipBorder: isDark ? '#334155' : '#bfdbfe',
+    tooltipTitle: isDark ? '#bfdbfe' : '#1e3a8a',
+    tooltipValue: isDark ? '#f8fafc' : '#0f172a',
+  };
 
   const { points, xLabels, yTicks, baseY, linePoints, lineSegments } = useMemo(() => {
     if (!width || trend.length === 0) {
@@ -99,32 +115,67 @@ export default function RevenueAreaChart({ trend = [] }) {
     };
   }, [trend, width]);
 
+  const selectNearestPoint = (xPosition) => {
+    if (!points.length) return;
+    let nearest = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    points.forEach((point, idx) => {
+      const distance = Math.abs(point.x - xPosition);
+      if (distance < nearestDistance) {
+        nearest = idx;
+        nearestDistance = distance;
+      }
+    });
+    if (activeIndexRef.current !== nearest) {
+      activeIndexRef.current = nearest;
+      setActiveIndex(nearest);
+    }
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt) => {
+          selectNearestPoint(evt.nativeEvent.locationX);
+        },
+        onPanResponderMove: (evt) => {
+          selectNearestPoint(evt.nativeEvent.locationX);
+        },
+        onPanResponderRelease: () => {
+          setActiveIndex(-1);
+          activeIndexRef.current = -1;
+        },
+        onPanResponderTerminate: () => {
+          setActiveIndex(-1);
+          activeIndexRef.current = -1;
+        },
+      }),
+    [points]
+  );
+
+  const activePoint = activeIndex >= 0 ? points[activeIndex] : null;
+  const activeItem = activeIndex >= 0 ? trend[activeIndex] : null;
+
   return (
     <View
-      style={portalStyles.chartWrap}
+      style={[
+        portalStyles.chartWrap,
+        { backgroundColor: colors.wrapBg, borderColor: colors.wrapBorder },
+      ]}
       onLayout={(event) => {
         setWidth(event.nativeEvent.layout.width);
       }}
     >
-      <View style={[portalStyles.chartCanvas, { height: CHART_HEIGHT }]}>
+      <View
+        style={[portalStyles.chartCanvas, { height: CHART_HEIGHT }]}
+        {...panResponder.panHandlers}
+      >
         {yTicks.map((tick, idx) => (
           <View
             key={`grid-${idx}`}
-            style={[portalStyles.chartGridLine, { top: tick.y }]}
-          />
-        ))}
-
-        {points.map((point, idx) => (
-          <View
-            key={`area-${idx}`}
-            style={[
-              portalStyles.areaColumn,
-              {
-                left: point.x - 4,
-                top: point.y,
-                height: Math.max(baseY - point.y, 2),
-              },
-            ]}
+            style={[portalStyles.chartGridLine, { top: tick.y, backgroundColor: colors.grid }]}
           />
         ))}
 
@@ -134,6 +185,7 @@ export default function RevenueAreaChart({ trend = [] }) {
             style={[
               portalStyles.chartLineSegment,
               {
+                backgroundColor: colors.line,
                 width: segment.length,
                 left: segment.x - segment.length / 2,
                 top: segment.y - 1,
@@ -147,19 +199,58 @@ export default function RevenueAreaChart({ trend = [] }) {
           <View
             key={`dot-${idx}`}
             style={[
-              portalStyles.chartDot,
+              activeIndex === idx ? portalStyles.chartDotActive : portalStyles.chartDot,
               {
+                backgroundColor: colors.dot,
+                borderColor: colors.dotBorder,
                 left: point.x - 4,
                 top: point.y - 4,
               },
             ]}
           />
         ))}
+
+        {activePoint ? (
+          <>
+            <View
+              style={[
+                portalStyles.chartFocusLine,
+                {
+                  left: activePoint.x,
+                  top: PADDING.top,
+                  height: baseY - PADDING.top,
+                  backgroundColor: colors.focusLine,
+                },
+              ]}
+            />
+            <View
+              style={[
+                portalStyles.chartTooltip,
+                {
+                  backgroundColor: colors.tooltipBg,
+                  borderColor: colors.tooltipBorder,
+                  left: Math.max(6, Math.min(activePoint.x - 54, width - 118)),
+                  top: Math.max(4, activePoint.y - 48),
+                },
+              ]}
+            >
+              <Text style={[portalStyles.chartTooltipTitle, { color: colors.tooltipTitle }]}>
+                {String(activeItem?.week || '-')}
+              </Text>
+              <Text style={[portalStyles.chartTooltipValue, { color: colors.tooltipValue }]}>
+                ${Number(activeItem?.revenue || 0).toFixed(2)}
+              </Text>
+            </View>
+          </>
+        ) : null}
       </View>
 
       <View style={portalStyles.xAxisRow}>
         {xLabels.map((label) => (
-          <Text key={`${label.week}-${label.x}`} style={portalStyles.xAxisLabel}>
+          <Text
+            key={`${label.week}-${label.x}`}
+            style={[portalStyles.xAxisLabel, { color: isDark ? '#bfdbfe' : '#64748b' }]}
+          >
             {label.week}
           </Text>
         ))}

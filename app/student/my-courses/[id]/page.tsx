@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -153,7 +153,7 @@ export default function StudentCourseOverviewPage() {
   }, [params.id, selectedLessonId]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       <style jsx global>{`
         @keyframes aivora-celebrate {
           0% { transform: scale(0.98); opacity: 0.9; }
@@ -167,9 +167,9 @@ export default function StudentCourseOverviewPage() {
         <p className="text-sm text-red-500">{error}</p>
       ) : (
         <>
-          <div className="mb-4">
-            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-3 sm:px-4 py-2 overflow-visible">
-            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:gap-4 min-h-[58px]">
+          <div className="relative z-40 mb-3 sm:mb-4">
+            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-2.5 sm:px-4 py-2 overflow-visible">
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-4 min-h-[52px] sm:min-h-[58px]">
               <div>
                 <Link
                   href="/student/my-courses"
@@ -179,7 +179,7 @@ export default function StudentCourseOverviewPage() {
                 </Link>
               </div>
 
-              <div className="min-w-0 flex items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
+              <div className="hidden sm:flex min-w-0 items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
               <div className="relative flex items-center gap-2 md:gap-2.5 px-2">
               {allLessons.slice(0, 14).map((lesson, idx) => {
                 const done = lesson.completed;
@@ -228,24 +228,22 @@ export default function StudentCourseOverviewPage() {
               </div>
               </div>
 
-              <div className="flex flex-wrap items-start gap-2 justify-start lg:justify-end">
-                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-start lg:justify-end">
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModulePicker((prev) => !prev);
                       setShowLessonPicker(false);
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     aria-expanded={showModulePicker}
                   >
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Chapters</span>
-                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
-                      {showModulePicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
-                    </span>
+                    <span>Chapters</span>
+                    {showModulePicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
                   </button>
                   {showModulePicker && (
-                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
                       {modules.map((m, idx) => (
                         <button
                           key={m.id}
@@ -269,23 +267,21 @@ export default function StudentCourseOverviewPage() {
                   )}
                 </div>
 
-                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => {
                       setShowLessonPicker((prev) => !prev);
                       setShowModulePicker(false);
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     aria-expanded={showLessonPicker}
                   >
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Lessons</span>
-                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
-                      {showLessonPicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
-                    </span>
+                    <span>Lessons</span>
+                    {showLessonPicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
                   </button>
                   {showLessonPicker && (
-                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
                       {lessonsInSelectedModule.map((lesson, idx) => (
                         <button
                           key={lesson.id}
@@ -318,7 +314,7 @@ export default function StudentCourseOverviewPage() {
             Browse lessons, track progress, and continue where you left off.
           </p>
           <div className="portal-surface mb-6 overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800">
-            <div className="relative h-52 md:h-60">
+            <div className="relative h-44 sm:h-52 md:h-60">
               <img
                 src="/code.jpg"
                 alt="Course cover"
@@ -326,17 +322,17 @@ export default function StudentCourseOverviewPage() {
               />
               <div className="absolute inset-0 bg-blue-950/55" />
               <div className="absolute inset-0 p-5 pb-8 flex flex-col justify-end">
-                <p className="text-3xl font-bold text-white drop-shadow mt-0">
+                <p className="text-xl sm:text-3xl font-bold text-white drop-shadow mt-0">
                   {courseTitle || 'Start Your Learning Journey'}
                 </p>
-                <p className="text-sm text-blue-100 mt-1">
+                <p className="text-xs sm:text-sm text-blue-100 mt-1">
                   Continue where you left off and complete each lesson with confidence.
                 </p>
                 {continueLesson && (
-                  <div className="mt-16">
+                  <div className="mt-4 sm:mt-16">
                     <Link
                       href={`/student/my-courses/${params.id}/player?lesson=${continueLesson.id}`}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium"
                     >
                       <PlayCircleIcon className="w-4 h-4" />
                       Continue Learning
@@ -367,7 +363,7 @@ export default function StudentCourseOverviewPage() {
             {modules.map((module) => (
               <div
                 key={module.id}
-                className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 shadow-sm hover:shadow-md transition-shadow"
+                className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow"
               >
                 <button
                   type="button"
@@ -381,16 +377,16 @@ export default function StudentCourseOverviewPage() {
                   className="w-full flex items-center justify-between gap-3 text-left"
                 >
                   <div className="min-w-0">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white truncate">
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white truncate">
                       {module.title}
                     </h2>
                     {module.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-line line-clamp-2">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-line line-clamp-2">
                         {module.description}
                       </p>
                     )}
                   </div>
-                  <span className="inline-flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 shrink-0">
+                  <span className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-blue-700 dark:text-blue-300 shrink-0">
                     {module.lessons.length} lessons
                     {expandedModuleIds.includes(module.id) ? (
                       <ChevronDownIcon className="w-5 h-5" />
@@ -405,14 +401,14 @@ export default function StudentCourseOverviewPage() {
                     {module.lessons.map((lesson) => (
                       <div
                         key={lesson.id}
-                        className={`flex items-center justify-between rounded-xl border p-3 transition-colors ${
+                        className={`flex items-center justify-between rounded-xl border p-2.5 sm:p-3 transition-colors ${
                           lesson.unlocked
                             ? 'border-blue-200 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900'
                         }`}
                       >
                         <div>
-                          <p className="text-sm font-medium text-gray-800 dark:text-white">
+                          <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-white">
                             {lesson.title}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -422,7 +418,7 @@ export default function StudentCourseOverviewPage() {
                         {lesson.unlocked ? (
                           <Link
                             href={`/student/my-courses/${params.id}/player?lesson=${lesson.id}`}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
                           >
                             <PlayCircleIcon className="w-4 h-4" /> Go to lesson
                           </Link>
@@ -444,6 +440,7 @@ export default function StudentCourseOverviewPage() {
     </div>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -500,16 +500,16 @@ export default function CoursePlayerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading content...</p>
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
       ) : (
         <>
-          <div className="mb-4">
-            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-3 sm:px-4 py-2 overflow-visible">
-            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:gap-4 min-h-[58px]">
+          <div className="relative z-40 mb-3 sm:mb-4">
+            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-2.5 sm:px-4 py-2 overflow-visible">
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-4 min-h-[52px] sm:min-h-[58px]">
               <div>
                 <Link
                   href="/student/my-courses"
@@ -519,7 +519,7 @@ export default function CoursePlayerPage() {
                 </Link>
               </div>
 
-              <div className="min-w-0 flex items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
+              <div className="hidden sm:flex min-w-0 items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
               <div className="relative flex items-center gap-2 md:gap-2.5 px-2">
               {allLessons.slice(0, 14).map((lesson, idx) => {
                 const done = lesson.completed;
@@ -568,24 +568,22 @@ export default function CoursePlayerPage() {
               </div>
               </div>
 
-              <div className="flex flex-wrap items-start gap-2 justify-start lg:justify-end">
-                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-start lg:justify-end">
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModulePicker((prev) => !prev);
                       setShowLessonPicker(false);
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     aria-expanded={showModulePicker}
                   >
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Chapters</span>
-                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
-                      {showModulePicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
-                    </span>
+                    <span>Chapters</span>
+                    {showModulePicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
                   </button>
                   {showModulePicker && (
-                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
                       {modules.map((m, idx) => (
                         <button
                           key={m.id}
@@ -610,23 +608,21 @@ export default function CoursePlayerPage() {
                   )}
                 </div>
 
-                <div className="w-full sm:w-56 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-2">
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => {
                       setShowLessonPicker((prev) => !prev);
                       setShowModulePicker(false);
                     }}
-                    className="w-full flex items-center justify-between gap-2 px-2 py-1 text-left"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                     aria-expanded={showLessonPicker}
                   >
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Lessons</span>
-                    <span className="inline-flex items-center justify-center rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 h-8 w-8">
-                      {showLessonPicker ? <ChevronDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" /> : <ChevronRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
-                    </span>
+                    <span>Lessons</span>
+                    {showLessonPicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
                   </button>
                   {showLessonPicker && (
-                    <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
                       {lessonsInSelectedModule.map((lesson, idx) => (
                         <button
                           key={lesson.id}
@@ -655,13 +651,13 @@ export default function CoursePlayerPage() {
             </div>
             </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
             Follow the lesson content, mark progress, and move to the next step.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-4">
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-              <h2 className="font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
               <div className="space-y-3">
                 {modules.map((module, moduleIndex) => (
                   <div key={module.id} className="rounded-lg border border-blue-100 dark:border-blue-800">
@@ -674,9 +670,9 @@ export default function CoursePlayerPage() {
                             : [...prev, module.id]
                         )
                       }
-                      className="w-full px-3 py-2 flex items-center justify-between text-left bg-blue-50/40 dark:bg-blue-900/10 rounded-lg"
+                      className="w-full px-2.5 sm:px-3 py-2 flex items-center justify-between text-left bg-blue-50/40 dark:bg-blue-900/10 rounded-lg"
                     >
-                      <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                      <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-white">
                         {`CH${moduleIndex + 1}: ${module.title}`}
                       </span>
                       {expandedModuleIds.includes(module.id) ? (
@@ -694,7 +690,7 @@ export default function CoursePlayerPage() {
                               key={lesson.id}
                               onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
                               disabled={!lesson.unlocked}
-                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                              className={`w-full text-left p-2.5 sm:p-3 rounded-lg border transition-colors ${
                                 active
                                   ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
                                   : lesson.unlocked
@@ -702,7 +698,7 @@ export default function CoursePlayerPage() {
                                   : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              <p className="text-sm font-medium text-gray-800 dark:text-white">
+                              <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-white">
                                 {`L${lessonIndex + 1}: ${lesson.title}`}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
@@ -719,47 +715,47 @@ export default function CoursePlayerPage() {
               </div>
             </div>
 
-            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+            <div className="hidden lg:block portal-surface mt-4 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                 Ask about current lessons and course topics.
               </p>
-                <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-4 h-[30rem] overflow-y-auto space-y-3">
-                  {assistantMessages.map((msg, idx) => (
-                    <div
-                      key={`${msg.role}-${idx}`}
-                      className={`rounded-lg px-3 py-2 text-xs ${
-                        msg.role === 'student'
-                          ? 'bg-blue-600 text-white ml-6'
-                          : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
-                    </div>
-                  ))}
-                  {assistantLoading && (
-                    <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
-                      Thinking...
-                    </div>
-                  )}
-                </div>
+              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-4 h-[24rem] overflow-y-auto space-y-3">
+                {assistantMessages.map((msg, idx) => (
+                  <div
+                    key={`${msg.role}-${idx}`}
+                    className={`rounded-lg px-3 py-2 text-xs ${
+                      msg.role === 'student'
+                        ? 'bg-blue-600 text-white ml-6'
+                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                  </div>
+                ))}
+                {assistantLoading && (
+                  <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                    Thinking...
+                  </div>
+                )}
+              </div>
               <div className="mt-3 flex gap-2">
-                  <textarea
-                    value={assistantInput}
-                    onChange={(e) => setAssistantInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        askAssistant();
-                      }
-                    }}
-                    placeholder="Ask about this lesson..."
-                    rows={2}
-                    className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-                  />
+                <textarea
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      askAssistant();
+                    }
+                  }}
+                  placeholder="Ask about this lesson..."
+                  rows={2}
+                  className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                />
                 <button
                   onClick={askAssistant}
                   disabled={assistantLoading || !assistantInput.trim()}
@@ -771,7 +767,7 @@ export default function CoursePlayerPage() {
             </div>
           </div>
 
-          <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+          <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
             <div className="flex items-center justify-end mb-3">
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                 {allLessons.length > 0
@@ -785,7 +781,7 @@ export default function CoursePlayerPage() {
             {selectedLesson ? (
               <div className="rounded-xl border border-blue-100 dark:border-blue-800 p-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Lesson</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
                   {selectedLesson.title}
                 </h2>
 
@@ -803,11 +799,11 @@ export default function CoursePlayerPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400">No lesson available.</p>
             )}
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 grid grid-cols-1 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={markLessonComplete}
                 disabled={!selectedLesson || selectedLesson.completed || marking}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {selectedLesson?.completed ? 'Completed' : marking ? 'Saving...' : 'Mark lesson as completed'}
               </button>
@@ -815,7 +811,7 @@ export default function CoursePlayerPage() {
               <button
                 onClick={() => prevLesson && setSelectedLessonId(prevLesson.id)}
                 disabled={!prevLesson}
-                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -823,7 +819,7 @@ export default function CoursePlayerPage() {
               <button
                 onClick={() => nextLesson && nextLesson.unlocked && setSelectedLessonId(nextLesson.id)}
                 disabled={!nextLesson || !nextLesson.unlocked}
-                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -835,6 +831,57 @@ export default function CoursePlayerPage() {
             )}
           </div>
 
+          </div>
+
+          <div className="lg:hidden portal-surface mt-4 sm:mt-6 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
+              Ask about current lessons and course topics.
+            </p>
+            <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-3 sm:p-4 h-[20rem] sm:h-[30rem] overflow-y-auto space-y-3">
+              {assistantMessages.map((msg, idx) => (
+                <div
+                  key={`${msg.role}-${idx}`}
+                  className={`rounded-lg px-3 py-2 text-xs ${
+                    msg.role === 'student'
+                      ? 'bg-blue-600 text-white ml-6'
+                      : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                </div>
+              ))}
+              {assistantLoading && (
+                <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                  Thinking...
+                </div>
+              )}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <textarea
+                value={assistantInput}
+                onChange={(e) => setAssistantInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    askAssistant();
+                  }
+                }}
+                placeholder="Ask about this lesson..."
+                rows={2}
+                className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              />
+              <button
+                onClick={askAssistant}
+                disabled={assistantLoading || !assistantInput.trim()}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-2 sm:px-3 disabled:opacity-60"
+              >
+                Send
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -876,6 +923,7 @@ export default function CoursePlayerPage() {
     </div>
   );
 }
+
 
 
 

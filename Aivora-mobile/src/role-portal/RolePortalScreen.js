@@ -26,6 +26,11 @@ import StudentMyCourseContentView from './components/StudentMyCourseContentView'
 import StudentMyCoursePlayerView from './components/StudentMyCoursePlayerView';
 import StudentCertificateQuizView from './components/StudentCertificateQuizView';
 import StudentLeaderboardView from './components/StudentLeaderboardView';
+import StudentCalendarView from './components/StudentCalendarView';
+import StudentWalletView from './components/StudentWalletView';
+import StudentPathsView from './components/StudentPathsView';
+import StudentFavoritesView from './components/StudentFavoritesView';
+import StudentRecentCoursesView from './components/StudentRecentCoursesView';
 import CertificatePreviewCard from './components/CertificatePreviewCard';
 import { MOBILE_TABS } from './config/mobile-tabs';
 import { ROLE_FEATURES } from './config/role-features';
@@ -271,6 +276,11 @@ const FEATURE_MENU_ICON_MAP = {
   'student-leaderboard': 'trophy-outline',
   'student-certificates': 'certificate-outline',
   'student-certificate-quizzes': 'clipboard-text-outline',
+  'student-calendar': 'calendar-month-outline',
+  'student-paths': 'map-marker-path',
+  'student-wallet': 'wallet-outline',
+  'student-favorites': 'heart-outline',
+  'student-recent-courses': 'history',
   'student-profile': 'account-circle-outline',
   'teacher-profile': 'account-circle-outline',
   'teacher-earnings': 'cash-multiple',
@@ -299,6 +309,7 @@ export default function RolePortalScreen({
   apiFetch,
   themeMode = 'light',
   onToggleTheme = () => {},
+  initialFeatureId = '',
 }) {
   const role = resolveRole(user?.role);
   if (role === 'admin') {
@@ -336,6 +347,7 @@ export default function RolePortalScreen({
       apiFetch={apiFetch}
       themeMode={themeMode}
       onToggleTheme={onToggleTheme}
+      initialFeatureId={initialFeatureId}
     />
   );
 }
@@ -348,6 +360,7 @@ function GeneralRolePortal({
   apiFetch,
   themeMode,
   onToggleTheme,
+  initialFeatureId,
 }) {
   const insets = useSafeAreaInsets();
   const [currentUser, setCurrentUser] = useState(user || null);
@@ -363,8 +376,18 @@ function GeneralRolePortal({
     if (Array.isArray(MOBILE_TABS.student)) return MOBILE_TABS.student;
     return [];
   }, [role]);
-  const [activeTabId, setActiveTabId] = useState(tabs[0]?.id || '');
-  const [activeFeatureId, setActiveFeatureId] = useState(tabs[0]?.featureIds?.[0] || features[0]?.id || '');
+  const initialResolvedFeatureId = useMemo(() => {
+    const requested = String(initialFeatureId || '').trim();
+    if (!requested) return tabs[0]?.featureIds?.[0] || features[0]?.id || '';
+    const exists = features.some((feature) => feature.id === requested);
+    return exists ? requested : tabs[0]?.featureIds?.[0] || features[0]?.id || '';
+  }, [features, initialFeatureId, tabs]);
+  const initialResolvedTabId = useMemo(() => {
+    const ownerTab = tabs.find((tab) => (tab.featureIds || []).includes(initialResolvedFeatureId));
+    return ownerTab?.id || tabs[0]?.id || '';
+  }, [initialResolvedFeatureId, tabs]);
+  const [activeTabId, setActiveTabId] = useState(initialResolvedTabId);
+  const [activeFeatureId, setActiveFeatureId] = useState(initialResolvedFeatureId);
   const [menuOpen, setMenuOpen] = useState(false);
   const [paramValues, setParamValues] = useState({});
   const [tabBadges, setTabBadges] = useState({});
@@ -373,6 +396,7 @@ function GeneralRolePortal({
   const [selectedCertificate, setSelectedCertificate] = useState(null);
   const [continueCoursePreview, setContinueCoursePreview] = useState(null);
   const [activeLessonId, setActiveLessonId] = useState('');
+  const [walletTopupCredit, setWalletTopupCredit] = useState(0);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -591,6 +615,12 @@ function GeneralRolePortal({
   const isStudentCertificateQuizzesFeature =
     role === 'student' && activeFeature?.id === 'student-certificate-quizzes';
   const isStudentLeaderboardFeature = role === 'student' && activeFeature?.id === 'student-leaderboard';
+  const isStudentCalendarFeature = role === 'student' && activeFeature?.id === 'student-calendar';
+  const isStudentWalletFeature = role === 'student' && activeFeature?.id === 'student-wallet';
+  const isStudentPathsFeature = role === 'student' && activeFeature?.id === 'student-paths';
+  const isStudentFavoritesFeature = role === 'student' && activeFeature?.id === 'student-favorites';
+  const isStudentRecentCoursesFeature =
+    role === 'student' && activeFeature?.id === 'student-recent-courses';
   const certificateQuizCourseId = useMemo(() => {
     const explicitCourseId = String(paramValues?.courseId || '').trim();
     if (explicitCourseId) return explicitCourseId;
@@ -712,6 +742,11 @@ function GeneralRolePortal({
       !isStudentMyCourseContentFeature &&
       !isStudentMyCoursePlayerFeature &&
       !isStudentCertificateQuizzesFeature &&
+      !isStudentCalendarFeature &&
+      !isStudentWalletFeature &&
+      !isStudentPathsFeature &&
+      !isStudentFavoritesFeature &&
+      !isStudentRecentCoursesFeature &&
       !isStudentLeaderboardFeature ? (
       <View style={[portalStyles.panel, { backgroundColor: theme.panelBg, borderColor: theme.panelBorder }]}>
         <Text style={[portalStyles.panelTitle, { color: theme.textPrimary }]}>{activeFeature?.title}</Text>
@@ -766,6 +801,11 @@ function GeneralRolePortal({
       !isStudentMyCourseContentFeature &&
       !isStudentMyCoursePlayerFeature &&
       !isStudentCertificateQuizzesFeature &&
+      !isStudentCalendarFeature &&
+      !isStudentWalletFeature &&
+      !isStudentPathsFeature &&
+      !isStudentFavoritesFeature &&
+      !isStudentRecentCoursesFeature &&
       summaryStats.length > 0 ? (
         <View style={portalStyles.statsGrid}>
           {summaryStats.map((stat) => (
@@ -784,7 +824,33 @@ function GeneralRolePortal({
         <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
           {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
           {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
-          {!loading && !error ? <StudentDashboardView data={rawData} theme={theme} /> : null}
+          {!loading && !error ? (
+            <StudentDashboardView
+              data={rawData}
+              theme={theme}
+              onViewAllCourses={() => {
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-courses');
+                setRawData(null);
+                setError('');
+              }}
+              onViewCourse={(course) => {
+                const courseId = String(course?.id || course?.courseId || '').trim();
+                if (!courseId) {
+                  setActiveTabId('student-learn');
+                  setActiveFeatureId('student-courses');
+                  setRawData(null);
+                  setError('');
+                  return;
+                }
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-my-course-content');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
         </ScrollView>
       ) : isStudentCoursesFeature ? (
         <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
@@ -1006,6 +1072,88 @@ function GeneralRolePortal({
               setError('');
             }}
           />
+        </ScrollView>
+      ) : isStudentCalendarFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? <StudentCalendarView data={rawData} theme={theme} /> : null}
+        </ScrollView>
+      ) : isStudentWalletFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentWalletView
+              data={rawData}
+              theme={theme}
+              localBalance={walletTopupCredit}
+              onTopUp={(amount) => setWalletTopupCredit((prev) => prev + Number(amount || 0))}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentPathsFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentPathsView
+              data={rawData}
+              theme={theme}
+              apiFetch={apiFetch}
+              onEnrollmentSuccess={() => {
+                setRawData(null);
+                setError('');
+                loadFeature();
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentFavoritesFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentFavoritesView
+              data={rawData}
+              theme={theme}
+              apiFetch={apiFetch}
+              onRefresh={() => {
+                setRawData(null);
+                setError('');
+                loadFeature();
+              }}
+              onOpenCourse={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!courseId) return;
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-course-detail');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
+        </ScrollView>
+      ) : isStudentRecentCoursesFeature ? (
+        <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>
+          {loading ? <ActivityIndicator color="#0d3b66" style={portalStyles.loader} /> : null}
+          {!loading && error ? <Text style={portalStyles.error}>{error}</Text> : null}
+          {!loading && !error ? (
+            <StudentRecentCoursesView
+              data={rawData}
+              theme={theme}
+              onOpenCourse={(course) => {
+                const courseId = String(course?.id || '').trim();
+                if (!courseId) return;
+                setParamValues((prev) => ({ ...prev, courseId }));
+                setActiveTabId('student-learn');
+                setActiveFeatureId('student-course-detail');
+                setRawData(null);
+                setError('');
+              }}
+            />
+          ) : null}
         </ScrollView>
       ) : isStudentLeaderboardFeature ? (
         <ScrollView style={portalStyles.dataWrap} contentContainerStyle={portalStyles.dataContent}>

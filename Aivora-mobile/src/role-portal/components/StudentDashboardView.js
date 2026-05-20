@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { portalStyles } from '../styles';
 import StudyTimeAreaChart from './StudyTimeAreaChart';
 
@@ -8,7 +8,12 @@ const clampPercent = (value) => {
   return Math.max(0, Math.min(100, Math.round(n)));
 };
 
-export default function StudentDashboardView({ data, theme }) {
+export default function StudentDashboardView({
+  data,
+  theme,
+  onViewAllCourses = () => {},
+  onViewCourse = () => {},
+}) {
   const stats = data?.stats || {};
   const studyData = Array.isArray(data?.studyData) ? data.studyData : [];
   const continueLearning = Array.isArray(data?.continueLearning) ? data.continueLearning : [];
@@ -49,7 +54,12 @@ export default function StudentDashboardView({ data, theme }) {
       </View>
 
       <View style={[portalStyles.adminSection, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-        <Text style={[portalStyles.adminSectionTitle, { color: theme.textPrimary }]}>Continue Learning</Text>
+        <View style={[portalStyles.adminHeaderRow, { marginBottom: 2 }]}>
+          <Text style={[portalStyles.adminSectionTitle, { color: theme.textPrimary }]}>Continue Learning</Text>
+          <Pressable onPress={onViewAllCourses} style={portalStyles.secondaryBtn}>
+            <Text style={portalStyles.secondaryBtnText}>View all courses</Text>
+          </Pressable>
+        </View>
         {continueLearning.length === 0 ? <Text style={portalStyles.empty}>No courses yet.</Text> : null}
         {continueLearning.map((course, idx) => {
           const progress = clampPercent(course?.progress);
@@ -61,6 +71,9 @@ export default function StudentDashboardView({ data, theme }) {
               <View style={{ height: 7, borderRadius: 999, backgroundColor: theme.isDark ? '#1e293b' : '#dbeafe', marginTop: 6 }}>
                 <View style={{ width: `${progress}%`, height: 7, borderRadius: 999, backgroundColor: '#2563eb' }} />
               </View>
+              <Pressable onPress={() => onViewCourse(course)} style={[portalStyles.secondaryBtn, { marginTop: 8, alignSelf: 'flex-start' }]}>
+                <Text style={portalStyles.secondaryBtnText}>View course</Text>
+              </Pressable>
             </View>
           );
         })}

@@ -219,7 +219,7 @@ export default function StudentChatPage() {
   }, [messages]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -234,7 +234,8 @@ export default function StudentChatPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="admin-surface bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="admin-surface relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
           <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
@@ -313,7 +314,8 @@ export default function StudentChatPage() {
           </div>
         </div>
 
-        <div className="admin-surface lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
           <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
             <div className="flex items-center gap-3">
               {selected?.teacherImageUrl ? (

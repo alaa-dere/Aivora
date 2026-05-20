@@ -172,7 +172,7 @@ export default function StudentProfilePage() {
   return (
       <div className="min-h-screen bg-transparent p-4 md:p-6">
         <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="h-11 w-11 rounded-xl bg-sky-50 dark:bg-white/10 border border-sky-100 dark:border-white/20 flex items-center justify-center overflow-hidden">
@@ -188,10 +188,10 @@ export default function StudentProfilePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Student Profile</h1>
-              <p className="text-sm text-slate-700 dark:text-blue-100 mt-1 font-medium">
+              <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 font-medium">
                 {data?.student.fullName || '-'}
               </p>
-              <p className="text-xs text-slate-500 dark:text-blue-200 mt-1 inline-flex items-center gap-1.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 inline-flex items-center gap-1.5">
                 <EnvelopeIcon className="w-4 h-4" />
                 {data?.student.email || '-'}
               </p>
@@ -215,7 +215,7 @@ export default function StudentProfilePage() {
                     </Link>
                   ))}
                 </div>
-                <div className="mt-2 h-px w-full bg-gradient-to-r from-blue-300 via-sky-300 to-cyan-300 dark:from-blue-800 dark:via-sky-800 dark:to-cyan-800" />
+                <div className="mt-2 h-px w-full bg-gradient-to-r from-slate-300 via-sky-300 to-cyan-200 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
               </div>
             </div>
           </div>
@@ -239,14 +239,14 @@ export default function StudentProfilePage() {
           <div className="space-y-6">
             {tab === 'overview' && (
               <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 {overviewCards.map((card) => (
                   <InfoCard key={card.title} title={card.title} value={card.value} icon={card.icon} />
                 ))}
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -276,7 +276,7 @@ export default function StudentProfilePage() {
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
+                <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Payment Snapshot</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
@@ -295,7 +295,8 @@ export default function StudentProfilePage() {
                 <Pill label={`Completed ${stats?.completedEnrollments ?? 0}`} />
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
+                <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
@@ -307,7 +308,7 @@ export default function StudentProfilePage() {
                       <th className="px-4 py-3 font-medium">Enrolled</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {data.courses.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
@@ -316,7 +317,7 @@ export default function StudentProfilePage() {
                       </tr>
                     ) : (
                       data.courses.map((course) => (
-                        <tr key={course.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
+                        <tr key={course.enrollmentId} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
                           </td>
@@ -350,6 +351,58 @@ export default function StudentProfilePage() {
                     )}
                   </tbody>
                 </table>
+                </div>
+
+                <div className="md:hidden p-2.5 space-y-2.5">
+                  {data.courses.length === 0 ? (
+                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
+                      No enrollments found for this student.
+                    </div>
+                  ) : (
+                    data.courses.map((course) => (
+                      <div
+                        key={`mobile-${course.enrollmentId}`}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+                      >
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {course.title}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Teacher: {course.teacherName || '-'}
+                        </p>
+
+                        <div className="mt-2">
+                          <EnrollmentStatus status={course.status} />
+                        </div>
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                            <div
+                              className="h-2 rounded-full bg-blue-600"
+                              style={{ width: `${Math.min(100, Math.max(0, course.progressPercentage || 0))}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-300">
+                            {Number(course.progressPercentage || 0).toFixed(0)}%
+                          </span>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Price</span>
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {money(course.price)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Enrolled</span>
+                          <span className="text-xs text-slate-700 dark:text-slate-300">
+                            {formatDate(course.enrolledAt)}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -362,7 +415,8 @@ export default function StudentProfilePage() {
                 <InfoCard title="Courses" value={stats?.totalCourses ?? 0} icon={AcademicCapIcon} />
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
+                <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
                     <tr className="text-left">
@@ -373,7 +427,7 @@ export default function StudentProfilePage() {
                       <th className="px-4 py-3 font-medium text-right">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {data.transactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
@@ -382,7 +436,7 @@ export default function StudentProfilePage() {
                       </tr>
                     ) : (
                       data.transactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
+                        <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                           <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDateTime(tx.dateTime)}</td>
                           <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{tx.courseTitle || '-'}</td>
                           <td className="px-4 py-3">
@@ -401,6 +455,42 @@ export default function StudentProfilePage() {
                     )}
                   </tbody>
                 </table>
+                </div>
+
+                <div className="md:hidden p-2.5 space-y-2.5">
+                  {data.transactions.length === 0 ? (
+                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
+                      No transactions recorded yet.
+                    </div>
+                  ) : (
+                    data.transactions.map((tx) => (
+                      <div
+                        key={`mobile-tx-${tx.id}`}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {tx.courseTitle || '-'}
+                          </p>
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {money(tx.amount || 0, tx.currency || 'USD')}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {formatDateTime(tx.dateTime)}
+                        </p>
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
+                            {tx.type}
+                          </span>
+                          <TransactionStatus status={tx.status} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -412,11 +502,11 @@ export default function StudentProfilePage() {
 
 function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
   return (
-    <div className="group relative overflow-hidden h-full min-h-[150px] bg-white dark:bg-slate-900/70 p-5 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
+    <div className="group relative overflow-hidden h-full min-h-[150px] bg-white/85 dark:bg-slate-900/75 backdrop-blur p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
       <div className="flex justify-between mb-3">
-        <span className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+        <span className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-sky-600 dark:text-sky-300" />
         </span>
       </div>
       <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
@@ -436,7 +526,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function Pill({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
       {label}
     </span>
   );

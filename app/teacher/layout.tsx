@@ -1,9 +1,9 @@
-// app/teacher/layout.tsx
+﻿// app/teacher/layout.tsx
 'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -12,9 +12,6 @@ import { signOut } from 'next-auth/react';
 import { Bell, MessageSquare } from 'lucide-react';
 import {
   HomeIcon,
-  BookOpenIcon,
-  UsersIcon,
-  VideoCameraIcon,
   BellIcon,
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
@@ -33,21 +30,24 @@ import {
   SunIcon as SunSolidIcon,
   MoonIcon as MoonSolidIcon,
 } from '@heroicons/react/24/solid';
-import { BrainCircuit } from 'lucide-react';
 import {
   API_ROUTES,
   normalizeNotificationList,
   normalizeTeacherProfileResponse,
 } from '@aivora/shared';
+import { getTeacherNotificationHref } from '@/lib/notification-links';
 
 const menuItems = [
   { href: '/teacher', name: 'Dashboard', icon: HomeIcon },
-  { href: '/teacher/courses', name: 'My Courses', icon: BookOpenIcon },
-  { href: '/teacher/quizzes', name: 'Quizzes', icon: BrainCircuit },
-  { href: '/teacher/students', name: 'Students', icon: UsersIcon },
   { href: '/teacher/earnings', name: 'Earnings', icon: CurrencyDollarIcon },
-  { href: '/teacher/live-sessions', name: 'Live Sessions', icon: VideoCameraIcon },
   { href: '/teacher/certificates', name: 'Certificates', icon: AcademicCapIcon },
+  { href: '/teacher/profile', name: 'Profile', icon: UserCircleIcon },
+];
+
+const headerLinks = [
+  { href: '/teacher/courses', name: 'My Courses' },
+  { href: '/teacher/students', name: 'Students' },
+  { href: '/teacher/live-sessions', name: 'Live Sessions' },
 ];
 
 const manrope = Manrope({
@@ -62,8 +62,20 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [messageCount, setMessageCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'course_enroll' | 'admin_message' | 'student_message'>('all');
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+    {
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+      read: boolean;
+      conversationId?: string | null;
+      courseId?: string | null;
+      certificateId?: string | null;
+    }[]
   >([]);
   const [profile, setProfile] = useState<{
     fullName: string;
@@ -77,6 +89,24 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   };
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!notificationMenuRef.current) return;
+      if (!notificationMenuRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -158,15 +188,46 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   }, []);
 
 
-  const loadNotifications = async () => {
+  async function loadNotifications() {
     try {
       const res = await fetch(API_ROUTES.teacher.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      setNotificationItems(normalizeNotificationList(data.notifications));
+      const readSet = new Set<string>(
+        JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+      );
+      const deletedSet = new Set<string>(
+        JSON.parse(localStorage.getItem('teacher_deleted_notifications') || '[]')
+      );
+      const allItems = (data.notifications || []).map((n: { id: string; type?: string; title: string; message: string; createdAt: string; read?: boolean; conversationId?: string | null; courseId?: string | null; certificateId?: string | null; }) => ({
+        id: n.id,
+        type: String(n.type || 'course_enroll'),
+        title: n.title,
+        message: n.message,
+        createdAt: n.createdAt,
+        read: readSet.has(n.id) || Boolean(n.read),
+        conversationId: n.conversationId || null,
+        courseId: n.courseId || null,
+        certificateId: n.certificateId || null,
+      }));
+      const items = allItems
+        .filter((n: { id: string }) => !deletedSet.has(n.id))
+        .filter((n: { type: string }) => notificationTypeFilter === 'all' || n.type === notificationTypeFilter)
+        .slice(0, 8);
+      setNotificationItems(items);
     } catch (error) {
       console.error('Failed to load teacher notifications', error);
     }
+  }
+
+  const markAllNotificationsRead = async () => {
+    const existing = new Set<string>(
+      JSON.parse(localStorage.getItem('teacher_read_notifications') || '[]')
+    );
+    notificationItems.forEach((n) => existing.add(n.id));
+    localStorage.setItem('teacher_read_notifications', JSON.stringify(Array.from(existing)));
+    setNotificationItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    window.dispatchEvent(new Event('notifications:refresh'));
   };
 const router = useRouter();
 
@@ -185,8 +246,8 @@ const handleLogout = async () => {
 
   return (
     <div className={`${manrope.className} admin-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
-      {/* ──────────────── Topbar ──────────────── */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <header className="sticky top-0 z-30 px-4 pt-9 sm:pt-4">
         <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center">
           <button
@@ -207,9 +268,25 @@ const handleLogout = async () => {
 </div>
         </div>
 
+        <div className="hidden md:flex items-center gap-2">
+          {headerLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`px-3 py-2 text-sm font-semibold transition-colors ${
+                isActive(item.href)
+                  ? 'text-sky-300'
+                  : 'text-blue-100 hover:text-sky-300'
+              }`}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </div>
+
         <div className="flex items-center space-x-3">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notificationMenuRef}>
             <button
               onClick={() => {
                 const next = !notificationOpen;
@@ -227,39 +304,62 @@ const handleLogout = async () => {
             </button>
 
             {notificationOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              <div className="admin-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[85vw] rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
+                <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                     Notifications
                   </p>
+                  <div className="mt-2 grid grid-cols-[1fr_auto] items-center gap-2">
+                    <select
+                      value={notificationTypeFilter}
+                      onChange={(e) =>
+                        setNotificationTypeFilter(
+                          e.target.value as 'all' | 'course_enroll' | 'admin_message' | 'student_message'
+                        )
+                      }
+                      className="text-[11px] sm:text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 min-w-0 w-full"
+                    >
+                      <option value="all">All</option>
+                      <option value="course_enroll">Enrollments</option>
+                      <option value="admin_message">Admin Msg</option>
+                      <option value="student_message">Student Msg</option>
+                    </select>
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="text-[11px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap"
+                    >
+                      <span className="sm:hidden">Mark all</span>
+                      <span className="hidden sm:inline">Mark all read</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   {notificationItems.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
                       No notifications yet.
                     </div>
                   ) : (
                     notificationItems.map((n) => (
-                      <div
+                      <Link
                         key={n.id}
-                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                        }`}
+                        href={getTeacherNotificationHref(n)}
+                        onClick={() => setNotificationOpen(false)}
+                        className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
                       >
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                           {n.title}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           {n.message}
                         </p>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>
-                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
                   <Link
                     href="/teacher/notifications"
                     onClick={() => setNotificationOpen(false)}
@@ -324,12 +424,13 @@ const handleLogout = async () => {
             </button>
 
             {accountOpen && (
-              <div className="admin-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="admin-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-52 rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
                 <Link
                   href="/teacher/profile"
                   onClick={() => setAccountOpen(false)}
-                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <UserCircleIcon className="w-4 h-4 text-slate-500" />
                   Profile
                 </Link>
                 <button
@@ -337,8 +438,9 @@ const handleLogout = async () => {
                     setAccountOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4 text-slate-500" />
                   Logout
                 </button>
               </div>
@@ -346,9 +448,31 @@ const handleLogout = async () => {
           </div>
         </div>
         </div>
+
+        <div
+          className={`md:hidden relative z-10 mt-2 rounded-xl border border-blue-900/50 dark:border-gray-800 bg-blue-950/90 dark:bg-gray-950/90 backdrop-blur px-2 py-1.5 ${
+            notificationOpen || accountOpen ? 'hidden' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
+            {headerLinks.map((item) => (
+              <Link
+                key={`mobile-${item.href}`}
+                href={item.href}
+                className={`shrink-0 py-1.5 text-xs font-semibold text-center transition-colors ${
+                  isActive(item.href)
+                    ? 'text-sky-300'
+                    : 'text-blue-100 hover:text-sky-200 dark:text-slate-200 dark:hover:text-sky-200'
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
+        </div>
       </header>
 
-      {/* ──────────────── Sidebar + Content ──────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Sidebar + Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex">
         {/* Sidebar */}
         <aside
@@ -561,4 +685,5 @@ const handleLogout = async () => {
     </div>
   );
 }
+
 

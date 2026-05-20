@@ -195,20 +195,20 @@ export default function QuizResultPage() {
       </div>
 
       {attempt.scorePercentage >= PASSING_SCORE_PERCENTAGE && (
-        <div className="mb-6 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-5 shadow-sm">
+        <div className="mb-6 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <SparklesIcon className="w-5 h-5" />
             <p className="text-sm font-semibold">Congratulations!</p>
           </div>
           <p className="text-lg font-bold">You passed the quiz.</p>
-          <p className="text-sm text-emerald-100 mt-1">
+          <p className="text-sm text-blue-600 dark:text-blue-200 mt-1">
             Great work. You can now view your course certificate.
           </p>
           {attempt.certificateId && (
             <div className="mt-4">
               <Link
                 href={`/student/certificates/${attempt.certificateId}`}
-                className="portal-surface inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 text-sm font-semibold transition-colors"
+                className="portal-surface inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-blue-700 hover:bg-blue-100 text-sm font-semibold transition-colors border border-blue-200 dark:border-blue-700"
               >
                 View Certificate
               </Link>

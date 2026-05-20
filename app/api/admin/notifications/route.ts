@@ -6,11 +6,12 @@ import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
 
 type NotificationRow = RowDataPacket & {
   id: string;
-  type: 'student_signup' | 'course_enroll' | 'teacher_message';
+  type: 'student_signup' | 'course_enroll' | 'teacher_message' | 'instructor_application';
   title: string;
   message: string;
   createdAt: string;
   readAt: string | null;
+  studentId: string | null;
   courseId: string | null;
   courseTitle: string | null;
   certificateId: string | null;
@@ -46,6 +47,7 @@ export async function GET(req: Request) {
         n.message,
         n.createdAt,
         n.readAt,
+        ${useUnified ? 'n.relatedUserId' : 'n.studentId'} AS studentId,
         n.courseId,
         c.title AS courseTitle,
         cert.id AS certificateId
@@ -76,6 +78,7 @@ export async function GET(req: Request) {
         message,
         createdAt: row.createdAt,
         readAt: row.readAt,
+        studentId: row.studentId || null,
         courseId: row.courseId,
         courseTitle: row.courseTitle,
         certificateId: row.certificateId || null,

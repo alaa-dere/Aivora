@@ -99,7 +99,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? "·ÊÕ… «· Õﬂ„" : "Dashboard"}
+            {isArabic ? "\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645" : "Dashboard"}
           </Link>
           {role !== "admin" ? (
             <Link
@@ -107,7 +107,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
             >
-              {isArabic ? "«·„·› «·‘Œ’Ì" : "Profile"}
+              {isArabic ? "\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A" : "Profile"}
             </Link>
           ) : null}
           {role === "student" ? (
@@ -116,14 +116,14 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
             >
-              {isArabic ? "«·œÊ—«  «·„›÷·…" : "Favorite Courses"}
+              {isArabic ? "\u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u0645\u0641\u0636\u0644\u0629" : "Favorite Courses"}
             </Link>
           ) : null}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
           >
-            {isArabic ? " ”ÃÌ· «·Œ—ÊÃ" : "Logout"}
+            {isArabic ? "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C" : "Logout"}
           </button>
         </div>
       )}

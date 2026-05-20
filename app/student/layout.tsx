@@ -1,4 +1,4 @@
-// app/student/layout.tsx
+﻿// app/student/layout.tsx
 'use client';
 import Image from "next/image";
 import { Manrope } from "next/font/google";
@@ -8,25 +8,15 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
+import { useRef } from 'react';
 import {
-  Bell, Settings, LogOut, ChevronLeft, ChevronRight, Menu,
-  Sun, Moon, X, MessageSquare
-} from "lucide-react";
-import {
-  HomeIcon,
-  ChartBarIcon,
-  BookOpenIcon,
-  PlayCircleIcon,
-  AcademicCapIcon,
-  CreditCardIcon,
-  TrophyIcon,
   Bars3Icon,
   XMarkIcon,
+  HomeIcon,
   UserCircleIcon,
-  SunIcon,
-  MoonIcon,
-  ClipboardDocumentCheckIcon,
-  BellIcon
+  HeartIcon,
+  CalendarDaysIcon as CalendarOutlineIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import {
   BellIcon as BellSolidIcon,
@@ -37,17 +27,16 @@ import {
 } from '@heroicons/react/24/solid';
 import {
   API_ROUTES,
-  normalizeNotificationList,
   normalizeStudentProfileResponse,
 } from '@aivora/shared';
+import { getStudentNotificationHref } from '@/lib/notification-links';
 
-const navigation = [
-  { name: 'Dashboard', href: '/student', icon: ChartBarIcon },
-  { name: 'My Courses', href: '/student/my-courses', icon: PlayCircleIcon },
-  { name: 'Explore Courses', href: '/student/courses', icon: BookOpenIcon },
-  { name: 'Certificates', href: '/student/certificates', icon: AcademicCapIcon },
-  { name: 'Certificate Quizzes', href: '/student/certificate-quizzes', icon: ClipboardDocumentCheckIcon },
-  { name: 'Leaderboard', href: '/student/leaderboard', icon: TrophyIcon },
+const headerLinks = [
+  { name: 'My Courses', href: '/student/my-courses' },
+  { name: 'Explore Courses', href: '/student/courses' },
+  { name: 'Certificates', href: '/student/certificates' },
+  { name: 'Certificate Quizzes', href: '/student/certificate-quizzes' },
+  { name: 'Leaderboard', href: '/student/leaderboard' },
 ];
 
 const manrope = Manrope({
@@ -63,11 +52,24 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState<
-    { id: string; title: string; message: string; createdAt: string; read: boolean }[]
+    {
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+      read: boolean;
+      courseId?: string | null;
+      certificateId?: string | null;
+      conversationId?: string | null;
+      teacherId?: string | null;
+    }[]
   >([]);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [profile, setProfile] = useState<{ fullName: string; email: string; imageUrl?: string | null } | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
@@ -104,8 +106,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       }
     }
     loadProfile();
+    const onProfileUpdated = () => loadProfile();
+    window.addEventListener('student:profile-updated', onProfileUpdated as EventListener);
     return () => {
       mounted = false;
+      window.removeEventListener('student:profile-updated', onProfileUpdated as EventListener);
     };
   }, []);
 
@@ -161,39 +166,118 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       const res = await fetch(API_ROUTES.student.dashboardNotifications, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) return;
-      setNotificationItems(normalizeNotificationList(data.notifications));
+      const items = (data.notifications || []).map(
+        (n: {
+          id: string;
+          type?: string;
+          title: string;
+          message: string;
+          createdAt: string;
+          readAt?: string | null;
+          read?: boolean;
+          courseId?: string | null;
+          certificateId?: string | null;
+          conversationId?: string | null;
+          teacherId?: string | null;
+        }) => ({
+          id: n.id,
+          type: String(n.type || 'live_session'),
+          title: n.title,
+          message: n.message,
+          createdAt: n.createdAt,
+          read: Boolean(n.readAt) || Boolean(n.read),
+          courseId: n.courseId || null,
+          certificateId: n.certificateId || null,
+          conversationId: n.conversationId || null,
+          teacherId: n.teacherId || null,
+        })
+      );
+      setNotificationItems(items);
     } catch (error) {
       console.error('Failed to load student notifications', error);
     }
   };
 
+  const markAllNotificationsRead = async () => {
+    try {
+      await fetch('/api/student/dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_all_notifications_read' }),
+      });
+      setNotificationItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      window.dispatchEvent(new Event('student-notifications:refresh'));
+    } catch (error) {
+      console.error('Failed to mark notifications as read', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+      if (accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+        setAccountOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
   return (
     <div className={`${manrope.className} portal-shell min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300`}>
-      {/* Header - نفس ستايل الأدمن */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
-        <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between">
+      {/* Header - Ù†ÙØ³ Ø³ØªØ§ÙŠÙ„ Ø§Ù„Ø£Ø¯Ù…Ù† */}
+      <header className="sticky top-0 z-30 px-4 pt-9 sm:pt-4">
+        <div className="rounded-2xl border border-blue-900/70 dark:border-gray-800 bg-blue-950/95 dark:bg-gray-950/90 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
-            aria-label="Toggle sidebar"
-          >
-            <Bars3Icon className="w-6 h-6 text-white" />
-          </button>
-                 <div className="flex items-center ml-2">
-  <Image
-    src="/alaa.png"
-    alt="Aivora Logo"
-    width={100}
-    height={30}
-    className="object-contain"
-  />
-</div>
+                 <button
+                   onClick={() => setSidebarOpen((v) => !v)}
+                   className="p-2 rounded-lg hover:bg-blue-900 dark:hover:bg-gray-800 transition-colors"
+                   aria-label="Toggle sidebar"
+                 >
+                   <Bars3Icon className="w-6 h-6 text-white" />
+                 </button>
+                 <div className="ml-2" />
+                 <Link href="/student" className="flex items-center" aria-label="Go to dashboard">
+                  <Image
+                    src="/alaa.png"
+                    alt="Aivora Logo"
+                    width={100}
+                    height={30}
+                    className="object-contain"
+                  />
+                 </Link>
+        </div>
+
+        <div className="hidden md:flex items-center gap-1 lg:gap-2 overflow-x-auto">
+          {headerLinks.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-2 text-sm font-semibold transition-colors ${
+                  isActive ? 'text-sky-300' : 'text-blue-100 hover:text-sky-300'
+                }`}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notificationMenuRef}>
             <button
               onClick={() => {
                 const next = !notificationOpen;
@@ -212,11 +296,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </button>
 
             {notificationOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-80 max-w-[85vw] rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="portal-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[85vw] rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
+                <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Notifications
                   </p>
+                  <button
+                    onClick={markAllNotificationsRead}
+                    className="mt-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                  >
+                    Mark all read
+                  </button>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   {notificationItems.length === 0 ? (
@@ -225,11 +315,11 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                     </div>
                   ) : (
                     notificationItems.map((n) => (
-                      <div
+                      <Link
                         key={n.id}
-                        className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
-                          n.read ? '' : 'bg-blue-50/40 dark:bg-blue-900/10'
-                        }`}
+                        href={getStudentNotificationHref(n)}
+                        onClick={() => setNotificationOpen(false)}
+                        className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
                       >
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                           {n.title}
@@ -240,7 +330,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
                           {new Date(n.createdAt).toLocaleString()}
                         </p>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>
@@ -290,7 +380,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <HomeSolidIcon className="w-5 h-5 text-white" />
           </Link>
 
-          <div className="relative">
+          <div className="relative" ref={accountMenuRef}>
             <button
               onClick={() => setAccountOpen((v) => !v)}
               className="h-9 w-9 rounded-full border border-blue-200 bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-slate-200 flex items-center justify-center text-sm font-semibold hover:bg-blue-100 dark:hover:bg-slate-700 transition overflow-hidden"
@@ -308,28 +398,47 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             </button>
 
             {accountOpen && (
-              <div className="portal-surface absolute right-0 mt-2 w-44 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+              <div className="portal-surface fixed left-3 right-3 top-[50px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-52 rounded-md sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-[200]">
+                <Link
+                  href="/student"
+                  onClick={() => setAccountOpen(false)}
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                >
+                  <HomeIcon className="w-4 h-4 text-slate-500" />
+                  Dashboard
+                </Link>
                 <Link
                   href="/student/profile"
                   onClick={() => setAccountOpen(false)}
-                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <UserCircleIcon className="w-4 h-4 text-slate-500" />
                   Profile
                 </Link>
                 <Link
                   href="/student/favorites"
                   onClick={() => setAccountOpen(false)}
-                  className="block px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <HeartIcon className="w-4 h-4 text-slate-500" />
                   Favorite Courses
+                </Link>
+                <Link
+                  href="/student/calendar"
+                  onClick={() => setAccountOpen(false)}
+                  className="px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
+                >
+                  <CalendarOutlineIcon className="w-4 h-4 text-slate-500" />
+                  Calendar
                 </Link>
                 <button
                   onClick={() => {
                     setAccountOpen(false);
                     handleLogout();
                   }}
-                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="w-full px-4 py-3 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2"
                 >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4 text-slate-500" />
                   Logout
                 </button>
               </div>
@@ -337,104 +446,72 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </div>
         </div>
         </div>
+
+        <div
+          className={`md:hidden relative z-10 mt-2 rounded-xl border border-blue-900/50 dark:border-gray-800 bg-blue-950/90 dark:bg-gray-950/90 backdrop-blur px-2 py-1.5 ${
+            notificationOpen || accountOpen ? 'hidden' : ''
+          }`}
+        >
+          <div className="flex items-center justify-center gap-4 overflow-x-auto whitespace-nowrap">
+            {headerLinks.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={`mobile-${item.href}`}
+                  href={item.href}
+                  className={`shrink-0 py-1.5 text-xs font-semibold text-center transition-colors ${
+                    isActive
+                      ? 'text-sky-300'
+                      : 'text-blue-100 hover:text-sky-200 dark:text-slate-200 dark:hover:text-sky-200'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`
-            fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
-            transform transition-transform duration-300 ease-in-out
-            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            w-64
-          `}
-        >
-          <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 rounded-t-2xl">
-              <div className="flex items-center">
-                <Image
-                  src="/alaa.png"
-                  alt="Aivora Logo"
-                  width={100}
-                  height={30}
-                  className="object-contain"
-                />
-              </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-1 rounded-lg hover:bg-blue-900/50"
-              >
-                <XMarkIcon className="w-6 h-6 text-white" />
-              </button>
-            </div>
-
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <item.icon
-                      className={`w-5 h-5 mr-3 ${
-                        isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
-                      }`}
-                    />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <Link
-                href="/student/profile"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden flex items-center justify-center">
-                  {profile?.imageUrl ? (
-                    <img
-                      src={profile.imageUrl}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <UserCircleIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                  )}
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {profile?.fullName || 'Student User'}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {profile?.email || 'student@aivora.com'}
-                  </p>
-                </div>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </div>
+      <aside
+        className={`
+          fixed top-4 bottom-0 left-0 z-40 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          w-64
+        `}
+      >
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-blue-900 dark:border-gray-800 bg-blue-950 rounded-t-2xl">
+            <Image src="/alaa.png" alt="Aivora Logo" width={100} height={30} className="object-contain" />
+            <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-blue-900/50">
+              <XMarkIcon className="w-6 h-6 text-white" />
+            </button>
           </div>
-        </aside>
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <Link href="/student" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <HomeIcon className="w-5 h-5 mr-3" />
+              Dashboard
+            </Link>
+            <Link href="/student/profile" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <UserCircleIcon className="w-5 h-5 mr-3" />
+              Profile
+            </Link>
+            <Link href="/student/favorites" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <HeartIcon className="w-5 h-5 mr-3" />
+              Favorite Courses
+            </Link>
+            <Link href="/student/calendar" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <CalendarOutlineIcon className="w-5 h-5 mr-3" />
+              Calendar
+            </Link>
+          </nav>
+        </div>
+      </aside>
 
-        {/* Main */}
-        <main className="flex-1">
-          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
-        </main>
-      </div>
+      <main className="flex-1">
+        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+      </main>
 
       {sidebarOpen && (
         <div
@@ -546,3 +623,5 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     </div>
   );
 }
+
+

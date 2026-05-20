@@ -74,7 +74,19 @@ export async function GET(req: Request) {
           `,
           [user.id]
         );
-        const total = Number(countRows[0]?.total || 0);
+        const [teacherMsgRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM chat_message m
+          JOIN chat_conversation conv ON conv.id = m.conversationId
+          WHERE conv.studentId = ?
+            AND m.senderRole = 'teacher'
+            AND m.readAt IS NULL
+          `,
+          [user.id]
+        );
+        const total =
+          Number(countRows[0]?.total || 0) + Number(teacherMsgRows[0]?.total || 0);
         return NextResponse.json({ total });
       }
 
@@ -102,19 +114,63 @@ export async function GET(req: Request) {
         `,
         [user.id]
       );
+      const [teacherMessageRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          m.id,
+          m.body AS message,
+          m.createdAt,
+          m.readAt,
+          conv.id AS conversationId,
+          conv.teacherId AS teacherId,
+          c.title AS courseTitle,
+          t.fullName AS teacherName
+        FROM chat_message m
+        JOIN chat_conversation conv ON conv.id = m.conversationId
+        JOIN course c ON c.id = conv.courseId
+        JOIN user t ON t.id = conv.teacherId
+        WHERE conv.studentId = ?
+          AND m.senderRole = 'teacher'
+        ORDER BY m.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [user.id]
+      );
+
+      const teacherMessageItems = teacherMessageRows.map((row) => ({
+        id: `teacher-msg-${row.id}`,
+        type: 'teacher_message',
+        title: `Message from ${row.teacherName || 'Teacher'}`,
+        message: row.message || '',
+        createdAt: row.createdAt,
+        readAt: row.readAt,
+        courseId: null,
+        courseTitle: row.courseTitle || null,
+        certificateId: null,
+        conversationId: row.conversationId || null,
+        teacherId: row.teacherId || null,
+      }));
+
+      const systemItems = rows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        createdAt: row.createdAt,
+        readAt: row.readAt,
+        courseId: row.courseId,
+        courseTitle: row.courseTitle,
+        certificateId: row.certificateId || null,
+        conversationId: null,
+        teacherId: null,
+      }));
+
+      const merged = [...systemItems, ...teacherMessageItems]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, limit);
 
       return NextResponse.json({
-        notifications: rows.map((row) => ({
-          id: row.id,
-          type: row.type,
-          title: row.title,
-          message: row.message,
-          createdAt: row.createdAt,
-          readAt: row.readAt,
-          courseId: row.courseId,
-          courseTitle: row.courseTitle,
-          certificateId: row.certificateId || null,
-        })),
+        notifications: merged,
       });
     }
 
@@ -274,10 +330,11 @@ export async function GET(req: Request) {
         date: row.date ? new Date(row.date).toLocaleDateString() : '-',
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Student dashboard error:', error);
     return NextResponse.json(
-      { message: 'Failed to load student dashboard', error: error.message },
+      { message: 'Failed to load student dashboard', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
@@ -348,10 +405,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ message: 'Unsupported action' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Student notifications error:', error);
     return NextResponse.json(
-      { message: 'Failed to update notifications', error: error.message },
+      { message: 'Failed to update notifications', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }
