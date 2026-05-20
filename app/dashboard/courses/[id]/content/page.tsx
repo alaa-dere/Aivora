@@ -971,7 +971,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
         {/* Lesson Modal */}
         {showLessonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="admin-surface w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="admin-surface w-full max-w-5xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
                 <h2 className="text-xl font-bold">
                   {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
@@ -988,7 +988,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
 
               <form
                 onSubmit={handleSaveLesson}
-                className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+                className="p-6 space-y-4 max-h-[90vh] overflow-y-auto"
               >
 
                 <div>
@@ -1079,7 +1079,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </button>
                   </div>
                   <textarea
-                    rows={8}
+                    rows={14}
                     value={lessonForm.content}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="Write your lesson content here... Use ``` for code blocks and {{video:URL}} for videos."
