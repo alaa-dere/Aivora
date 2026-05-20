@@ -9,6 +9,16 @@ interface Params {
 
 const validTypes = ['text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed'];
 
+function normalizeLessonContent(content: string | null) {
+  if (!content) return content;
+  return content
+    .replace(/\\`/g, '`')
+    .replace(
+      /```[ \t]*([a-zA-Z0-9_+-]+)[ \t]*\r?\n([\s\S]*?)```/g,
+      (_match, _lang, codeBody: string) => `\`\`\`${codeBody}\`\`\``
+    );
+}
+
 export async function PATCH(req: Request, { params }: Params) {
   const authError = await requirePermission(req, 'course:edit');
   if (authError) return authError;
@@ -33,7 +43,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     if (body?.content !== undefined) {
       updates.push('content = ?');
-      values.push(body.content ? String(body.content) : null);
+      values.push(normalizeLessonContent(body.content ? String(body.content) : null));
     }
 
     if (body?.codeContent !== undefined) {
@@ -71,7 +81,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (body?.liveEditorLanguage !== undefined) {
       const langRaw = String(body.liveEditorLanguage);
       const lang =
-        langRaw === 'javascript' || langRaw === 'html_css' ? langRaw : 'python';
+        langRaw === 'javascript' || langRaw === 'html_css' || langRaw === 'sql' || langRaw === 'c' ? langRaw : 'python';
       updates.push('liveEditorLanguage = ?');
       values.push(lang);
     }
@@ -84,7 +94,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const [result] = await pool.query<ResultSetHeader>(
       `
-      UPDATE Lesson
+      UPDATE lesson
       SET ${updates.join(', ')}, updatedAt = NOW()
       WHERE id = ?
       `,
@@ -114,7 +124,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     const normalizedLessonId = decodeURIComponent(lessonId).trim();
 
     const [result] = await pool.query<ResultSetHeader>(
-      `DELETE FROM Lesson WHERE id = ?`,
+      `DELETE FROM lesson WHERE id = ?`,
       [normalizedLessonId]
     );
 
@@ -131,3 +141,4 @@ export async function DELETE(_req: Request, { params }: Params) {
     );
   }
 }
+

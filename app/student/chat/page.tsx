@@ -1,0 +1,447 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Send, Trash2 } from 'lucide-react';
+
+type TeacherItem = {
+  courseId: string;
+  courseTitle: string;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string;
+  teacherImageUrl?: string | null;
+  conversationId: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  unreadCount?: number;
+};
+
+type MessageItem = {
+  id: string;
+  senderId: string;
+  senderRole: 'student' | 'teacher';
+  body: string;
+  createdAt: string;
+};
+
+export default function StudentChatPage() {
+  const [teachers, setTeachers] = useState<TeacherItem[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
+  const [selected, setSelected] = useState<TeacherItem | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
+  const [inputSearch, setInputSearch] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const streamRef = useRef<EventSource | null>(null);
+
+  const selectedConversationId = selected?.conversationId || null;
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      try {
+        setLoadingTeachers(true);
+        const res = await fetch('/api/student/chat/teachers', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to load teachers');
+        if (data.needsMigration) {
+          setDiagnostic('Chat tables not found. Please run the chat migration.');
+        }
+        setTeachers(data.teachers || []);
+        if (!selected && data.teachers?.length) {
+          setSelected(data.teachers[0]);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingTeachers(false);
+      }
+    };
+    loadTeachers();
+  }, []);
+
+  const ensureConversation = async (item: TeacherItem) => {
+    if (item.conversationId) return item.conversationId;
+    const res = await fetch('/api/chat/conversation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId: item.courseId, teacherId: item.teacherId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setDiagnostic(
+        data.message ||
+          `Could not open chat. Check enrollment for course ${item.courseId}.`
+      );
+      throw new Error(data.message || 'Failed to create conversation');
+    }
+    const updated = teachers.map((t) =>
+      t.courseId === item.courseId && t.teacherId === item.teacherId
+        ? { ...t, conversationId: data.conversationId }
+        : t
+    );
+    setTeachers(updated);
+    const current = updated.find(
+      (t) => t.courseId === item.courseId && t.teacherId === item.teacherId
+    );
+    if (current) setSelected(current);
+    return data.conversationId as string;
+  };
+
+  const loadMessages = async (conversationId: string) => {
+    setLoadingMessages(true);
+    const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setMessages(data.messages || []);
+      setTimeout(scrollToBottom, 50);
+      setDiagnostic(null);
+    } else {
+      setDiagnostic(data.message || 'Failed to load messages.');
+    }
+    setLoadingMessages(false);
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      if (!selected) return;
+      const convId = await ensureConversation(selected);
+      await loadMessages(convId);
+
+      if (streamRef.current) {
+        streamRef.current.close();
+      }
+      const since = Date.now();
+      const stream = new EventSource(`/api/chat/stream?conversationId=${convId}&since=${since}`);
+      streamRef.current = stream;
+      stream.addEventListener('message', (evt) => {
+        try {
+          const msg = JSON.parse((evt as MessageEvent).data) as MessageItem;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          setTeachers((prev) =>
+            prev.map((t) =>
+              t.conversationId === convId
+                ? { ...t, lastMessage: msg.body, lastMessageAt: msg.createdAt }
+                : t
+            )
+          );
+          setTimeout(scrollToBottom, 50);
+        } catch {
+          // ignore
+        }
+      });
+      stream.addEventListener('error', () => {
+        // let it auto-reconnect
+      });
+    };
+    run().catch(() => {
+      // diagnostics are handled inside
+    });
+    return () => {
+      if (streamRef.current) streamRef.current.close();
+    };
+  }, [selected?.courseId, selected?.teacherId]);
+
+  const handleSend = async () => {
+    if (!input.trim() || !selectedConversationId || sending) return;
+    setSending(true);
+    try {
+      const messageBody = input.trim();
+      const res = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selectedConversationId, body: messageBody }),
+      });
+      if (!res.ok) return;
+      setTeachers((prev) =>
+        prev.map((t) =>
+          t.conversationId === selectedConversationId
+            ? { ...t, lastMessage: messageBody, lastMessageAt: new Date().toISOString() }
+            : t
+        )
+      );
+      setInput('');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const deleteMessage = async (messageId: string, scope: 'self' | 'both') => {
+    try {
+      const res = await fetch('/api/chat/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId, scope }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      setDeleteTargetId(null);
+    } catch {
+      // no-op
+    }
+  };
+
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => {
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      if (bTime !== aTime) return bTime - aTime;
+      const byTeacher = a.teacherName.localeCompare(b.teacherName);
+      if (byTeacher !== 0) return byTeacher;
+      return a.courseTitle.localeCompare(b.courseTitle);
+    });
+  }, [teachers]);
+
+  const filteredTeachers = useMemo(() => {
+    const term = inputSearch.trim().toLowerCase();
+    if (!term) return sortedTeachers;
+    return sortedTeachers.filter((t) =>
+      `${t.teacherName} ${t.courseTitle}`.toLowerCase().includes(term)
+    );
+  }, [sortedTeachers, inputSearch]);
+
+  const orderedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [messages]);
+
+  return (
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Messages</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Chat with teachers for your enrolled courses.
+        </p>
+      </div>
+
+      {diagnostic && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {diagnostic}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="admin-surface relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
+              <span className="text-xs text-gray-400">{filteredTeachers.length}</span>
+            </div>
+            <div className="mt-3">
+              <input
+                value={inputSearch}
+                onChange={(e) => setInputSearch(e.target.value)}
+                placeholder="Search teacher or course..."
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              />
+            </div>
+          </div>
+          <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+            {loadingTeachers ? (
+              <div className="p-4 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
+            ) : filteredTeachers.length === 0 ? (
+              <div className="p-4 text-sm text-slate-500 dark:text-slate-400">
+                No teachers found.
+              </div>
+            ) : (
+              filteredTeachers.map((t) => {
+                const initials = t.teacherName
+                  .split(' ')
+                  .map((part) => part[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase();
+                const unreadCount = Number(t.unreadCount || 0);
+                return (
+                  <button
+                    key={`${t.courseId}-${t.teacherId}`}
+                    onClick={() => setSelected(t)}
+                    className={`w-full text-left px-4 py-3 hover:bg-white dark:hover:bg-slate-800/40 transition-colors ${
+                      selected?.courseId === t.courseId && selected?.teacherId === t.teacherId
+                        ? 'bg-blue-50/60 dark:bg-blue-900/20'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold overflow-hidden">
+                          {t.teacherImageUrl ? (
+                            <img
+                              src={t.teacherImageUrl}
+                              alt={t.teacherName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            initials || 'T'
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {t.teacherName}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            {t.courseTitle}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            {t.lastMessage || 'No messages yet'}
+                          </p>
+                        </div>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="ml-2 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+          <div className="px-4 py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              {selected?.teacherImageUrl ? (
+                <div className="h-9 w-9 rounded-full overflow-hidden bg-blue-100 dark:bg-blue-900/40">
+                  <img
+                    src={selected.teacherImageUrl}
+                    alt={selected.teacherName}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold">
+                  {selected
+                    ? selected.teacherName
+                        .split(' ')
+                        .map((part) => part[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                    : 'T'}
+                </div>
+              )}
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {selected ? `Chat with ${selected.teacherName}` : 'Select a teacher'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 max-h-[60vh] overflow-y-auto px-4 py-4 space-y-3">
+            {loadingMessages && (
+              <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
+            )}
+            {!loadingMessages && messages.length === 0 && (
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                No messages yet. Start the conversation.
+              </div>
+            )}
+            {orderedMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${
+                  msg.senderRole === 'student' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div
+                  className={`group relative max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-md ${
+                    msg.senderRole === 'student'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100'
+                  }`}
+                >
+                  {msg.senderRole === 'student' && (
+                    <button
+                      onClick={() => setDeleteTargetId(msg.id)}
+                      className="admin-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      title="Delete message"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <p>{msg.body}</p>
+                  <p className="text-[10px] opacity-70 mt-2">
+                    {new Date(msg.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSend();
+                }}
+                placeholder="Write a message..."
+                className="admin-surface flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleSend}
+                disabled={sending || !input.trim() || !selected}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition disabled:opacity-60"
+              >
+                <Send className="w-4 h-4" />
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-surface w-full max-w-sm rounded-2xl bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
+              Delete message
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Choose how you want to delete this message.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => deleteMessage(deleteTargetId, 'self')}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Delete for me
+              </button>
+              <button
+                onClick={() => deleteMessage(deleteTargetId, 'both')}
+                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
+              >
+                Delete for everyone
+              </button>
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                className="px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

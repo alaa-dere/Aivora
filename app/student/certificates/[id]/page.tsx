@@ -2,55 +2,93 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
-import {
-  ArrowLeftIcon,
-  ArrowDownTrayIcon,
-  AcademicCapIcon,
-} from '@heroicons/react/24/outline';
-
-const mockCerts: Record<
-  string,
-  { courseTitle: string; studentName: string; issuedAt: string; certificateNo: string }
-> = {
-  cert1: {
-    courseTitle: 'HTML & CSS',
-    studentName: 'Student User',
-    issuedAt: '2026-02-10',
-    certificateNo: 'AIV-HTML-2026-0210',
-  },
-  cert2: {
-    courseTitle: 'Git Fundamentals',
-    studentName: 'Student User',
-    issuedAt: '2026-02-15',
-    certificateNo: 'AIV-GIT-2026-0215',
-  },
-};
+import { useEffect, useState } from 'react';
+import { ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 export default function CertificateViewPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
-  const cert = useMemo(() => mockCerts[params.id], [params.id]);
+  const [cert, setCert] = useState<{
+    courseTitle: string;
+    studentName: string;
+    issuedAt: string;
+    certificateNo: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  if (!cert) {
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        setLoading(true);
+        setError('');
+        const res = await fetch(`/api/student/certificates/${params.id}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load certificate');
+        }
+        if (mounted) {
+          setCert(data.certificate);
+        }
+      } catch (err: any) {
+        if (mounted) {
+          setError(err?.message || 'Failed to load certificate');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [params.id]);
+
+  if (!loading && error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-700 dark:text-gray-200">
-        Certificate not found.
+      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
+        {error}
       </div>
     );
   }
 
-  const downloadDemo = () => {
-    alert('Demo: download PDF later');
+  if (loading || !cert) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-slate-900/60 p-6 text-slate-700 dark:text-slate-200">
+        Loading certificate...
+      </div>
+    );
+  }
+
+  const formatDate = (value?: string) => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-US');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 transition-colors duration-300 p-3 sm:p-4 md:p-6">
+      <style jsx global>{`
+        @media print {
+          .certificate-actions {
+            display: none;
+          }
+          body {
+            background: white !important;
+          }
+        }
+      `}</style>
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Back
@@ -58,73 +96,84 @@ export default function CertificateViewPage() {
 
         <Link
           href="/student/certificates"
-          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
         >
           All certificates
         </Link>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
-        {/* Certificate frame */}
-        <div className="rounded-2xl border border-blue-200 dark:border-blue-800 p-6 md:p-10 bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/10 dark:to-gray-800">
-          <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
-            <AcademicCapIcon className="w-7 h-7" />
-            <p className="text-lg font-semibold">Aivora Certificate</p>
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+        <div className="flex justify-center">
+          <div className="admin-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+            <img src="/tem.png" alt="" className="block w-full h-auto select-none" />
+            <div className="absolute inset-0 z-10 px-[8%] py-[6%]">
+              <div className="mt-[12%]">
+                <div className="text-center text-[#0b2b5a]">
+                  <p className="uppercase tracking-[0.24em] sm:tracking-[0.35em] text-[clamp(8px,1.55vw,20px)]">
+                    Certificate
+                  </p>
+                  <p className="mt-1 uppercase tracking-[0.18em] sm:tracking-[0.3em] text-[#0b2b5a]/80 text-[clamp(6px,0.82vw,12px)]">
+                    Of Appreciation
+                  </p>
+                </div>
+
+                <p className="mt-[4%] text-center uppercase tracking-[0.18em] sm:tracking-[0.3em] text-[#0b2b5a]/80 text-[clamp(6px,0.8vw,11px)]">
+                  This certificate is proudly presented to
+                </p>
+
+                <h1 className="mt-[2.5%] text-center font-semibold text-[#0b2b5a] text-[clamp(13px,2.7vw,36px)]">
+                  {cert.studentName}
+                </h1>
+
+                <p className="mt-[2.5%] text-center text-[#0b2b5a]/80 text-[clamp(7px,1vw,14px)]">
+                  for successfully completing
+                </p>
+                <p className="mt-[1%] text-center font-semibold text-[#0b2b5a] text-[clamp(8px,1.45vw,20px)]">
+                  {cert.courseTitle}
+                </p>
+
+                <p className="mx-auto mt-[3%] max-w-[60%] text-center text-[#0b2b5a]/75 leading-relaxed text-[clamp(6px,0.85vw,12px)]">
+                  This achievement reflects dedication, persistence, and mastery of the required
+                  learning outcomes for this course.
+                </p>
+
+                <div className="absolute right-[8%] bottom-[10%] z-20 text-right text-[#0b2b5a]/85">
+                  <div className="flex justify-end">
+                    <img
+                      src="/alaa.png"
+                      alt="Aivora Logo"
+                      className="mb-0.5 h-[clamp(13px,2.2vw,20px)] w-auto object-contain"
+                      style={{
+                        filter:
+                          'brightness(0) saturate(100%) invert(14%) sepia(21%) saturate(1721%) hue-rotate(183deg) brightness(95%) contrast(98%)',
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-end">
+                    <div className="h-px w-[66px] sm:w-24 bg-[#0b2b5a]/60" />
+                  </div>
+                  <span className="block mt-0.5 text-[clamp(5px,0.7vw,10px)]">
+                    Issuer Date: {formatDate(cert.issuedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <h1 className="mt-6 text-center text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-            Certificate of Completion
-          </h1>
-
-          <p className="mt-6 text-center text-gray-600 dark:text-gray-300">
-            This certifies that
-          </p>
-
-          <p className="mt-2 text-center text-2xl font-bold text-blue-700 dark:text-blue-300">
-            {cert.studentName}
-          </p>
-
-          <p className="mt-6 text-center text-gray-600 dark:text-gray-300">
-            has successfully completed the course
-          </p>
-
-          <p className="mt-2 text-center text-xl font-semibold text-gray-900 dark:text-white">
-            {cert.courseTitle}
-          </p>
-
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-            <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-800 bg-white/70 dark:bg-gray-900/20">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Issued</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{cert.issuedAt}</p>
-            </div>
-            <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-800 bg-white/70 dark:bg-gray-900/20">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Certificate No.</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{cert.certificateNo}</p>
-            </div>
-            <div className="p-3 rounded-xl border border-blue-100 dark:border-blue-800 bg-white/70 dark:bg-gray-900/20">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Platform</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Aivora LMS</p>
-            </div>
-          </div>
-
-          <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
-            (Demo) Later we will add QR + PDF download & verification.
-          </p>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="certificate-actions mt-4 sm:mt-6 grid grid-cols-2 sm:flex gap-2 sm:gap-3">
           <button
-            onClick={downloadDemo}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+            onClick={() => window.print()}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium transition-colors"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            Download (Demo)
+            <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            Download (PDF)
           </button>
 
           <Link
             href="/student/certificates"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors"
           >
             Back to list
           </Link>

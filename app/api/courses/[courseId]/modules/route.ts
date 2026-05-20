@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Course WHERE id = ? LIMIT 1`,
+      `SELECT id FROM course WHERE id = ? LIMIT 1`,
       [normalizedCourseId]
     );
 
@@ -33,7 +33,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [orderRows] = await pool.query<RowDataPacket[]>(
-      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM Module WHERE courseId = ?`,
+      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM module WHERE courseId = ?`,
       [normalizedCourseId]
     );
     const nextOrder = Number(orderRows[0]?.maxOrder || 0) + 1;
@@ -43,7 +43,7 @@ export async function POST(req: Request, { params }: Params) {
 
     await pool.query<ResultSetHeader>(
       `
-      INSERT INTO Module (id, courseId, title, description, orderNumber, createdAt, updatedAt)
+      INSERT INTO module (id, courseId, title, description, orderNumber, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, NOW(), NOW())
       `,
       [moduleId, normalizedCourseId, title, description, nextOrder]

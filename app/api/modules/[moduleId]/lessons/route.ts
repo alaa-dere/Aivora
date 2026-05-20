@@ -9,6 +9,16 @@ interface Params {
 
 const validTypes = ['text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed'];
 
+function normalizeLessonContent(content: string | null) {
+  if (!content) return content;
+  return content
+    .replace(/\\`/g, '`')
+    .replace(
+      /```[ \t]*([a-zA-Z0-9_+-]+)[ \t]*\r?\n([\s\S]*?)```/g,
+      (_match, _lang, codeBody: string) => `\`\`\`${codeBody}\`\`\``
+    );
+}
+
 function inferType(textContent: string | null, codeContent: string | null, videoUrl: string | null) {
   const hasText = Boolean(textContent && textContent.trim());
   const hasCode = Boolean(codeContent && codeContent.trim());
@@ -31,7 +41,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const title = String(body?.title ?? '').trim();
     const description = body?.description ? String(body.description).trim() : null;
-    const content = body?.content ? String(body.content) : null;
+    const content = normalizeLessonContent(body?.content ? String(body.content) : null);
     const codeContent = body?.codeContent ? String(body.codeContent) : null;
     const videoUrl = body?.videoUrl ? String(body.videoUrl).trim() : null;
     const durationMinutes = Number(body?.durationMinutes ?? 0);
@@ -43,7 +53,7 @@ export async function POST(req: Request, { params }: Params) {
     const enableLiveEditor = Boolean(body?.enableLiveEditor);
     const liveEditorLanguageRaw = String(body?.liveEditorLanguage ?? 'python');
     const liveEditorLanguage =
-      liveEditorLanguageRaw === 'javascript' || liveEditorLanguageRaw === 'html_css'
+      liveEditorLanguageRaw === 'javascript' || liveEditorLanguageRaw === 'html_css' || liveEditorLanguageRaw === 'sql' || liveEditorLanguageRaw === 'c'
         ? liveEditorLanguageRaw
         : 'python';
 
@@ -52,7 +62,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [moduleRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM Module WHERE id = ? LIMIT 1`,
+      `SELECT id FROM module WHERE id = ? LIMIT 1`,
       [normalizedModuleId]
     );
 
@@ -61,7 +71,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const [orderRows] = await pool.query<RowDataPacket[]>(
-      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM Lesson WHERE moduleId = ?`,
+      `SELECT COALESCE(MAX(orderNumber), 0) AS maxOrder FROM lesson WHERE moduleId = ?`,
       [normalizedModuleId]
     );
     const nextOrder = Number(orderRows[0]?.maxOrder || 0) + 1;
@@ -71,7 +81,7 @@ export async function POST(req: Request, { params }: Params) {
 
     await pool.query<ResultSetHeader>(
       `
-      INSERT INTO Lesson
+      INSERT INTO lesson
         (id, moduleId, title, description, content, codeContent, videoUrl, orderNumber, durationMinutes, isPublished, type, enableLiveEditor, liveEditorLanguage, createdAt, updatedAt)
       VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -105,3 +115,4 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 }
+

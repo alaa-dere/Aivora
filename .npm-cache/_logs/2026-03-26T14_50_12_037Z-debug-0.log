@@ -1,0 +1,23 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.8.0
+2 info using node@v24.13.1
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\jihad\AppData\Local\Temp\.create-expo-app\template-cache\.npmrc
+5 silly config load:file:C:\Users\jihad\.npmrc
+6 silly config load:file:C:\Users\jihad\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm pack expo-template-blank@latest
+8 verbose argv "pack" "expo-template-blank@latest" "--dry-run" "--json"
+9 verbose logfile logs-max:10 dir:C:\Users\jihad\lms-project\Aivora\.npm-cache\_logs\2026-03-26T14_50_12_037Z-
+10 verbose logfile C:\Users\jihad\lms-project\Aivora\.npm-cache\_logs\2026-03-26T14_50_12_037Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://registry.npmjs.org/expo-template-blank 700ms (cache miss)
+13 http cache https://registry.npmjs.org/expo-template-blank 19ms (cache hit)
+14 http cache https://registry.npmjs.org/expo-template-blank/-/expo-template-blank-55.1.15.tgz 0ms (cache hit)
+15 silly tarball no local data for https://registry.npmjs.org/expo-template-blank/-/expo-template-blank-55.1.15.tgz. Extracting by manifest.
+16 http fetch GET 200 https://registry.npmjs.org/expo-template-blank/-/expo-template-blank-55.1.15.tgz 301ms (cache miss)
+17 verbose cwd C:\Users\jihad\AppData\Local\Temp\.create-expo-app\template-cache
+18 verbose os Windows_NT 10.0.19045
+19 verbose node v24.13.1
+20 verbose npm  v11.8.0
+21 verbose exit 0
+22 info ok

@@ -1,0 +1,2 @@
+ALTER TABLE user
+  ADD COLUMN imageUrl VARCHAR(500) NULL COLLATE utf8mb4_unicode_ci;

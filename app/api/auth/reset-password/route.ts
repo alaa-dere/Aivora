@@ -16,9 +16,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
-    // جلب الـ token من الداتابيز
+    // Ø¬Ù„Ø¨ Ø§Ù„Ù€ token Ù…Ù† Ø§Ù„Ø¯Ø§ØªØ§Ø¨ÙŠØ²
     const [tokens] = await db.query<RowDataPacket[]>(
-      'SELECT userId, expiresAt FROM PasswordResetToken WHERE token = ?',
+      'SELECT userId, expiresAt FROM passwordresettoken WHERE token = ?',
       [token]
     );
 
@@ -28,20 +28,20 @@ export async function POST(req: Request) {
 
     const { userId, expiresAt } = tokens[0];
 
-    // تحقق من الصلاحية
+    // ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ©
     if (new Date(expiresAt) < new Date()) {
-      await db.query('DELETE FROM PasswordResetToken WHERE token = ?', [token]);
+      await db.query('DELETE FROM passwordresettoken WHERE token = ?', [token]);
       return NextResponse.json({ message: 'Token has expired' }, { status: 400 });
     }
 
-    // تشفير كلمة المرور الجديدة
+    // ØªØ´ÙÙŠØ± ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø©
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    // تحديث كلمة المرور في جدول User
-    await db.query('UPDATE User SET passwordHash = ? WHERE id = ?', [passwordHash, userId]);
+    // ØªØ­Ø¯ÙŠØ« ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± ÙÙŠ Ø¬Ø¯ÙˆÙ„ User
+    await db.query('UPDATE user SET passwordHash = ? WHERE id = ?', [passwordHash, userId]);
 
-    // حذف الـ token بعد الاستخدام
-    await db.query('DELETE FROM PasswordResetToken WHERE token = ?', [token]);
+    // Ø­Ø°Ù Ø§Ù„Ù€ token Ø¨Ø¹Ø¯ Ø§Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…
+    await db.query('DELETE FROM passwordresettoken WHERE token = ?', [token]);
 
     return NextResponse.json({ message: 'Password reset successfully' }, { status: 200 });
   } catch (error) {

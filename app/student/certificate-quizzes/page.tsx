@@ -1,0 +1,103 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
+
+type QuizItem = { id: string; title: string; quizReady: boolean };
+type CourseItem = { courseId: string; courseTitle: string; quizzes: QuizItem[] };
+
+export default function CertificateQuizzesPage() {
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const readJsonResponse = async (res: Response) => {
+    const raw = await res.text();
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status}). The server returned a non-JSON response.`);
+      }
+      throw new Error('Server returned an invalid response format.');
+    }
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/student/certificate-quizzes', { cache: 'no-store' });
+        const data = await readJsonResponse(res);
+        if (!res.ok) throw new Error(data.message || 'Failed to load quizzes');
+        setCourses(data.courses || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load quizzes');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Certificate Quizzes</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Pass the final quiz with at least 60% to unlock your certificate.
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+      ) : error ? (
+        <p className="text-sm text-red-500">{error}</p>
+      ) : courses.length === 0 ? (
+        <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">You do not have any pending certificate quizzes.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {courses.map((course) => (
+            <div
+              key={course.courseId}
+              className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-5"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+              <div className="flex items-center gap-2 mb-3">
+                <AcademicCapIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">{course.courseTitle}</h2>
+              </div>
+
+              <div className="space-y-2">
+                {course.quizzes.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/40 px-4 py-3"
+                  >
+                    <span className="text-sm text-gray-700 dark:text-gray-200">{quiz.title}</span>
+                    {quiz.quizReady ? (
+                      <Link
+                        href={`/student/my-courses/${course.courseId}/quizzes`}
+                        className="text-sm font-medium text-blue-700 dark:text-blue-300 hover:underline"
+                      >
+                        Go to quizzes
+                      </Link>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        Waiting for teacher question bank (10 required)
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

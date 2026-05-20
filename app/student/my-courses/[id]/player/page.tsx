@@ -1,24 +1,38 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  LockClosedIcon,
+} from '@heroicons/react/24/outline';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
+import LessonContentView from '@/components/lesson-content-view';
 
 type Lesson = {
   id: string;
   title: string;
   description?: string;
   content?: string;
+  quizQuestions?: Array<{
+    id?: string;
+    questionType: 'multiple_choice' | 'written' | 'true_false';
+    questionText: string;
+    options?: string[];
+    correctOptionIndex?: number;
+  }>;
   videoUrl?: string;
   durationMinutes: number;
   completed: boolean;
   unlocked: boolean;
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
 };
 
 type Module = {
@@ -27,16 +41,200 @@ type Module = {
   lessons: Lesson[];
 };
 
+type LiveEditorSubmission = {
+  code: string;
+  output: string;
+  hasRun: boolean;
+  error?: string | null;
+};
+
+type AssistantMessage = {
+  role: 'student' | 'assistant';
+  text: string;
+};
+
+const inlineMarkdownToNodes = (text: string): ReactNode[] => {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={`code-${idx}`}
+          className="rounded bg-gray-200 dark:bg-gray-700 px-1 py-0.5 text-[0.92em]"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`strong-${idx}`}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={`em-${idx}`}>{part.slice(1, -1)}</em>;
+    }
+    return <span key={`text-${idx}`}>{part}</span>;
+  });
+};
+
+const renderMarkdownText = (text: string) => {
+  const lines = text.split(/\r?\n/);
+  const nodes: ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('#### ')) {
+      nodes.push(
+        <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3">
+          {inlineMarkdownToNodes(trimmed.slice(5))}
+        </h4>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      nodes.push(
+        <h3 key={`h3-${i}`} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-3">
+          {inlineMarkdownToNodes(trimmed.slice(4))}
+        </h3>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('## ')) {
+      nodes.push(
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">
+          {inlineMarkdownToNodes(trimmed.slice(3))}
+        </h2>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('# ')) {
+      nodes.push(
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-4">
+          {inlineMarkdownToNodes(trimmed.slice(2))}
+        </h1>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('> ')) {
+      nodes.push(
+        <blockquote
+          key={`quote-${i}`}
+          className="border-l-4 border-blue-300 dark:border-blue-700 pl-3 italic text-gray-700 dark:text-gray-200"
+        >
+          {inlineMarkdownToNodes(trimmed.slice(2))}
+        </blockquote>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(trimmed)) {
+      const items: ReactNode[] = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i].trim())) {
+        const itemText = lines[i].trim().replace(/^[-*]\s+/, '');
+        items.push(<li key={`ul-${i}`}>{inlineMarkdownToNodes(itemText)}</li>);
+        i += 1;
+      }
+      nodes.push(
+        <ul key={`ul-wrap-${i}`} className="list-disc pl-5 space-y-1 text-gray-700 dark:text-gray-200">
+          {items}
+        </ul>
+      );
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items: ReactNode[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        const itemText = lines[i].trim().replace(/^\d+\.\s+/, '');
+        items.push(<li key={`ol-${i}`}>{inlineMarkdownToNodes(itemText)}</li>);
+        i += 1;
+      }
+      nodes.push(
+        <ol key={`ol-wrap-${i}`} className="list-decimal pl-5 space-y-1 text-gray-700 dark:text-gray-200">
+          {items}
+        </ol>
+      );
+      continue;
+    }
+
+    nodes.push(
+      <p key={`p-${i}`} className="text-sm leading-6 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+        {inlineMarkdownToNodes(line)}
+      </p>
+    );
+    i += 1;
+  }
+
+  return <div className="space-y-2">{nodes}</div>;
+};
+
 export default function CoursePlayerPage() {
   const params = useParams<{ id: string }>();
+  const lessonStorageKey = `aivora:last-lesson:${params.id}`;
   const searchParams = useSearchParams();
+  const router = useRouter();
   const requestedLessonId = searchParams.get('lesson');
   const [modules, setModules] = useState<Module[]>([]);
-  const [courseTitle, setCourseTitle] = useState('');
+  const [lastActiveLessonId, setLastActiveLessonId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lessonInlineError, setLessonInlineError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
+  const [showCertPrompt, setShowCertPrompt] = useState(false);
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>([]);
+  const [showModulePicker, setShowModulePicker] = useState(false);
+  const [showLessonPicker, setShowLessonPicker] = useState(false);
+  const [liveSubmissionByLesson, setLiveSubmissionByLesson] = useState<
+    Record<string, LiveEditorSubmission>
+  >({});
+  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
+    {
+      role: 'assistant',
+      text: 'Ask me anything about this course content and I will explain it step by step.',
+    },
+  ]);
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantLoading, setAssistantLoading] = useState(false);
+
+  const handleLiveSubmissionChange = useCallback(
+    (submission: LiveEditorSubmission) => {
+      if (!selectedLessonId) return;
+      setLiveSubmissionByLesson((prev) => {
+        const existing = prev[selectedLessonId];
+        if (
+          existing &&
+          existing.code === submission.code &&
+          existing.output === submission.output &&
+          existing.hasRun === submission.hasRun &&
+          (existing.error || null) === (submission.error || null)
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [selectedLessonId]: submission,
+        };
+      });
+    },
+    [selectedLessonId]
+  );
 
   const allLessons = useMemo(
     () => modules.flatMap((m) => m.lessons),
@@ -51,9 +249,9 @@ export default function CoursePlayerPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to load content');
         setModules(data.modules || []);
-        setCourseTitle(data.course?.title || '');
-      } catch (err: any) {
-        setError(err.message || 'Failed to load content');
+        setLastActiveLessonId(String(data.course?.lastActiveLessonId || ''));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load content');
       } finally {
         setLoading(false);
       }
@@ -65,43 +263,128 @@ export default function CoursePlayerPage() {
   useEffect(() => {
     if (allLessons.length === 0) return;
     const requested = allLessons.find((l) => l.id === requestedLessonId);
+    const nextRequired = allLessons.find((l) => l.unlocked && !l.completed);
     const firstUnlocked = allLessons.find((l) => l.unlocked);
     if (requested && requested.unlocked) {
       setSelectedLessonId(requested.id);
+    } else if (nextRequired) {
+      setSelectedLessonId(nextRequired.id);
     } else {
-      setSelectedLessonId(firstUnlocked?.id || null);
+      const remembered = allLessons.find((l) => l.id === lastActiveLessonId && l.unlocked);
+      setSelectedLessonId(remembered?.id || firstUnlocked?.id || null);
     }
-  }, [allLessons, requestedLessonId]);
+  }, [allLessons, requestedLessonId, lastActiveLessonId]);
+
+  useEffect(() => {
+    if (!modules.length || !selectedLessonId) return;
+    const selectedLessonModule = modules.find((m) =>
+      m.lessons.some((lesson) => lesson.id === selectedLessonId)
+    );
+    if (!selectedLessonModule) return;
+    setExpandedModuleIds((prev) =>
+      prev.includes(selectedLessonModule.id) ? prev : [...prev, selectedLessonModule.id]
+    );
+  }, [modules, selectedLessonId]);
+
+  useEffect(() => {
+    if (!selectedLessonId) return;
+    setLessonInlineError(null);
+    try {
+      localStorage.setItem(lessonStorageKey, selectedLessonId);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedLessonId, lessonStorageKey]);
 
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId) || null;
+  const selectedModule = useMemo(
+    () => modules.find((m) => m.lessons.some((l) => l.id === selectedLessonId)) || null,
+    [modules, selectedLessonId]
+  );
+  const selectedModuleId = selectedModule?.id || '';
+  const lessonsInSelectedModule = selectedModule?.lessons || [];
   const selectedIndex = allLessons.findIndex((l) => l.id === selectedLessonId);
   const prevLesson = selectedIndex > 0 ? allLessons[selectedIndex - 1] : null;
   const nextLesson = selectedIndex >= 0 && selectedIndex < allLessons.length - 1 ? allLessons[selectedIndex + 1] : null;
 
+  useEffect(() => {
+    if (!selectedLessonId || !params.id) return;
+    const startLesson = async () => {
+      try {
+        await fetch(`/api/student/my-courses/${params.id}/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId: selectedLessonId, event: 'start' }),
+        });
+      } catch {
+        // best-effort tracking; ignore
+      }
+    };
+
+    startLesson();
+  }, [params.id, selectedLessonId]);
+
   const parseLessonContent = (content: string) => {
-    const segments: { type: 'text' | 'code' | 'video' | 'starter'; value: string }[] = [];
-    const regex = /```([\s\S]*?)```|\{\{\s*video\s*:\s*([^}]+)\s*\}\}|\{\{\s*starter\s*:\s*([\s\S]*?)\}\}/gi;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
+    const segments: { type: 'text' | 'code' | 'video' | 'starter' | 'answer'; value: string }[] = [];
+    const tokenRegex = /```|\{\{\s*video\s*:|\{\{\s*starter\s*:|\{\{\s*(?:answer|expected)\s*:/gi;
+    let cursor = 0;
 
-    while ((match = regex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    while (cursor < content.length) {
+      tokenRegex.lastIndex = cursor;
+      const match = tokenRegex.exec(content);
+      if (!match) {
+        segments.push({ type: 'text', value: content.slice(cursor) });
+        break;
       }
-      if (match[1] !== undefined) {
-        segments.push({ type: 'code', value: match[1].trim() });
-      } else if (match[2] !== undefined) {
-        segments.push({ type: 'video', value: match[2].trim() });
-      } else if (match[3] !== undefined) {
-        segments.push({ type: 'starter', value: match[3].trim() });
+
+      const tokenStart = match.index;
+      const token = match[0];
+      if (tokenStart > cursor) {
+        segments.push({ type: 'text', value: content.slice(cursor, tokenStart) });
       }
-      lastIndex = regex.lastIndex;
+
+      if (token === '```') {
+        const codeStart = tokenRegex.lastIndex;
+        const codeEnd = content.indexOf('```', codeStart);
+        if (codeEnd === -1) {
+          segments.push({ type: 'text', value: content.slice(tokenStart) });
+          break;
+        }
+
+        let codeValue = content.slice(codeStart, codeEnd);
+        const newLineMatch = codeValue.match(/\r?\n/);
+        if (newLineMatch && newLineMatch.index !== undefined) {
+          const firstLine = codeValue.slice(0, newLineMatch.index).trim();
+          if (/^[a-zA-Z0-9_+-]+$/.test(firstLine)) {
+            codeValue = codeValue.slice(newLineMatch.index + newLineMatch[0].length);
+          }
+        }
+
+        segments.push({ type: 'code', value: codeValue.trim() });
+        cursor = codeEnd + 3;
+        continue;
+      }
+
+      const valueStart = tokenRegex.lastIndex;
+      const valueEnd = content.indexOf('}}', valueStart);
+      if (valueEnd === -1) {
+        segments.push({ type: 'text', value: content.slice(tokenStart) });
+        break;
+      }
+
+      const value = content.slice(valueStart, valueEnd).trim();
+      const normalizedToken = token.toLowerCase();
+      if (normalizedToken.includes('video')) {
+        segments.push({ type: 'video', value });
+      } else if (normalizedToken.includes('starter')) {
+        segments.push({ type: 'starter', value });
+      } else {
+        segments.push({ type: 'answer', value });
+      }
+      cursor = valueEnd + 2;
     }
 
-    if (lastIndex < content.length) {
-      segments.push({ type: 'text', value: content.slice(lastIndex) });
-    }
-    return segments.filter((segment) => segment.value.trim() !== '');
+    return segments.filter((segment) => segment.value.trim() !== '' && segment.type !== 'answer');
   };
 
   const normalizeVideoUrl = (rawUrl: string) => {
@@ -132,48 +415,360 @@ export default function CoursePlayerPage() {
   const markLessonComplete = async () => {
     if (!selectedLesson) return;
     setMarking(true);
+    setLessonInlineError(null);
     try {
+      const liveSubmission = selectedLesson.enableLiveEditor
+        ? liveSubmissionByLesson[selectedLesson.id] || null
+        : null;
       const res = await fetch(`/api/student/my-courses/${params.id}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId: selectedLesson.id }),
+        body: JSON.stringify({
+          lessonId: selectedLesson.id,
+          liveEditorSubmission: liveSubmission,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update progress');
+      if (data?.needsCertificateChoice) {
+        setShowCertPrompt(true);
+      }
       const contentRes = await fetch(`/api/student/my-courses/${params.id}/content`, { cache: 'no-store' });
       const contentData = await contentRes.json();
       if (contentRes.ok) {
         setModules(contentData.modules || []);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to update progress');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update progress';
+      if (
+        message.includes('This live-compiler lesson does not have an expected answer yet') ||
+        message.includes('Ask your teacher to add {{answer:')
+      ) {
+        setLessonInlineError(
+          'This live-compiler lesson is not fully configured yet. Your teacher needs to add an expected answer first.'
+        );
+      } else {
+        setLessonInlineError(message);
+      }
     } finally {
       setMarking(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="mb-4">
-        <Link
-          href="/student/my-courses"
-          className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <ArrowLeftIcon className="w-4 h-4" /> Back to My Courses
-        </Link>
-      </div>
+  const askAssistant = async () => {
+    const question = assistantInput.trim();
+    if (!question || assistantLoading) return;
 
+    setAssistantMessages((prev) => [...prev, { role: 'student', text: question }]);
+    setAssistantInput('');
+    setAssistantLoading(true);
+
+    try {
+      const res = await fetch(`/api/student/my-courses/${params.id}/assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          lessonId: selectedLesson?.id || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to get assistant response');
+      }
+
+      const answer = String(data?.answer || '').trim();
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: answer || 'I could not find a clear answer in this course content.',
+        },
+      ]);
+    } catch (err: any) {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: err?.message || 'Something went wrong while generating the answer.',
+        },
+      ]);
+    } finally {
+      setAssistantLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-3 sm:p-4 md:p-6 transition-colors duration-300">
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading content...</p>
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h1 className="text-xl font-bold text-gray-800 dark:text-white">
-                {courseTitle || 'Course Player'}
-              </h1>
+        <>
+          <div className="relative z-40 mb-3 sm:mb-4">
+            <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-2.5 sm:px-4 py-2 overflow-visible">
+            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-4 min-h-[52px] sm:min-h-[58px]">
+              <div>
+                <Link
+                  href="/student/my-courses"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ArrowLeftIcon className="w-4 h-4" /> Back to My Courses
+                </Link>
+              </div>
+
+              <div className="hidden sm:flex min-w-0 items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:py-1">
+              <div className="relative flex items-center gap-2 md:gap-2.5 px-2">
+              {allLessons.slice(0, 14).map((lesson, idx) => {
+                const done = lesson.completed;
+                const active = lesson.id === selectedLessonId;
+                return (
+                  <button
+                    key={`nav-dot-${lesson.id}`}
+                    type="button"
+                    onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
+                    disabled={!lesson.unlocked}
+                    className={`relative z-10 h-3 w-3 rounded-full shrink-0 transition-all duration-300 ${
+                      active
+                        ? 'scale-110 shadow-[0_0_14px_rgba(96,165,250,0.85)]'
+                        : done
+                        ? 'shadow-[0_0_8px_rgba(96,165,250,0.3)]'
+                        : ''
+                    } ${lesson.unlocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                    title={`Lesson ${idx + 1}: ${lesson.title}`}
+                  >
+                    <span
+                      className={`absolute inset-0 rounded-full ring-1 ${
+                        active
+                          ? 'ring-blue-300 bg-blue-100/90 dark:bg-blue-900/90'
+                          : done
+                          ? 'ring-blue-300/80 bg-blue-50/90 dark:bg-blue-900/70'
+                          : 'ring-blue-300/60 bg-white/90 dark:bg-blue-950/60'
+                      }`}
+                    />
+                    <span
+                      className={`absolute inset-[1px] rounded-full ${
+                        active
+                          ? 'bg-blue-500'
+                          : done
+                          ? 'bg-blue-400/90'
+                          : 'bg-blue-200/80 dark:bg-blue-800/80'
+                      }`}
+                    />
+                    <span
+                      className={`absolute inset-[3px] rounded-full ${
+                        active ? 'bg-white/90' : 'bg-white/70 dark:bg-blue-100/60'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+              </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 justify-start lg:justify-end">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModulePicker((prev) => !prev);
+                      setShowLessonPicker(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    aria-expanded={showModulePicker}
+                  >
+                    <span>Chapters</span>
+                    {showModulePicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+                  </button>
+                  {showModulePicker && (
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
+                      {modules.map((m, idx) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            const firstUnlockedLesson = m.lessons.find((l) => l.unlocked);
+                            const firstLesson = m.lessons[0];
+                            const target = firstUnlockedLesson || firstLesson;
+                            if (target) setSelectedLessonId(target.id);
+                            setShowModulePicker(false);
+                          }}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            m.id === selectedModuleId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                          }`}
+                        >
+                          {`CH${idx + 1}: ${m.title}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLessonPicker((prev) => !prev);
+                      setShowModulePicker(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                    aria-expanded={showLessonPicker}
+                  >
+                    <span>Lessons</span>
+                    {showLessonPicker ? <ChevronDownIcon className="w-4 h-4" /> : <ChevronRightIcon className="w-4 h-4" />}
+                  </button>
+                  {showLessonPicker && (
+                    <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-lg p-2 space-y-1 max-h-56 overflow-y-auto">
+                      {lessonsInSelectedModule.map((lesson, idx) => (
+                        <button
+                          key={lesson.id}
+                          type="button"
+                          onClick={() => {
+                            if (!lesson.unlocked) return;
+                            setSelectedLessonId(lesson.id);
+                            setShowLessonPicker(false);
+                          }}
+                          disabled={!lesson.unlocked}
+                          className={`w-full px-2 py-2 rounded-md text-sm text-left border ${
+                            lesson.id === selectedLessonId
+                              ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20'
+                              : lesson.unlocked
+                              ? 'border-blue-100 dark:border-blue-900 text-gray-800 dark:text-gray-100 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {`L${idx + 1}: ${lesson.title}${lesson.unlocked ? '' : ' (Locked)'}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
+            Follow the lesson content, mark progress, and move to the next step.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
+            <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
+              <div className="space-y-3">
+                {modules.map((module, moduleIndex) => (
+                  <div key={module.id} className="rounded-lg border border-blue-100 dark:border-blue-800">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedModuleIds((prev) =>
+                          prev.includes(module.id)
+                            ? prev.filter((id) => id !== module.id)
+                            : [...prev, module.id]
+                        )
+                      }
+                      className="w-full px-2.5 sm:px-3 py-2 flex items-center justify-between text-left bg-blue-50/40 dark:bg-blue-900/10 rounded-lg"
+                    >
+                      <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-white">
+                        {`CH${moduleIndex + 1}: ${module.title}`}
+                      </span>
+                      {expandedModuleIds.includes(module.id) ? (
+                        <ChevronDownIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      ) : (
+                        <ChevronRightIcon className="w-4 h-4 text-blue-700 dark:text-blue-300" />
+                      )}
+                    </button>
+                    {expandedModuleIds.includes(module.id) && (
+                      <div className="p-2 space-y-2">
+                        {module.lessons.map((lesson, lessonIndex) => {
+                          const active = lesson.id === selectedLessonId;
+                          return (
+                            <button
+                              key={lesson.id}
+                              onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
+                              disabled={!lesson.unlocked}
+                              className={`w-full text-left p-2.5 sm:p-3 rounded-lg border transition-colors ${
+                                active
+                                  ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
+                                  : lesson.unlocked
+                                  ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-white">
+                                {`L${lessonIndex + 1}: ${lesson.title}`}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
+                                {!lesson.unlocked && <LockClosedIcon className="w-3 h-3" />}
+                                {lesson.completed ? 'Completed' : lesson.unlocked ? 'Click to open' : 'Locked'}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden lg:block portal-surface mt-4 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                Ask about current lessons and course topics.
+              </p>
+              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-4 h-[24rem] overflow-y-auto space-y-3">
+                {assistantMessages.map((msg, idx) => (
+                  <div
+                    key={`${msg.role}-${idx}`}
+                    className={`rounded-lg px-3 py-2 text-xs ${
+                      msg.role === 'student'
+                        ? 'bg-blue-600 text-white ml-6'
+                        : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                  </div>
+                ))}
+                {assistantLoading && (
+                  <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                    Thinking...
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <textarea
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      askAssistant();
+                    }
+                  }}
+                  placeholder="Ask about this lesson..."
+                  rows={2}
+                  className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                />
+                <button
+                  onClick={askAssistant}
+                  disabled={assistantLoading || !assistantInput.trim()}
+                  className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 disabled:opacity-60"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
+            <div className="flex items-center justify-end mb-3">
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                 {allLessons.length > 0
                   ? `${Math.round(
@@ -185,68 +780,30 @@ export default function CoursePlayerPage() {
 
             {selectedLesson ? (
               <div className="rounded-xl border border-blue-100 dark:border-blue-800 p-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  Lesson: <span className="text-gray-700 dark:text-gray-200">{selectedLesson.title}</span>
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Lesson</p>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                  {selectedLesson.title}
+                </h2>
 
-                <div className="space-y-4">
-                  {parseLessonContent(selectedLesson.content || '').map((seg, idx) => {
-                    if (seg.type === 'code') {
-                      return (
-                        <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-                          <code>{seg.value}</code>
-                        </pre>
-                      );
-                    }
-                    if (seg.type === 'starter') {
-                      if (!selectedLesson.enableLiveEditor) {
-                        return (
-                          <div key={idx} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-700 dark:text-amber-200">
-                            Live editor is disabled for this lesson.
-                          </div>
-                        );
-                      }
-                      if (selectedLesson.liveEditorLanguage === 'javascript') {
-                        return <LiveJsEditor key={idx} initialCode={seg.value} />;
-                      }
-                      if (selectedLesson.liveEditorLanguage === 'html_css') {
-                        return <LiveHtmlPreview key={idx} initialCode={seg.value} />;
-                      }
-                      return <LivePythonEditor key={idx} initialCode={seg.value} />;
-                    }
-                    if (seg.type === 'video') {
-                      const url = normalizeVideoUrl(seg.value);
-                      return (
-                        <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                          <div className="aspect-video w-full overflow-hidden rounded-lg bg-black/80">
-                            <iframe
-                              src={url}
-                              className="h-full w-full"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              title="Lesson video"
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <p key={idx} className="text-sm leading-6 text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-                        {seg.value}
-                      </p>
-                    );
-                  })}
-                </div>
+                <LessonContentView
+                  key={selectedLesson.id}
+                  content={selectedLesson.content || ''}
+                  quizQuestions={selectedLesson.quizQuestions || []}
+                  enableLiveEditor={selectedLesson.enableLiveEditor}
+                  liveEditorLanguage={selectedLesson.liveEditorLanguage || 'python'}
+                  onSubmissionChange={handleLiveSubmissionChange}
+                  starterDisabledMessage="Live editor is disabled for this lesson."
+                />
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400">No lesson available.</p>
             )}
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 grid grid-cols-1 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={markLessonComplete}
                 disabled={!selectedLesson || selectedLesson.completed || marking}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {selectedLesson?.completed ? 'Completed' : marking ? 'Saving...' : 'Mark lesson as completed'}
               </button>
@@ -254,7 +811,7 @@ export default function CoursePlayerPage() {
               <button
                 onClick={() => prevLesson && setSelectedLessonId(prevLesson.id)}
                 disabled={!prevLesson}
-                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -262,48 +819,103 @@ export default function CoursePlayerPage() {
               <button
                 onClick={() => nextLesson && nextLesson.unlocked && setSelectedLessonId(nextLesson.id)}
                 disabled={!nextLesson || !nextLesson.unlocked}
-                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Next
               </button>
             </div>
+            {lessonInlineError && (
+              <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+                {lessonInlineError}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-              <h2 className="font-semibold text-gray-800 dark:text-white mb-3">Lessons</h2>
-              <div className="space-y-2">
-                {allLessons.map((lesson) => (
-                  <button
-                    key={lesson.id}
-                    onClick={() => lesson.unlocked && setSelectedLessonId(lesson.id)}
-                    disabled={!lesson.unlocked}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      lesson.unlocked
-                        ? 'border-blue-100 dark:border-blue-800 hover:bg-blue-50/40 dark:hover:bg-blue-900/10'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-gray-800 dark:text-white">{lesson.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {lesson.completed ? 'Completed' : lesson.unlocked ? 'Unlocked' : 'Locked'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
+          </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Chatbot coming soon. This space will host the AI helper.
-              </p>
-              <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 p-3 text-xs text-blue-700 dark:text-blue-200">
-                Ask questions about the lesson, get hints, and review explanations.
-              </div>
+          <div className="lg:hidden portal-surface mt-4 sm:mt-6 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-3 sm:p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-gray-800 dark:text-white">AI Assistant</h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
+              Ask about current lessons and course topics.
+            </p>
+            <div className="rounded-lg border border-blue-100 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-900/10 p-3 sm:p-4 h-[20rem] sm:h-[30rem] overflow-y-auto space-y-3">
+              {assistantMessages.map((msg, idx) => (
+                <div
+                  key={`${msg.role}-${idx}`}
+                  className={`rounded-lg px-3 py-2 text-xs ${
+                    msg.role === 'student'
+                      ? 'bg-blue-600 text-white ml-6'
+                      : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mr-2 border border-blue-100 dark:border-blue-800'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap leading-6 text-[13px]">{msg.text}</p>
+                </div>
+              ))}
+              {assistantLoading && (
+                <div className="rounded-lg px-3 py-2 text-[13px] leading-6 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-300 border border-blue-100 dark:border-blue-800 mr-2">
+                  Thinking...
+                </div>
+              )}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <textarea
+                value={assistantInput}
+                onChange={(e) => setAssistantInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    askAssistant();
+                  }
+                }}
+                placeholder="Ask about this lesson..."
+                rows={2}
+                className="flex-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              />
+              <button
+                onClick={askAssistant}
+                disabled={assistantLoading || !assistantInput.trim()}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-2 sm:px-3 disabled:opacity-60"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showCertPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="portal-surface w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+              You completed all lessons
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              You must pass the quiz with at least 60% to unlock your certificate.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setShowCertPrompt(false);
+                  router.push(`/student/my-courses/${params.id}/quizzes`);
+                }}
+                className="px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+              >
+                Take Quiz Now
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCertPrompt(false);
+                  router.push('/student/certificate-quizzes');
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+              >
+                Not Now
+              </button>
             </div>
           </div>
         </div>
@@ -311,3 +923,8 @@ export default function CoursePlayerPage() {
     </div>
   );
 }
+
+
+
+
+

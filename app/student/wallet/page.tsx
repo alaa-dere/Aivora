@@ -48,16 +48,19 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-4 md:p-6 transition-colors duration-300">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
           Wallet & Payments
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Review your balance and manage course payments.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Balance */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+        <div className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
           <div className="flex items-center gap-2">
             <CreditCardIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Balance</h2>
@@ -85,7 +88,7 @@ export default function WalletPage() {
         </div>
 
         {/* Enrollment */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+        <div className="portal-surface lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Enrollment Payment</h2>
 
           <div className="mt-4 p-4 rounded-xl border border-blue-100 dark:border-blue-800">

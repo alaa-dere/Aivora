@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
+import { API_ROUTES, normalizeSessionProfileResponse } from "@aivora/shared";
+
+const roleRoute: Record<string, string> = {
+  admin: "/dashboard",
+  teacher: "/teacher",
+  student: "/student",
+};
+
+export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
+  const { data: session, status } = useSession();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const name = session?.user?.name || session?.user?.email || "User";
+  const initial = name.trim().charAt(0).toUpperCase();
+  const sessionImageUrl =
+    (session?.user as { image?: string; imageUrl?: string | null } | undefined)?.image ||
+    (session?.user as { imageUrl?: string | null } | undefined)?.imageUrl ||
+    null;
+  const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
+  const role = session?.user?.role?.toLowerCase() || "student";
+  const imageUrl = sessionImageUrl || fetchedImageUrl;
+  const dashboard = roleRoute[role] || "/student";
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let mounted = true;
+    if (sessionImageUrl) return;
+    const loadProfile = async () => {
+      try {
+        const res = await fetch(API_ROUTES.profileMe, { cache: "no-store" });
+        const data = await res.json();
+        if (mounted && res.ok) {
+          setFetchedImageUrl(normalizeSessionProfileResponse(data).imageUrl);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [sessionImageUrl, status]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
+
+  if (status !== "authenticated") return null;
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white max-w-[170px] sm:max-w-[220px]"
+        title={name}
+      >
+        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold overflow-hidden">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Profile"
+              className="h-full w-full object-cover"
+              onError={() => setFetchedImageUrl(null)}
+            />
+          ) : (
+            initial
+          )}
+        </div>
+        <span className="hidden sm:inline text-sm truncate max-w-[95px] md:max-w-[130px] lg:max-w-[170px]">
+          {name}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-48 rounded-xl border border-stone-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 shadow-lg overflow-hidden z-50">
+          <Link
+            href={dashboard}
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+          >
+            {isArabic ? "\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645" : "Dashboard"}
+          </Link>
+          {role !== "admin" ? (
+            <Link
+              href={`/${role}/profile`}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+            >
+              {isArabic ? "\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062E\u0635\u064A" : "Profile"}
+            </Link>
+          ) : null}
+          {role === "student" ? (
+            <Link
+              href="/student/favorites"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+            >
+              {isArabic ? "\u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u0645\u0641\u0636\u0644\u0629" : "Favorite Courses"}
+            </Link>
+          ) : null}
+          <button
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+          >
+            {isArabic ? "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C" : "Logout"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,16 +1,21 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import HomeUserMenu from '@/components/home-user-menu';
+import CourseFavoriteButton from '@/components/course-favorite-button';
 import {
   SunIcon,
   MoonIcon,
-  AcademicCapIcon,
   MagnifyingGlassIcon,
-  ArrowLeftIcon,
   ClockIcon,
   UserGroupIcon,
+  StarIcon,
+  GlobeAltIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
 type Course = {
@@ -26,16 +31,22 @@ type Course = {
   status: 'draft' | 'published' | 'archived';
   createdAt: string;
   students: number;
+  enrolled?: boolean;
+  averageRating?: number;
+  evaluationCount?: number;
 };
 
 export default function AllCoursesPage() {
   const { theme, setTheme } = useTheme();
+  const { status } = useSession();
 
   const [mounted, setMounted] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'ar'>('en');
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -73,11 +84,50 @@ export default function AllCoursesPage() {
     loadCourses();
   }, []);
 
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (status !== 'authenticated') {
+        setFavoriteIds(new Set());
+        return;
+      }
+      try {
+        const res = await fetch('/api/student/favorites/ids', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok) {
+          setFavoriteIds(new Set((data.ids || []) as string[]));
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadFavorites();
+  }, [status]);
+
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  const toggleLanguage = () => {
+    setLanguage((prev) => (prev === 'en' ? 'ar' : 'en'));
+  };
+
   const isDark = mounted && theme === 'dark';
+  const isArabic = language === 'ar';
+
+  const trackCourseView = (courseId: string) => {
+    if (status !== 'authenticated') return;
+    try {
+      fetch('/api/recent-courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+        keepalive: true,
+      }).catch(() => null);
+    } catch {
+      // best-effort tracking
+    }
+  };
 
   const filteredCourses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -93,8 +143,17 @@ export default function AllCoursesPage() {
     });
   }, [courses, searchQuery]);
 
+  const updateFavorite = (courseId: string, next: boolean) => {
+    setFavoriteIds((prev) => {
+      const nextSet = new Set(prev);
+      if (next) nextSet.add(courseId);
+      else nextSet.delete(courseId);
+      return nextSet;
+    });
+  };
+
   return (
-    <div className="min-h-screen relative text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen relative text-slate-900 dark:text-slate-100" dir={isArabic ? 'rtl' : 'ltr'}>
       {/* Background */}
       <div
         className="fixed inset-0 -z-10 bg-cover bg-no-repeat transition-[filter] duration-500"
@@ -114,129 +173,196 @@ export default function AllCoursesPage() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-4 pt-4">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+      <header className="sticky top-0 z-50 px-3 sm:px-4 pt-9 sm:pt-4">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-lg px-3 sm:px-6 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <Link href="/" className="flex items-center shrink-0">
-              <AcademicCapIcon className="w-8 h-8 text-blue-950 dark:text-blue-400 mr-2" />
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                Aivora
-              </h1>
+              <Image
+                src="/alaa.png"
+                alt="Aivora Logo"
+                width={100}
+                height={35}
+                className="h-6 sm:h-7 w-auto dark:brightness-100 brightness-25"
+              />
             </Link>
 
-            <div className="flex-1 min-w-[200px] max-w-md mx-4 order-3 md:order-none w-full md:w-auto mt-3 md:mt-0">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search courses..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                />
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? (
-                  <SunIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <SunIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 ) : (
-                  <MoonIcon className="w-5 h-5 text-slate-900 dark:text-white" />
+                  <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                 )}
               </button>
 
-              <Link href="/Home">
-                <button className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
-                  <ArrowLeftIcon className="w-5 h-5" />
-                  <span className="hidden sm:inline">Back to Home</span>
-                </button>
-              </Link>
+              <button
+                onClick={toggleLanguage}
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Toggle language"
+                title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
+              >
+                <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
+              </button>
+
+              {status === 'authenticated' ? (
+                <HomeUserMenu isArabic={isArabic} />
+              ) : (
+                <Link href="/login">
+                  <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
+                    <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
+                    <span className="hidden sm:inline">
+                      {isArabic ? 'تسجيل الدخول' : 'Login'}
+                    </span>
+                  </button>
+                </Link>
+              )}
+
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-8 pb-16 px-5 sm:px-6 lg:px-8">
+      <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-12 text-center">
-            <p className="mt-4 text-slate-300 text-lg max-w-2xl mx-auto">
-              Explore our complete collection of courses in programming, AI, design, marketing, and more.
+          <div className="mb-6 sm:mb-8 flex justify-center">
+            <div className="w-full max-w-2xl">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={isArabic ? 'ابحث عن الدورات...' : 'Search courses...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-full bg-white/10 dark:bg-slate-800/60 border border-slate-300/30 dark:border-slate-600/40 text-sm sm:text-base text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+          <div className="mb-8 sm:mb-12 text-center">
+            <p className="mt-3 sm:mt-4 text-slate-300 text-sm sm:text-lg max-w-2xl mx-auto">
+              {isArabic
+                ? 'استكشف مجموعتنا الكاملة من الدورات في البرمجة والذكاء الاصطناعي والتصميم والتسويق وغيرها.'
+                : 'Explore our complete collection of courses in programming, AI, design, marketing, and more.'}
             </p>
           </div>
 
           {loadingCourses ? (
-            <div className="text-center py-20 text-slate-300 text-xl">
-              Loading courses...
+            <div className="text-center py-16 sm:py-20 text-slate-300 text-base sm:text-xl">
+              {isArabic ? 'جاري تحميل الدورات...' : 'Loading courses...'}
             </div>
           ) : errorMsg ? (
-            <div className="text-center py-20 text-red-300 text-xl">
+            <div className="text-center py-16 sm:py-20 text-red-300 text-base sm:text-xl">
               {errorMsg}
             </div>
           ) : filteredCourses.length === 0 ? (
-            <div className="text-center py-20 text-slate-300 text-xl">
-              No courses found matching your search.
+            <div className="text-center py-16 sm:py-20 text-slate-300 text-base sm:text-xl">
+              {isArabic ? 'لا توجد دورات تطابق بحثك.' : 'No courses found matching your search.'}
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredCourses.map((course) => (
-                <div
-                  key={course.id}
-                  className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                >
-                  <div className="h-48 overflow-hidden">
-                    <img
-                      src={course.imageUrl || '/default-course.jpg'}
-                      alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+              {filteredCourses.map((course) => {
+                const rating = Number(course.averageRating || 0);
+                const reviewCount = Number(course.evaluationCount || 0);
+                const filledStars = Math.round(rating);
 
-                  <div className="p-5">
-                    <p className="text-sm text-blue-200 mb-2 font-medium">
-                      By {course.teacherName}
-                    </p>
-
-                    <h3 className="text-lg font-bold text-white mb-3 leading-snug line-clamp-2">
-                      {course.title}
-                    </h3>
-
-                    <p className="text-sm text-slate-300 mb-4 line-clamp-2 min-h-[40px]">
-                      {course.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="w-4 h-4 text-blue-300" />
-                        {course.durationWeeks} Weeks
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <UserGroupIcon className="w-4 h-4 text-blue-300" />
-                        {course.students}
-                      </div>
+                return (
+                  <div
+                    key={course.id}
+                    className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                  >
+                    <div className="relative h-36 sm:h-40 overflow-hidden">
+                      <img
+                        src={course.imageUrl || '/default-course.jpg'}
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <CourseFavoriteButton
+                        courseId={course.id}
+                        initialFavorite={favoriteIds.has(course.id)}
+                        onChange={(next) => updateFavorite(course.id, next)}
+                        className="absolute top-3 right-3 h-8 w-8"
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-xl font-black text-blue-300">
-                        ${course.price}
-                      </span>
+                    <div className="p-4 sm:p-4">
+                      <p className="text-sm text-blue-200 mb-2 font-medium">
+                        {isArabic ? '??????' : 'By'} {course.teacherName}
+                      </p>
 
-                      <Link
-                        href={`/courses/${course.id}`}
-                        className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-sm font-semibold border border-white/15 transition-all duration-300"
-                      >
-                        View Course
-                      </Link>
+                      <h3 className="text-sm sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
+                        {course.title}
+                      </h3>
+
+                      <p className="text-xs sm:text-sm text-slate-300 mb-4 line-clamp-2 min-h-[36px] sm:min-h-[40px]">
+                        {course.description}
+                      </p>
+
+                      <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
+                        <div className="flex items-center gap-1">
+                          <ClockIcon className="w-4 h-4 text-blue-300" />
+                          {course.durationWeeks} {isArabic ? '??????' : 'Weeks'}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <UserGroupIcon className="w-4 h-4 text-blue-300" />
+                          {course.students} {isArabic ? '????' : 'Students'}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 mb-4">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <StarIcon
+                            key={`${course.id}-rating-${idx}`}
+                            className={`w-4 h-4 ${
+                              idx < filledStars
+                                ? 'text-yellow-400 fill-yellow-400'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        ))}
+                        {reviewCount > 0 ? (
+                          <span className="ml-2 text-xs text-slate-300">
+                            {rating.toFixed(1)} ({reviewCount})
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-xs text-slate-300">
+                            {isArabic ? '???? ????? ???' : 'No reviews yet'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg sm:text-xl font-black text-blue-300">
+                          ${course.price}
+                        </span>
+
+                        {course.enrolled ? (
+                          <Link
+                            href={`/student/my-courses/${course.id}`}
+                            onClick={() => trackCourseView(course.id)}
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
+                          >
+                            {isArabic ? '?? ???????' : 'Enrolled'}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/Home/courses/${course.id}`}
+                            onClick={() => trackCourseView(course.id)}
+                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
+                          >
+                            View Course
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

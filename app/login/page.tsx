@@ -1,11 +1,19 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import {
+  API_ROUTES,
+  buildLoginPayload,
+  buildRegisterPayload,
+  isValidEmail,
+  normalizeEmail,
+  validateAuthInput,
+} from "@aivora/shared";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -13,6 +21,8 @@ export default function AuthPage() {
   const params = useSearchParams();
   const social = params.get("social");
   const oauth = params.get("oauth");
+  const nextParam = params.get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") ? nextParam : null;
   
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState("");
@@ -22,6 +32,119 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [success, setSuccess] = useState("");
+  const LEGACY_SAVED_ACCOUNTS_KEY = "aivora_saved_accounts";
+  const SAVED_CREDENTIALS_KEY = "aivora_saved_credentials";
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
+  const [savedCredentials, setSavedCredentials] = useState<Record<string, string>>({});
+  const [showEmailSuggestions, setShowEmailSuggestions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const saveBrowserCredential = async (emailValue: string, passwordValue: string) => {
+    try {
+      if (
+        typeof window === "undefined" ||
+        !("PasswordCredential" in window) ||
+        !("credentials" in navigator)
+      ) {
+        return;
+      }
+
+      const PasswordCredentialCtor = (window as Window & {
+        PasswordCredential?: new (data: {
+          id: string;
+          password: string;
+          name?: string;
+        }) => Credential;
+      }).PasswordCredential;
+
+      if (!PasswordCredentialCtor) return;
+
+      const credential = new PasswordCredentialCtor({
+        id: emailValue.trim(),
+        password: passwordValue,
+        name: fullName.trim() || undefined,
+      });
+
+      await navigator.credentials.store(credential);
+    } catch {
+      // ignore if browser blocks credential saving
+    }
+  };
+
+  useEffect(() => {
+    try {
+      // Cleanup legacy custom-saved accounts from older implementation.
+      localStorage.removeItem(LEGACY_SAVED_ACCOUNTS_KEY);
+      const raw = localStorage.getItem(SAVED_CREDENTIALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const normalized =
+        parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+      setSavedCredentials(normalized);
+      setSavedEmails(Object.keys(normalized).sort());
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  const saveLocalCredential = (emailValue: string, passwordValue: string) => {
+    if (!emailValue || !passwordValue) return;
+    try {
+      const normalizedEmail = emailValue.trim().toLowerCase();
+      const raw = localStorage.getItem(SAVED_CREDENTIALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const map =
+        parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+      map[normalizedEmail] = passwordValue;
+      localStorage.setItem(SAVED_CREDENTIALS_KEY, JSON.stringify(map));
+      setSavedCredentials(map);
+      setSavedEmails(Object.keys(map).sort());
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!isLogin) return;
+    const normalized = value.trim().toLowerCase();
+    if (normalized && savedCredentials[normalized]) {
+      setPassword(savedCredentials[normalized]);
+    }
+  };
+
+  const filteredEmailSuggestions = useMemo(() => {
+    if (!isLogin) return [];
+    const term = email.trim().toLowerCase();
+    if (!term) return savedEmails.slice(0, 8);
+    return savedEmails.filter((item) => item.includes(term)).slice(0, 8);
+  }, [email, isLogin, savedEmails]);
+
+  useEffect(() => {
+    if (!isLogin) return;
+    const normalized = email.trim().toLowerCase();
+    if (normalized && savedCredentials[normalized]) {
+      setPassword(savedCredentials[normalized]);
+    }
+  }, [email, isLogin, savedCredentials]);
+
+  const getRedirectTarget = (role?: string) => {
+    if (safeNext) return safeNext;
+    const routes: Record<string, string> = {
+      admin: "/dashboard",
+      teacher: "/teacher",
+      student: "/student",
+    };
+    const normalized = role?.toLowerCase() || "student";
+    return routes[normalized] || "/student";
+  };
 
   // معالجة بيانات OAuth عند العودة
 useEffect(() => {
@@ -35,7 +158,7 @@ useEffect(() => {
     return;
   }
 
-  fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+  fetch(API_ROUTES.auth.checkByEmail(email))
     .then((r) => r.json())
     .then(async (data) => {
       if (data.exists) {
@@ -67,7 +190,7 @@ useEffect(() => {
       return;
     }
 
-    fetch(`/api/auth/check?email=${encodeURIComponent(email)}`)
+    fetch(API_ROUTES.auth.checkByEmail(email))
       .then((r) => r.json())
       .then(async (data) => {
         if (!data.exists) {
@@ -77,13 +200,7 @@ useEffect(() => {
         }
 
         const role = data.role?.toLowerCase() || "student";
-        const routes: Record<string, string> = {
-          admin: "/dashboard",
-          teacher: "/teacher",
-          student: "/student",
-        };
-
-        router.push(routes[role] || "/student");
+        router.push(getRedirectTarget(role));
         router.refresh();
       })
       .catch(() => {
@@ -107,28 +224,43 @@ useEffect(() => {
     }
   }, [params]);
 
- async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   e.preventDefault();
   setErr("");
   setSuccess("");
   setLoading(true);
 
   try {
+    const fullNameCandidate = fullName.trim() || session?.user?.name || "";
+    const inputValidation = validateAuthInput({
+      email,
+      password,
+      fullName: fullNameCandidate,
+      requireFullName: !isLogin,
+    });
+    const { normalizedEmail, normalizedPassword, normalizedFullName } = inputValidation.values;
+
+    if (!inputValidation.ok) {
+      setErr(inputValidation.message);
+      setLoading(false);
+      return;
+    }
+
     // ─── حالة التسجيل (Sign Up) ───
     if (!isLogin) {
       // 1. جاء المستخدم من OAuth (Google/GitHub) ويُكمل البيانات
       if (social === "true" && session?.user) {
         // نرسل طلب لإكمال الحساب بدون كلمة مرور
-        const completeRes = await fetch("/api/auth/social-complete", {
+        const completeRes = await fetch(API_ROUTES.auth.socialComplete, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName: fullName.trim() || session.user.name || "",
-            password: password.trim(),
-            email: email.trim(),
-            // يمكنك إضافة حقول أخرى إذا أردت (مثل: phone, preferredRole, etc.)
-            // role: selectedRole || "student",
-          }),
+          body: JSON.stringify(
+            buildRegisterPayload({
+              fullName: normalizedFullName,
+              email: normalizedEmail,
+              password: normalizedPassword,
+            })
+          ),
         });
 
         const completeData = await completeRes.json();
@@ -141,29 +273,25 @@ useEffect(() => {
 
         // بعد الإنشاء الناجح → توجه مباشرة (الجلسة موجودة بالفعل)
         const role = session.user.role?.toLowerCase() || "student";
-        const routes: Record<string, string> = {
-          admin: "/dashboard",
-          teacher: "/teacher",
-          student: "/student",
-        };
-
         setSuccess("Account created successfully. Redirecting...");
         window.setTimeout(() => {
-          router.push(routes[role] || "/");
+          router.push(getRedirectTarget(role));
           router.refresh();
         }, 900);
         return;
       }
 
       // 2. تسجيل عادي جديد (Credentials) → يحتاج اسم + إيميل + كلمة مرور
-      const registerRes = await fetch("/api/auth/register", {
+      const registerRes = await fetch(API_ROUTES.auth.register, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password: password.trim(),
-        }),
+        body: JSON.stringify(
+          buildRegisterPayload({
+            fullName: normalizedFullName,
+            email: normalizedEmail,
+            password: normalizedPassword,
+          })
+        ),
       });
 
       const registerData = await registerRes.json();
@@ -176,8 +304,8 @@ useEffect(() => {
 
       // بعد التسجيل الناجح → نسجل الدخول تلقائيًا
       const signInResult = await signIn("credentials", {
-        email: email.trim(),
-        password: password.trim(),
+        email: normalizedEmail,
+        password: normalizedPassword,
         redirect: false,
       });
 
@@ -188,20 +316,28 @@ useEffect(() => {
         return;
       }
 
+      // Ensure legacy session cookie is set for middleware compatibility
+      try {
+        await fetch(API_ROUTES.auth.login, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+          ),
+        });
+      } catch (err) {
+        console.error("Legacy login cookie set failed:", err);
+      }
+
       // جلب الجلسة الجديدة لمعرفة الدور
-      const sessionRes = await fetch("/api/auth/session");
+      const sessionRes = await fetch(API_ROUTES.auth.session);
       const currentSession = await sessionRes.json();
       const role = currentSession?.user?.role?.toLowerCase() || "student";
-
-      const routes: Record<string, string> = {
-        admin: "/dashboard",
-        teacher: "/teacher",
-        student: "/student",
-      };
-
+      saveLocalCredential(normalizedEmail, normalizedPassword);
+      await saveBrowserCredential(normalizedEmail, normalizedPassword);
       setSuccess("Account created successfully. Redirecting...");
       window.setTimeout(() => {
-        router.push(routes[role] || "/");
+        router.push(getRedirectTarget(role));
         router.refresh();
       }, 900);
       return;
@@ -209,8 +345,8 @@ useEffect(() => {
 
     // ─── حالة تسجيل الدخول (Sign In) ───
     const result = await signIn("credentials", {
-      email: email.trim(),
-      password: password.trim(),
+      email: normalizedEmail,
+      password: normalizedPassword,
       redirect: false,
     });
 
@@ -224,20 +360,28 @@ useEffect(() => {
       return;
     }
 
+    // Ensure legacy session cookie is set for middleware compatibility
+    try {
+      await fetch(API_ROUTES.auth.login, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          buildLoginPayload({ email: normalizedEmail, password: normalizedPassword })
+        ),
+      });
+    } catch (err) {
+      console.error("Legacy login cookie set failed:", err);
+    }
+
     // جلب الجلسة بعد تسجيل الدخول الناجح
-    const sessionRes = await fetch("/api/auth/session");
+    const sessionRes = await fetch(API_ROUTES.auth.session);
     const currentSession = await sessionRes.json();
     const role = currentSession?.user?.role?.toLowerCase() || "student";
-
-    const routes: Record<string, string> = {
-      admin: "/dashboard",
-      teacher: "/teacher",
-      student: "/student",
-    };
-
+    saveLocalCredential(normalizedEmail, normalizedPassword);
+    await saveBrowserCredential(normalizedEmail, normalizedPassword);
     setSuccess("Login successful. Redirecting...");
     window.setTimeout(() => {
-      router.push(routes[role] || "/");
+      router.push(getRedirectTarget(role));
       router.refresh();
     }, 900);
   } catch (err) {
@@ -254,9 +398,10 @@ useEffect(() => {
     setLoading(true);
 
     try {
-      const callbackUrl = isLogin
+      const base = isLogin
         ? `${window.location.origin}/login?oauth=1`
         : `${window.location.origin}/login?social=true`;
+      const callbackUrl = safeNext ? `${base}&next=${encodeURIComponent(safeNext)}` : base;
 
       await signIn(providerName, {
         callbackUrl,
@@ -270,7 +415,7 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-[#003153] md:bg-white flex items-center justify-center relative overflow-hidden">
       {/* الدائرة الخلفية - كما هي */}
       <motion.div
         animate={{
@@ -278,7 +423,7 @@ useEffect(() => {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -323,7 +468,7 @@ useEffect(() => {
           x: isLogin ? "-50%" : "-50%",
         }}
         transition={{ duration: 1, ease: "easeInOut" }}
-        className="absolute top-1/2 -translate-y-1/2
+        className="hidden md:block absolute top-1/2 -translate-y-1/2
           w-[110vw] h-[110vw]
           md:w-[90vw] md:h-[90vw]
           lg:w-[80vw] lg:h-[80vw]
@@ -342,16 +487,26 @@ useEffect(() => {
 
       {/* الفورم */}
       <div className="w-full max-w-6xl relative z-10 px-4 sm:px-6 md:px-10 lg:px-12">
-        <div className="relative min-h-[80vh] flex items-center">
+        <div className="md:hidden flex justify-center mt-12 mb-2">
+          <Image
+            src="/aivora2.png"
+            alt="Aivora Logo"
+            width={180}
+            height={180}
+            className="w-40 h-40 object-contain drop-shadow-xl"
+            priority
+          />
+        </div>
+        <div className="relative min-h-[80vh] flex items-start md:items-center -mt-2 md:mt-0">
           <motion.div
             animate={{
-              marginLeft: isLogin ? "50%" : "0%",
-              marginRight: isLogin ? "0%" : "50%",
+              marginLeft: isMobile ? "0%" : isLogin ? "50%" : "0%",
+              marginRight: isMobile ? "0%" : isLogin ? "0%" : "50%",
             }}
             transition={{ duration: 1.2, ease: [0.25, 0.8, 0.25, 1] }}
             className="w-full md:w-1/2 flex justify-center"
           >
-            <div className="w-full max-w-md bg-blue/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
+            <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 md:p-10 border border-slate-200 shadow-2xl">
               <div className="text-center mb-6 md:mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
                   {isLogin ? "Sign In" : "Create Account"}
@@ -377,7 +532,7 @@ useEffect(() => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5 sm:space-y-6">
                 {!isLogin && (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -405,14 +560,46 @@ useEffect(() => {
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#003153]" size={18} />
                     <input
+                      id="login-email"
+                      name="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onInput={(e) =>
+                        handleEmailChange((e.target as HTMLInputElement).value)
+                      }
+                      onFocus={() => setShowEmailSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowEmailSuggestions(false), 120);
+                      }}
                       type="email"
                       placeholder="name@example.com"
-                      autoComplete="email"
+                      autoComplete="off"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-300 focus:border-[#003153] focus:ring-2 focus:ring-[#003153]/30 outline-none transition text-base"
                       required
                     />
+                    {showEmailSuggestions && filteredEmailSuggestions.length > 0 && (
+                      <div className="absolute z-40 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg max-h-52 overflow-auto">
+                        {filteredEmailSuggestions.map((savedEmail) => (
+                          <button
+                            key={savedEmail}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setEmail(savedEmail);
+                              setPassword(savedCredentials[savedEmail] || "");
+                              setShowEmailSuggestions(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            {savedEmail}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -423,11 +610,13 @@ useEffect(() => {
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#003153]" size={18} />
                     <input
+                      id="login-password"
+                      name="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      autoComplete={isLogin ? "current-password" : "new-password"}
+                      autoComplete="off"
                       className="w-full pl-11 pr-11 py-3 rounded-2xl border border-slate-300 focus:border-[#003153] focus:ring-2 focus:ring-[#003153]/30 outline-none transition text-base"
                       required
                       minLength={6}
@@ -451,17 +640,22 @@ useEffect(() => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!email) {
+                        const normalizedEmail = normalizeEmail(email);
+                        if (!normalizedEmail) {
                           alert("Please enter your email to receive reset link");
+                          return;
+                        }
+                        if (!isValidEmail(normalizedEmail)) {
+                          alert("Please enter a valid email address");
                           return;
                         }
 
                         try {
                           setLoading(true);
-                          const res = await fetch('/api/auth/forgot-password', {
+                          const res = await fetch(API_ROUTES.auth.forgotPassword, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: email.trim() }),
+                            body: JSON.stringify({ email: normalizedEmail }),
                           });
 
                           const data = await res.json();

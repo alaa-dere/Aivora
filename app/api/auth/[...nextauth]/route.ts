@@ -15,6 +15,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       role?: string;
+      imageUrl?: string | null;
     };
   }
 
@@ -27,6 +28,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     role?: string;
     id?: string;
+    imageUrl?: string | null;
   }
 }
 
@@ -98,7 +100,7 @@ export const authOptions: NextAuthOptions = {
         const password = credentials.password as string;
 
         const [users] = await db.query<RowDataPacket[]>(
-          "SELECT u.*, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+          "SELECT u.*, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
           [email]
         );
 
@@ -137,7 +139,7 @@ export const authOptions: NextAuthOptions = {
 
         if (oauthEmail) {
           const [existingUser] = await db.query<RowDataPacket[]>(
-            "SELECT u.id, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+            "SELECT u.id, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
             [oauthEmail]
           );
           if (existingUser.length > 0) {
@@ -174,7 +176,7 @@ export const authOptions: NextAuthOptions = {
           token.email = oauthEmail;
 
           const [existingUser] = await db.query<RowDataPacket[]>(
-            "SELECT u.id, r.name AS role FROM User u JOIN Role r ON u.roleId = r.id WHERE u.email = ?",
+            "SELECT u.id, r.name AS role FROM user u JOIN role r ON u.roleId = r.id WHERE u.email = ?",
             [oauthEmail]
           );
 
@@ -187,6 +189,19 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      if (token.id && token.imageUrl === undefined) {
+        try {
+          const [rows] = await db.query<RowDataPacket[]>(
+            "SELECT imageUrl FROM user WHERE id = ? LIMIT 1",
+            [token.id]
+          );
+          token.imageUrl = (rows[0]?.imageUrl as string | null) ?? null;
+        } catch (error) {
+          console.error("Failed to load user imageUrl:", error);
+          token.imageUrl = null;
+        }
+      }
+
       return token;
     },
 
@@ -195,6 +210,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string;
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.imageUrl = (token as any).imageUrl ?? null;
       }
       return session;
     },

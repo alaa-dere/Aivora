@@ -2,6 +2,287 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { randomUUID } from 'crypto';
+import nodemailer from 'nodemailer';
+import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
+import { createStudentNotification } from '@/lib/notifications-write';
+
+async function hasColumn(tableName: string, columnName: string) {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    LIMIT 1
+    `,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
+async function ensureAdminTeacherDeleteColumns() {
+  const exists = await hasColumn('admin_teacher_message', 'deletedForEveryoneAt');
+  if (exists) return;
+  try {
+    await pool.query(`
+      ALTER TABLE admin_teacher_message
+      ADD COLUMN deletedForAdminAt DATETIME NULL,
+      ADD COLUMN deletedForTeacherAt DATETIME NULL,
+      ADD COLUMN deletedForEveryoneAt DATETIME NULL,
+      ADD INDEX idx_admin_teacher_deleted_everyone (deletedForEveryoneAt),
+      ADD INDEX idx_admin_teacher_deleted_admin (deletedForAdminAt),
+      ADD INDEX idx_admin_teacher_deleted_teacher (deletedForTeacherAt)
+    `);
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'ER_DUP_FIELDNAME' && code !== 'ER_DUP_KEYNAME') {
+      throw error;
+    }
+  }
+}
+
+async function ensureChatDeleteColumns() {
+  const exists = await hasColumn('chat_message', 'deletedForEveryoneAt');
+  if (exists) return;
+  try {
+    await pool.query(`
+      ALTER TABLE chat_message
+      ADD COLUMN deletedForStudentAt DATETIME NULL,
+      ADD COLUMN deletedForTeacherAt DATETIME NULL,
+      ADD COLUMN deletedForEveryoneAt DATETIME NULL,
+      ADD INDEX idx_chat_deleted_everyone (deletedForEveryoneAt),
+      ADD INDEX idx_chat_deleted_student (deletedForStudentAt),
+      ADD INDEX idx_chat_deleted_teacher (deletedForTeacherAt)
+    `);
+  } catch (error: unknown) {
+    const code = (error as { code?: string }).code;
+    if (code !== 'ER_DUP_FIELDNAME' && code !== 'ER_DUP_KEYNAME') {
+      throw error;
+    }
+  }
+}
+
+async function ensureLiveSessionTables() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS live_session (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      teacherId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+      description TEXT NULL COLLATE utf8mb4_unicode_ci,
+      startAt DATETIME NOT NULL,
+      endAt DATETIME NOT NULL,
+      meetingLink VARCHAR(512) NULL COLLATE utf8mb4_unicode_ci,
+      status ENUM('scheduled', 'completed') DEFAULT 'scheduled',
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_live_teacher (teacherId),
+      INDEX idx_live_course (courseId),
+      INDEX idx_live_start (startAt),
+      FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS live_session_attendance (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      sessionId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      attended TINYINT(1) DEFAULT 0,
+      markedAt DATETIME NULL,
+      UNIQUE KEY unique_session_student (sessionId, studentId),
+      INDEX idx_att_session (sessionId),
+      INDEX idx_att_student (studentId),
+      FOREIGN KEY (sessionId) REFERENCES live_session(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS student_notification (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      type ENUM('live_session', 'missed_session', 'course_failed') DEFAULT 'live_session',
+      title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+      message TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      readAt DATETIME NULL,
+      INDEX idx_student_notif_student (studentId),
+      INDEX idx_student_notif_course (courseId),
+      INDEX idx_student_notif_type (type),
+      INDEX idx_student_notif_read (readAt),
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS student_live_miss (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      missedCount INT DEFAULT 0,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_student_course (studentId, courseId),
+      INDEX idx_miss_student (studentId),
+      INDEX idx_miss_course (courseId),
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB;
+  `);
+}
+
+async function ensureTeacherNotificationTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS teacher_notification (
+      id VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+      teacherId VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+      studentId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      courseId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+      type VARCHAR(64) NOT NULL COLLATE utf8mb4_unicode_ci DEFAULT 'quiz_result',
+      title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+      message TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      readAt DATETIME NULL,
+      INDEX idx_teacher_notif_teacher (teacherId),
+      INDEX idx_teacher_notif_created (createdAt),
+      INDEX idx_teacher_notif_read (readAt),
+      FOREIGN KEY (teacherId) REFERENCES user(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY (studentId) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY (courseId) REFERENCES course(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB
+  `);
+}
+
+async function sendLiveSessionReminderEmails(input: {
+  students: Array<{ email: string; name: string }>;
+  courseTitle: string;
+  dateStr: string;
+  timeStr: string;
+  meetingLink?: string | null;
+}) {
+  if (input.students.length === 0) {
+    return { sentCount: 0, failedCount: 0, skippedReason: 'no_recipients' as const };
+  }
+
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+  const emailFrom = process.env.EMAIL_FROM || emailUser;
+
+  if (!emailFrom) {
+    console.warn('Live session email skipped: EMAIL_FROM or EMAIL_USER is not configured.');
+    return {
+      sentCount: 0,
+      failedCount: input.students.length,
+      skippedReason: 'missing_sender' as const,
+    };
+  }
+
+  if (!smtpHost && (!emailUser || !emailPass)) {
+    console.warn('Live session email skipped: SMTP or EMAIL_USER/EMAIL_PASS is not configured.');
+    return {
+      sentCount: 0,
+      failedCount: input.students.length,
+      skippedReason: 'missing_smtp' as const,
+    };
+  }
+
+  const transporter = smtpHost
+    ? nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: emailUser && emailPass ? { user: emailUser, pass: emailPass } : undefined,
+      })
+      : nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: emailUser,
+            pass: emailPass,
+          },
+        });
+
+  const sendResults = await Promise.allSettled(
+    input.students.map((student) => {
+      const safeName = student.name || 'Student';
+      const subject = `Reminder: Live session for ${input.courseTitle}`;
+      const text = `Hi ${safeName},
+
+This is a reminder for your live session in "${input.courseTitle}" on ${input.dateStr} at ${input.timeStr}.
+${input.meetingLink ? `Join link: ${input.meetingLink}` : ''}
+
+Please join on time.
+
+Best regards,
+Aivora Team`;
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+          <p>Hi <strong>${safeName}</strong>,</p>
+          <p>
+            This is a reminder for your live session in
+            <strong>${input.courseTitle}</strong>
+            on <strong>${input.dateStr}</strong> at <strong>${input.timeStr}</strong>.
+          </p>
+          ${
+            input.meetingLink
+              ? `<p><a href="${input.meetingLink}" style="color:#2563eb">Join live session</a></p>`
+              : ''
+          }
+          <p>Please join on time.</p>
+          <p>Best regards,<br/>Aivora Team</p>
+        </div>
+      `;
+
+      return transporter.sendMail({
+        from: `"Aivora" <${emailFrom}>`,
+        to: student.email,
+        subject,
+        text,
+        html,
+      });
+    })
+  );
+
+  const sentCount = sendResults.filter((r) => r.status === 'fulfilled').length;
+  const failedCount = sendResults.length - sentCount;
+  const allFailed = sentCount === 0 && failedCount > 0;
+  const firstFailure = sendResults.find((r) => r.status === 'rejected') as
+    | PromiseRejectedResult
+    | undefined;
+  const firstFailureMessage = firstFailure
+    ? String((firstFailure.reason as { message?: string })?.message || firstFailure.reason)
+    : null;
+
+  if (failedCount > 0) {
+    console.warn(`Live session reminder emails: ${failedCount} failed, ${sentCount} sent.`);
+  }
+
+  return {
+    sentCount,
+    failedCount,
+    skippedReason: allFailed ? ('send_failed' as const) : null,
+    failureMessage: firstFailureMessage,
+  };
+}
 
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
@@ -10,12 +291,315 @@ export async function GET(req: Request) {
   }
 
   try {
+    await ensureAdminTeacherDeleteColumns();
+    await ensureChatDeleteColumns();
+    await ensureLiveSessionTables();
+    await ensureTeacherNotificationTable();
+    const useUnifiedNotifications = await hasUnifiedNotificationTable();
     const teacherId = user.id;
+    const { searchParams } = new URL(req.url);
+    const notifications = searchParams.get('notifications');
+    const liveSessions = searchParams.get('liveSessions');
+    const hasAdminDeleteVisibility = await hasColumn(
+      'admin_teacher_message',
+      'deletedForEveryoneAt'
+    );
+    const hasChatDeleteVisibility = await hasColumn('chat_message', 'deletedForEveryoneAt');
+
+    if (notifications) {
+      if (notifications === 'count') {
+        const [messageRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM admin_teacher_message m
+          JOIN admin_teacher_thread t ON t.id = m.threadId
+          WHERE t.teacherId = ?
+            AND m.senderRole = 'admin'
+            AND m.readAt IS NULL
+            ${hasAdminDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
+          `,
+          [teacherId]
+        );
+        const [studentMessageRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM chat_message m
+          JOIN chat_conversation c ON c.id = m.conversationId
+          WHERE c.teacherId = ?
+            AND m.senderRole = 'student'
+            AND m.readAt IS NULL
+            ${hasChatDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
+          `,
+          [teacherId]
+        );
+        const [quizNotifRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT COUNT(*) AS total
+          FROM ${useUnifiedNotifications ? 'notification' : 'teacher_notification'}
+          WHERE ${useUnifiedNotifications ? "recipientRole = 'teacher' AND recipientId = ?" : 'teacherId = ?'}
+            ${useUnifiedNotifications ? 'AND deletedAt IS NULL' : ''}
+            AND createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          `,
+          [teacherId]
+        );
+
+        const messageCount = Number(messageRows[0]?.total || 0);
+        const studentMessageCount = Number(studentMessageRows[0]?.total || 0);
+        const quizNotifCount = Number(quizNotifRows[0]?.total || 0);
+        return NextResponse.json({
+          total: messageCount + studentMessageCount + quizNotifCount,
+        });
+      }
+
+      const limit = notifications === 'all' ? 100 : 5;
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          e.id,
+          e.courseId,
+          e.enrolledAt,
+          s.fullName AS studentName,
+          c.title AS courseTitle
+        FROM enrollment e
+        JOIN course c ON c.id = e.courseId
+        JOIN user s ON s.id = e.studentId
+        WHERE c.teacherId = ?
+        ORDER BY e.enrolledAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+
+      const [adminMessageRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          m.id,
+          m.body,
+          m.createdAt,
+          m.readAt,
+          u.fullName AS adminName
+        FROM admin_teacher_message m
+        JOIN admin_teacher_thread t ON t.id = m.threadId
+        JOIN user u ON u.id = t.adminId
+        WHERE t.teacherId = ?
+          AND m.senderRole = 'admin'
+          ${hasAdminDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
+        ORDER BY m.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+      const [studentMessageRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          m.id,
+          m.body,
+          m.createdAt,
+          m.readAt,
+          conv.id AS conversationId,
+          s.fullName AS studentName,
+          c.title AS courseTitle
+        FROM chat_message m
+        JOIN chat_conversation conv ON conv.id = m.conversationId
+        JOIN user s ON s.id = conv.studentId
+        JOIN course c ON c.id = conv.courseId
+        WHERE conv.teacherId = ?
+          AND m.senderRole = 'student'
+          ${hasChatDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForTeacherAt IS NULL' : ''}
+        ORDER BY m.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+      const [quizNotifRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          tn.id,
+          tn.type,
+          tn.title,
+          tn.message,
+          tn.createdAt,
+          tn.readAt,
+          tn.courseId,
+          cert.id AS certificateId
+        FROM ${useUnifiedNotifications ? 'notification' : 'teacher_notification'} tn
+        LEFT JOIN certificate cert
+          ON cert.studentId = ${useUnifiedNotifications ? 'tn.relatedUserId' : 'tn.studentId'}
+         AND cert.courseId = tn.courseId
+        WHERE ${useUnifiedNotifications ? "tn.recipientRole = 'teacher' AND tn.recipientId = ? AND tn.deletedAt IS NULL" : 'tn.teacherId = ?'}
+        ORDER BY tn.createdAt DESC
+        LIMIT ${limit}
+        `,
+        [teacherId]
+      );
+
+      const enrollmentItems = rows.map((row) => ({
+        id: row.id,
+        type: 'course_enroll',
+        title: 'New enrollment',
+        message: `${row.studentName} enrolled in ${row.courseTitle}`,
+        createdAt: row.enrolledAt,
+        read: true,
+        courseId: row.courseId || null,
+        conversationId: null,
+        certificateId: null,
+      }));
+
+      const messageItems = adminMessageRows.map((row) => ({
+        id: row.id,
+        type: 'admin_message',
+        title: `Message from ${row.adminName || 'Admin'}`,
+        message: row.body,
+        createdAt: row.createdAt,
+        read: Boolean(row.readAt),
+        courseId: null,
+        conversationId: null,
+        certificateId: null,
+      }));
+      const studentMessageItems = studentMessageRows.map((row) => ({
+        id: row.id,
+        type: 'student_message',
+        title: `Message from ${row.studentName || 'Student'}`,
+        message: row.body,
+        createdAt: row.createdAt,
+        read: Boolean(row.readAt),
+        conversationId: row.conversationId,
+        courseId: null,
+        certificateId: null,
+      }));
+      const quizItems = quizNotifRows.map((row) => ({
+        id: row.id,
+        type: 'teacher_notification',
+        title: row.title || 'Quiz update',
+        message: row.message || '',
+        createdAt: row.createdAt,
+        read: Boolean(row.readAt),
+        courseId: row.courseId || null,
+        conversationId: null,
+        certificateId: row.certificateId || null,
+      }));
+
+      const items = [...enrollmentItems, ...messageItems, ...studentMessageItems, ...quizItems]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, limit);
+
+      return NextResponse.json({ notifications: items });
+    }
+
+    if (liveSessions) {
+      const sessionId = (searchParams.get('sessionId') || '').trim();
+
+      if (sessionId) {
+        const [sessionRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT s.id, s.courseId, s.title, s.description, s.startAt, s.endAt, s.meetingLink, s.status,
+                 c.title AS courseTitle
+          FROM live_session s
+          JOIN course c ON c.id = s.courseId
+          WHERE s.id = ? AND s.teacherId = ?
+          LIMIT 1
+          `,
+          [sessionId, teacherId]
+        );
+        if (sessionRows.length === 0) {
+          return NextResponse.json({ message: 'Session not found' }, { status: 404 });
+        }
+        const session = sessionRows[0];
+
+        const [studentRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT
+            u.id,
+            u.fullName,
+            e.status,
+            COALESCE(a.attended, 0) AS attended,
+            COALESCE(m.missedCount, 0) AS missedCount
+          FROM enrollment e
+          JOIN user u ON u.id = e.studentId
+          LEFT JOIN live_session_attendance a
+            ON a.sessionId = ? AND a.studentId = e.studentId
+          LEFT JOIN student_live_miss m
+            ON m.studentId = e.studentId AND m.courseId = e.courseId
+          LEFT JOIN certificate cert
+            ON cert.studentId = e.studentId
+           AND cert.courseId = e.courseId
+          WHERE e.courseId = ?
+            AND e.status IN ('enrolled', 'in_progress', 'completed')
+            AND cert.id IS NULL
+          ORDER BY u.fullName
+          `,
+          [sessionId, session.courseId]
+        );
+
+        return NextResponse.json({
+          session,
+          students: studentRows.map((row) => ({
+            id: row.id,
+            name: row.fullName,
+            status: row.status,
+            attended: Boolean(row.attended),
+            missedCount: Number(row.missedCount || 0),
+          })),
+        });
+      }
+
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          s.id,
+          s.courseId,
+          s.title,
+          s.description,
+          s.startAt,
+          s.endAt,
+          s.meetingLink,
+          s.status,
+          c.title AS courseTitle,
+          (
+            SELECT COUNT(*) FROM enrollment e
+            WHERE e.courseId = s.courseId
+              AND e.status IN ('enrolled', 'in_progress', 'completed')
+              AND NOT EXISTS (
+                SELECT 1
+                FROM certificate cert
+                WHERE cert.studentId = e.studentId
+                  AND cert.courseId = e.courseId
+              )
+          ) AS totalStudents,
+          (
+            SELECT COUNT(*) FROM live_session_attendance a
+            WHERE a.sessionId = s.id AND a.attended = 1
+          ) AS attendees
+        FROM live_session s
+        JOIN course c ON c.id = s.courseId
+        WHERE s.teacherId = ?
+        ORDER BY s.startAt DESC
+        LIMIT 200
+        `,
+        [teacherId]
+      );
+
+      return NextResponse.json({
+        sessions: rows.map((row) => ({
+          id: row.id,
+          courseId: row.courseId,
+          title: row.title,
+          description: row.description,
+          startAt: row.startAt,
+          endAt: row.endAt,
+          meetingLink: row.meetingLink,
+          status: row.status,
+          courseTitle: row.courseTitle,
+          totalStudents: Number(row.totalStudents || 0),
+          attendees: Number(row.attendees || 0),
+        })),
+      });
+    }
 
     const [courseRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT id, status
-      FROM Course
+      FROM course
       WHERE teacherId = ?
       `,
       [teacherId]
@@ -31,10 +615,14 @@ export async function GET(req: Request) {
       const placeholders = courseIds.map(() => '?').join(',');
       const [studentRows] = await pool.query<RowDataPacket[]>(
         `
-        SELECT COUNT(DISTINCT studentId) AS totalStudents,
-               AVG(progressPercentage) AS avgProgress
-        FROM Enrollment
-        WHERE courseId IN (${placeholders})
+        SELECT
+          COUNT(DISTINCT CASE WHEN cert.id IS NULL THEN e.studentId ELSE NULL END) AS totalStudents,
+          AVG(CASE WHEN cert.id IS NULL THEN e.progressPercentage ELSE NULL END) AS avgProgress
+        FROM enrollment e
+        LEFT JOIN certificate cert
+          ON cert.studentId = e.studentId
+         AND cert.courseId = e.courseId
+        WHERE e.courseId IN (${placeholders})
         `,
         courseIds
       );
@@ -57,21 +645,37 @@ export async function GET(req: Request) {
         c.status,
         c.description,
         (
-          SELECT COUNT(*) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT COUNT(*)
+          FROM enrollment e
+          WHERE e.courseId = c.id
+            AND NOT EXISTS (
+              SELECT 1
+              FROM certificate cert
+              WHERE cert.studentId = e.studentId
+                AND cert.courseId = e.courseId
+            )
         ) AS students,
         (
-          SELECT COUNT(*) FROM Module m WHERE m.courseId = c.id
+          SELECT COUNT(*) FROM module m WHERE m.courseId = c.id
         ) AS modules,
         (
           SELECT COUNT(*) 
-          FROM Lesson l 
-          JOIN Module m2 ON m2.id = l.moduleId
+          FROM lesson l 
+          JOIN module m2 ON m2.id = l.moduleId
           WHERE m2.courseId = c.id
         ) AS lessons,
         (
-          SELECT AVG(e.progressPercentage) FROM Enrollment e WHERE e.courseId = c.id
+          SELECT AVG(e.progressPercentage)
+          FROM enrollment e
+          WHERE e.courseId = c.id
+            AND NOT EXISTS (
+              SELECT 1
+              FROM certificate cert
+              WHERE cert.studentId = e.studentId
+                AND cert.courseId = e.courseId
+            )
         ) AS progress
-      FROM Course c
+      FROM course c
       WHERE c.teacherId = ?
       ORDER BY c.updatedAt DESC
       LIMIT 4
@@ -94,29 +698,46 @@ export async function GET(req: Request) {
       `
       SELECT 
         u.fullName AS name,
+        u.imageUrl AS imageUrl,
+        c.title AS courseTitle,
         e.progressPercentage AS progress,
         e.status AS status
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
-      JOIN User u ON u.id = e.studentId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
       WHERE c.teacherId = ?
+        AND NOT EXISTS (
+          SELECT 1
+          FROM certificate cert
+          WHERE cert.studentId = e.studentId
+            AND cert.courseId = e.courseId
+        )
       ORDER BY e.enrolledAt DESC
       LIMIT 4
       `,
       [teacherId]
     );
 
-    const students = studentRows.map((row) => ({
-      name: row.name,
-      avatar: (row.name || '?')
-        .split(' ')
-        .map((part: string) => part[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase(),
-      progress: Math.round(Number(row.progress || 0)),
-      status: Number(row.progress || 0) >= 60 ? 'passed' : 'failed',
-    }));
+    const students = studentRows.map((row) => {
+      const progress = Number(row.progress || 0);
+      const status = row.status || (progress >= 100 ? 'completed' : 'in_progress');
+      const normalizedStatus =
+        progress >= 100 || status === 'completed' ? 'completed' : status;
+
+      return {
+        name: row.name,
+        courseName: row.courseTitle || '',
+        imageUrl: row.imageUrl || null,
+        avatar: (row.name || '?')
+          .split(' ')
+          .map((part: string) => part[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase(),
+        progress: Math.round(progress),
+        status: normalizedStatus,
+      };
+    });
 
     const [activityRows] = await pool.query<RowDataPacket[]>(
       `
@@ -124,9 +745,9 @@ export async function GET(req: Request) {
         u.fullName AS studentName,
         c.title AS courseTitle,
         e.enrolledAt AS time
-      FROM Enrollment e
-      JOIN Course c ON c.id = e.courseId
-      JOIN User u ON u.id = e.studentId
+      FROM enrollment e
+      JOIN course c ON c.id = e.courseId
+      JOIN user u ON u.id = e.studentId
       WHERE c.teacherId = ?
       ORDER BY e.enrolledAt DESC
       LIMIT 3
@@ -146,10 +767,518 @@ export async function GET(req: Request) {
       students,
       recentActivities,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Teacher dashboard error:', error);
     return NextResponse.json(
-      { message: 'Failed to load teacher dashboard', error: error.message },
+      { message: 'Failed to load teacher dashboard', error: err.message || 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  const user = await getRequestUser(req);
+  if (!user || user.role !== 'teacher') {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await ensureAdminTeacherDeleteColumns();
+    await ensureChatDeleteColumns();
+    await ensureLiveSessionTables();
+    await ensureTeacherNotificationTable();
+    const teacherId = user.id;
+    const body = await req.json();
+    const action = String(body?.action || '');
+
+    if (action === 'mark_notification_read') {
+      const id = String(body?.id || '').trim();
+      const notificationType = String(body?.type || '').trim();
+      if (!id) {
+        return NextResponse.json({ message: 'Notification id required' }, { status: 400 });
+      }
+
+      if (notificationType === 'admin_message') {
+        await pool.query(
+          `
+          UPDATE admin_teacher_message m
+          JOIN admin_teacher_thread t ON t.id = m.threadId
+          SET m.readAt = NOW()
+          WHERE m.id = ?
+            AND t.teacherId = ?
+            AND m.senderRole = 'admin'
+            AND m.readAt IS NULL
+          `,
+          [id, teacherId]
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      if (notificationType === 'student_message') {
+        await pool.query(
+          `
+          UPDATE chat_message m
+          JOIN chat_conversation c ON c.id = m.conversationId
+          SET m.readAt = NOW()
+          WHERE m.id = ?
+            AND c.teacherId = ?
+            AND m.senderRole = 'student'
+            AND m.readAt IS NULL
+          `,
+          [id, teacherId]
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      await pool.query(
+        `
+        UPDATE teacher_notification
+        SET readAt = NOW()
+        WHERE id = ?
+          AND teacherId = ?
+          AND readAt IS NULL
+        `,
+        [id, teacherId]
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'mark_all_notifications_read') {
+      await pool.query(
+        `
+        UPDATE admin_teacher_message m
+        JOIN admin_teacher_thread t ON t.id = m.threadId
+        SET m.readAt = NOW()
+        WHERE t.teacherId = ?
+          AND m.senderRole = 'admin'
+          AND m.readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      await pool.query(
+        `
+        UPDATE chat_message m
+        JOIN chat_conversation c ON c.id = m.conversationId
+        SET m.readAt = NOW()
+        WHERE c.teacherId = ?
+          AND m.senderRole = 'student'
+          AND m.readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      await pool.query(
+        `
+        UPDATE teacher_notification
+        SET readAt = NOW()
+        WHERE teacherId = ?
+          AND readAt IS NULL
+        `,
+        [teacherId]
+      );
+
+      return NextResponse.json({ success: true });
+    }
+
+    const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+    const addDays = (dateStr: string, days: number) => {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() + days);
+      return formatDate(d);
+    };
+
+    if (action === 'create_session') {
+      const courseId = String(body?.courseId || '').trim();
+      const title = String(body?.title || '').trim();
+      const description = String(body?.description || '').trim();
+      const date = String(body?.date || '').trim();
+      const startTime = String(body?.startTime || '').trim();
+      const endTime = String(body?.endTime || '').trim();
+      const meetingLink = String(body?.meetingLink || '').trim();
+      const repeatWeekly = Boolean(body?.repeatWeekly);
+      const repeatCount = Math.max(1, Math.min(Number(body?.repeatCount || 1), 12));
+
+      if (!courseId || !title || !date || !startTime || !endTime || !meetingLink) {
+        return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+      }
+
+      const [courseRows] = await pool.query<RowDataPacket[]>(
+        `SELECT id, title FROM course WHERE id = ? AND teacherId = ? LIMIT 1`,
+        [courseId, teacherId]
+      );
+      if (courseRows.length === 0) {
+        return NextResponse.json({ message: 'Course not found' }, { status: 404 });
+      }
+      const courseTitle = courseRows[0].title as string;
+
+      const [studentRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT e.studentId, u.fullName, u.email
+        FROM enrollment e
+        JOIN user u ON u.id = e.studentId
+        LEFT JOIN certificate cert
+          ON cert.studentId = e.studentId
+         AND cert.courseId = e.courseId
+        WHERE e.courseId = ?
+          AND e.status IN ('enrolled', 'in_progress', 'completed')
+          AND cert.id IS NULL
+        `,
+        [courseId]
+      );
+      const studentIds = studentRows.map((r) => r.studentId as string);
+
+      const sessionsToCreate = repeatWeekly ? repeatCount : 1;
+      const createdIds: string[] = [];
+
+      for (let i = 0; i < sessionsToCreate; i++) {
+        const sessionDate = addDays(date, i * 7);
+        const startAt = `${sessionDate} ${startTime}:00`;
+        const endAt = `${sessionDate} ${endTime}:00`;
+        const sessionId = randomUUID();
+
+        await pool.query(
+          `
+          INSERT INTO live_session
+            (id, teacherId, courseId, title, description, startAt, endAt, meetingLink, status, createdAt, updatedAt)
+          VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', NOW(), NOW())
+          `,
+          [sessionId, teacherId, courseId, title, description || null, startAt, endAt, meetingLink]
+        );
+
+        if (studentIds.length > 0) {
+          const attendanceValues = studentIds.map(() => '(?, ?, ?, 0, NULL)').join(',');
+          const attendanceParams = studentIds.flatMap((studentId) => [
+            randomUUID(),
+            sessionId,
+            studentId,
+          ]);
+          await pool.query(
+            `
+            INSERT INTO live_session_attendance (id, sessionId, studentId, attended, markedAt)
+            VALUES ${attendanceValues}
+            `,
+            attendanceParams
+          );
+
+          await Promise.all(
+            studentIds.map((studentId) =>
+              createStudentNotification({
+                studentId,
+                courseId,
+                type: 'live_session',
+                title: 'Live session scheduled',
+                message: `Live session scheduled for ${courseTitle} on ${sessionDate} at ${startTime}.`,
+              })
+            )
+          );
+
+          const studentsForEmail = studentRows
+            .map((row) => ({
+              email: String(row.email || '').trim(),
+              name: String(row.fullName || 'Student'),
+            }))
+            .filter((row) => Boolean(row.email));
+
+          if (studentsForEmail.length > 0) {
+            await sendLiveSessionReminderEmails({
+              students: studentsForEmail,
+              courseTitle: String(courseTitle || 'Course'),
+              dateStr: sessionDate,
+              timeStr: startTime,
+              meetingLink: meetingLink || null,
+            });
+          }
+        }
+
+        createdIds.push(sessionId);
+      }
+
+      return NextResponse.json({ success: true, sessionIds: createdIds });
+    }
+
+    if (action === 'notify_session') {
+      const sessionId = String(body?.sessionId || '').trim();
+      if (!sessionId) {
+        return NextResponse.json({ message: 'Session ID is required' }, { status: 400 });
+      }
+
+      const [sessionRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT s.id, s.courseId, s.startAt, s.meetingLink, c.title AS courseTitle
+        FROM live_session s
+        JOIN course c ON c.id = s.courseId
+        WHERE s.id = ? AND s.teacherId = ?
+        LIMIT 1
+        `,
+        [sessionId, teacherId]
+      );
+      if (sessionRows.length === 0) {
+        return NextResponse.json({ message: 'Session not found' }, { status: 404 });
+      }
+      const session = sessionRows[0];
+      const sessionDate = new Date(session.startAt);
+      const dateStr = sessionDate.toISOString().slice(0, 10);
+      const timeStr = sessionDate.toTimeString().slice(0, 5);
+
+      const [studentRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT e.studentId, u.fullName, u.email
+        FROM enrollment e
+        JOIN user u ON u.id = e.studentId
+        LEFT JOIN certificate cert
+          ON cert.studentId = e.studentId
+         AND cert.courseId = e.courseId
+        WHERE e.courseId = ?
+          AND e.status IN ('enrolled', 'in_progress', 'completed')
+          AND cert.id IS NULL
+        `,
+        [session.courseId]
+      );
+      const studentIds = studentRows.map((r) => r.studentId as string);
+      let emailSent = 0;
+      let emailFailed = 0;
+      let emailSkippedReason: string | null = null;
+      let emailFailureMessage: string | null = null;
+
+      if (studentIds.length > 0) {
+        await Promise.all(
+          studentIds.map((studentId) =>
+            createStudentNotification({
+              studentId,
+              courseId: session.courseId,
+              type: 'live_session',
+              title: 'Live session reminder',
+              message: `Reminder: live session for ${session.courseTitle} on ${dateStr} at ${timeStr}.`,
+            })
+          )
+        );
+
+        const studentsForEmail = studentRows
+          .map((row) => ({
+            email: String(row.email || '').trim(),
+            name: String(row.fullName || 'Student'),
+          }))
+          .filter((row) => Boolean(row.email));
+
+        const emailResult = await sendLiveSessionReminderEmails({
+          students: studentsForEmail,
+          courseTitle: String(session.courseTitle || 'Course'),
+          dateStr,
+          timeStr,
+          meetingLink: String(session.meetingLink || ''),
+        });
+        emailSent = emailResult.sentCount;
+        emailFailed = emailResult.failedCount;
+        emailSkippedReason = emailResult.skippedReason;
+        emailFailureMessage = emailResult.failureMessage;
+      }
+
+      return NextResponse.json({
+        success: true,
+        notificationsSent: studentIds.length,
+        emailSent,
+        emailFailed,
+        emailSkippedReason,
+        emailFailureMessage,
+      });
+    }
+
+    if (action === 'complete_session') {
+      const sessionId = String(body?.sessionId || '').trim();
+      const attendedIds = Array.isArray(body?.attendedStudentIds)
+        ? body.attendedStudentIds.map((id: unknown) => String(id))
+        : [];
+      if (!sessionId) {
+        return NextResponse.json({ message: 'Session ID is required' }, { status: 400 });
+      }
+
+      const [sessionRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT s.id, s.courseId, s.startAt, c.title AS courseTitle
+        FROM live_session s
+        JOIN course c ON c.id = s.courseId
+        WHERE s.id = ? AND s.teacherId = ?
+        LIMIT 1
+        `,
+        [sessionId, teacherId]
+      );
+      if (sessionRows.length === 0) {
+        return NextResponse.json({ message: 'Session not found' }, { status: 404 });
+      }
+      const session = sessionRows[0];
+
+      const [studentRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT e.studentId
+        FROM enrollment e
+        LEFT JOIN certificate cert
+          ON cert.studentId = e.studentId
+         AND cert.courseId = e.courseId
+        WHERE e.courseId = ?
+          AND e.status IN ('enrolled', 'in_progress', 'completed')
+          AND cert.id IS NULL
+        `,
+        [session.courseId]
+      );
+      const studentIds = studentRows.map((r) => r.studentId as string);
+
+      if (studentIds.length > 0) {
+        const attendanceValues = studentIds.map(() => '(?, ?, ?, 0, NULL)').join(',');
+        const attendanceParams = studentIds.flatMap((studentId) => [
+          randomUUID(),
+          sessionId,
+          studentId,
+        ]);
+        await pool.query(
+          `
+          INSERT IGNORE INTO live_session_attendance (id, sessionId, studentId, attended, markedAt)
+          VALUES ${attendanceValues}
+          `,
+          attendanceParams
+        );
+      }
+
+      await pool.query(
+        `UPDATE live_session_attendance SET attended = 0, markedAt = NULL WHERE sessionId = ?`,
+        [sessionId]
+      );
+
+      if (attendedIds.length > 0) {
+        const placeholders = attendedIds.map(() => '?').join(',');
+        await pool.query(
+          `
+          UPDATE live_session_attendance
+          SET attended = 1, markedAt = NOW()
+          WHERE sessionId = ? AND studentId IN (${placeholders})
+          `,
+          [sessionId, ...attendedIds]
+        );
+      }
+
+      await pool.query(
+        `UPDATE live_session SET status = 'completed', updatedAt = NOW() WHERE id = ?`,
+        [sessionId]
+      );
+
+      const [absentRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT a.studentId
+        FROM live_session_attendance a
+        JOIN enrollment e
+          ON e.studentId = a.studentId
+         AND e.courseId = ?
+        LEFT JOIN certificate cert
+          ON cert.studentId = e.studentId
+         AND cert.courseId = e.courseId
+        WHERE a.sessionId = ?
+          AND a.attended = 0
+          AND cert.id IS NULL
+        `,
+        [session.courseId, sessionId]
+      );
+      const absentIds = absentRows.map((r) => r.studentId as string);
+
+      if (absentIds.length > 0) {
+        await Promise.all(
+          absentIds.map((studentId) =>
+            createStudentNotification({
+              studentId,
+              courseId: session.courseId,
+              type: 'missed_session',
+              title: 'You missed a live session',
+              message: `You missed the live session for ${session.courseTitle}. Please watch the recording.`,
+            })
+          )
+        );
+
+        const missValues = absentIds.map(() => '(?, ?, ?, 1, NOW())').join(',');
+        const missParams = absentIds.flatMap((studentId) => [
+          randomUUID(),
+          studentId,
+          session.courseId,
+        ]);
+        await pool.query(
+          `
+          INSERT INTO student_live_miss
+            (id, studentId, courseId, missedCount, updatedAt)
+          VALUES ${missValues}
+          ON DUPLICATE KEY UPDATE missedCount = missedCount + 1, updatedAt = NOW()
+          `,
+          missParams
+        );
+
+        const placeholders = absentIds.map(() => '?').join(',');
+        const [missRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT studentId, missedCount
+          FROM student_live_miss
+          WHERE courseId = ? AND studentId IN (${placeholders})
+          `,
+          [session.courseId, ...absentIds]
+        );
+        const failedIds = missRows
+          .filter((row) => Number(row.missedCount || 0) >= 6)
+          .map((row) => row.studentId as string);
+
+        if (failedIds.length > 0) {
+          const failedPlaceholders = failedIds.map(() => '?').join(',');
+          await pool.query(
+            `
+            UPDATE enrollment
+            SET status = 'dropped'
+            WHERE courseId = ? AND studentId IN (${failedPlaceholders})
+            `,
+            [session.courseId, ...failedIds]
+          );
+
+          await Promise.all(
+            failedIds.map((studentId) =>
+              createStudentNotification({
+                studentId,
+                courseId: session.courseId,
+                type: 'course_failed',
+                title: 'Course failed',
+                message: `You missed 6 live sessions for ${session.courseTitle} and the course was marked as failed.`,
+              })
+            )
+          );
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'delete_session') {
+      const sessionId = String(body?.sessionId || '').trim();
+      if (!sessionId) {
+        return NextResponse.json({ message: 'Session ID is required' }, { status: 400 });
+      }
+
+      const [sessionRows] = await pool.query<RowDataPacket[]>(
+        `SELECT id FROM live_session WHERE id = ? AND teacherId = ? LIMIT 1`,
+        [sessionId, teacherId]
+      );
+      if (sessionRows.length === 0) {
+        return NextResponse.json({ message: 'Session not found' }, { status: 404 });
+      }
+
+      await pool.query(`DELETE FROM live_session WHERE id = ? AND teacherId = ?`, [
+        sessionId,
+        teacherId,
+      ]);
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ message: 'Unsupported action' }, { status: 400 });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error('Teacher live sessions error:', error);
+    return NextResponse.json(
+      { message: 'Failed to process live session', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

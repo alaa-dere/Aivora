@@ -1,0 +1,398 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { MessageSquare, Search, Send, Trash2 } from "lucide-react";
+
+type Teacher = {
+  id: string;
+  fullName: string;
+  imageUrl?: string | null;
+};
+
+type ThreadSummary = {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  lastMessageAt: string;
+  lastMessage: string | null;
+  unreadCount: number;
+};
+
+type MessageItem = {
+  id: string;
+  senderRole: "admin" | "teacher";
+  body: string;
+  createdAt: string;
+};
+
+export default function AdminMessagesPage() {
+  const searchParams = useSearchParams();
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const threadMap = useMemo(() => {
+    return new Map(threads.map((t) => [t.teacherId, t]));
+  }, [threads]);
+
+  const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId) || null;
+  const sortedTeachers = useMemo(() => {
+    return [...teachers].sort((a, b) => {
+      const aTime = threadMap.get(a.id)?.lastMessageAt
+        ? new Date(threadMap.get(a.id)!.lastMessageAt).getTime()
+        : 0;
+      const bTime = threadMap.get(b.id)?.lastMessageAt
+        ? new Date(threadMap.get(b.id)!.lastMessageAt).getTime()
+        : 0;
+      if (bTime !== aTime) return bTime - aTime;
+      return a.fullName.localeCompare(b.fullName);
+    });
+  }, [teachers, threadMap]);
+
+  const filteredTeachers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return sortedTeachers;
+    return sortedTeachers.filter((t) => t.fullName.toLowerCase().includes(term));
+  }, [search, sortedTeachers]);
+
+  const orderedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const loadTeachers = async () => {
+    try {
+      const res = await fetch("/api/teachers/list", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      setTeachers(data.teachers || []);
+    } catch (error) {
+      console.error("Failed to load teachers", error);
+    }
+  };
+
+  const loadThreads = async () => {
+    try {
+      const res = await fetch("/api/admin/messages", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) return;
+      setThreads(data.threads || []);
+    } catch (error) {
+      console.error("Failed to load message threads", error);
+    }
+  };
+
+  const loadMessages = async (teacherId: string, markRead = true) => {
+    try {
+      setLoadingMessages(true);
+      const res = await fetch(
+        `/api/admin/messages?teacherId=${teacherId}${markRead ? "&markRead=1" : ""}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.message || "Failed to load messages");
+        return;
+      }
+      setMessages(data.messages || []);
+      setErrorMsg("");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setErrorMsg(err.message || "Failed to load messages");
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTeachers();
+    loadThreads();
+  }, []);
+
+  useEffect(() => {
+    const teacherId = searchParams.get("teacherId");
+    if (teacherId) {
+      setSelectedTeacherId(teacherId);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (teachers.length === 0) return;
+    if (selectedTeacherId) return;
+    const unreadTeacher = sortedTeachers.find((t) => (threadMap.get(t.id)?.unreadCount || 0) > 0);
+    setSelectedTeacherId(unreadTeacher?.id || sortedTeachers[0].id);
+  }, [sortedTeachers, selectedTeacherId, threadMap, teachers.length]);
+
+  useEffect(() => {
+    if (!selectedTeacherId) return;
+    loadMessages(selectedTeacherId, true);
+    loadThreads();
+  }, [selectedTeacherId]);
+
+  useEffect(() => {
+    if (!selectedTeacherId) return;
+    setTimeout(scrollToBottom, 50);
+  }, [orderedMessages.length, selectedTeacherId]);
+
+  const sendMessage = async () => {
+    if (!selectedTeacherId || !draft.trim()) return;
+    try {
+      setSending(true);
+      const res = await fetch("/api/admin/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId: selectedTeacherId, body: draft }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.message || "Failed to send message");
+        return;
+      }
+      setDraft("");
+      await loadMessages(selectedTeacherId, false);
+      await loadThreads();
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setErrorMsg(err.message || "Failed to send message");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const deleteMessage = async (messageId: string, scope: "self" | "both") => {
+    try {
+      const res = await fetch("/api/admin/messages", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, scope }),
+      });
+      if (!res.ok) return;
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      await loadThreads();
+      setDeleteTargetId(null);
+    } catch (error) {
+      console.error("Failed to delete message", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-2.5 sm:p-4 md:p-6 transition-colors duration-300 overflow-x-hidden">
+      <div className="mb-3 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Teacher Messages</h1>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Chat directly with teachers and keep track of replies.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-4">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+          <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Teachers</p>
+              <span className="text-xs text-gray-400">{filteredTeachers.length}</span>
+            </div>
+            <div className="mt-3 relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search teacher..."
+                className="w-full pl-9 pr-3 py-2 sm:py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-xs sm:text-sm text-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+              />
+            </div>
+          </div>
+          <div className="max-h-[90px] sm:max-h-[70vh] overflow-y-auto p-2 space-y-2 messages-scroll">
+            {filteredTeachers.length === 0 && (
+              <div className="p-4 text-sm text-slate-500 dark:text-slate-400">No teachers found.</div>
+            )}
+            {filteredTeachers.map((teacher) => {
+              const thread = threadMap.get(teacher.id);
+              const unreadCount = thread?.unreadCount || 0;
+              const initials = teacher.fullName
+                .split(' ')
+                .map((part) => part[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+              return (
+                <button
+                  key={teacher.id}
+                  onClick={() => setSelectedTeacherId(teacher.id)}
+                  className={`w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border transition-all ${
+                    selectedTeacherId === teacher.id
+                      ? "bg-sky-50/80 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 shadow-sm"
+                      : "bg-white/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs sm:text-sm font-semibold overflow-hidden">
+                        {teacher.imageUrl ? (
+                          <img
+                            src={teacher.imageUrl}
+                            alt={teacher.fullName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span>{initials || "T"}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                          {teacher.fullName}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {thread?.lastMessage || "No messages yet"}
+                        </p>
+                      </div>
+                    </div>
+                    {unreadCount > 0 && (
+                      <span className="ml-2 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm min-h-[50vh] sm:min-h-0">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
+          <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-200/70 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {selectedTeacher ? `Chat with ${selectedTeacher.fullName}` : "Select a teacher"}
+            </p>
+          </div>
+
+          <div className="flex-1 max-h-[32vh] sm:max-h-[60vh] overflow-y-auto px-2.5 sm:px-4 py-2 sm:py-4 space-y-2 sm:space-y-3 messages-scroll">
+            {loadingMessages && (
+              <div className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</div>
+            )}
+            {!loadingMessages && errorMsg && (
+              <div className="text-sm text-red-600 dark:text-red-300">{errorMsg}</div>
+            )}
+            {!loadingMessages && !errorMsg && messages.length === 0 && (
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                No messages yet. Start the conversation.
+              </div>
+            )}
+            {orderedMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.senderRole === "admin" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`group relative max-w-[86%] sm:max-w-[80%] rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm border ${
+                    msg.senderRole === "admin"
+                      ? "bg-blue-600 text-white border-blue-500 shadow-sm"
+                      : "bg-gray-100 dark:bg-gray-700 text-slate-800 dark:text-slate-100 border-gray-200 dark:border-gray-600"
+                  }`}
+                >
+                  {msg.senderRole === "admin" && (
+                    <button
+                      onClick={() => setDeleteTargetId(msg.id)}
+                      className="admin-surface absolute -top-2 right-2 hidden group-hover:flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-600 hover:text-red-600 shadow"
+                      title="Delete message"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <p className="break-words">{msg.body}</p>
+                  <p className="text-[9px] sm:text-[10px] opacity-70 mt-1.5 sm:mt-2">
+                    {new Date(msg.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="px-2.5 sm:px-4 py-2.5 sm:py-3 border-t border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Write a message..."
+                className="admin-surface flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={sending || !selectedTeacherId}
+                className="inline-flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold transition disabled:opacity-60"
+              >
+                <Send className="w-4 h-4" />
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="admin-surface w-full max-w-sm rounded-2xl bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
+              Delete message
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Choose how you want to delete this message.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => deleteMessage(deleteTargetId, "self")}
+                className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-slate-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Delete for me
+              </button>
+              <button
+                onClick={() => deleteMessage(deleteTargetId, "both")}
+                className="px-3 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
+              >
+                Delete for everyone
+              </button>
+              <button
+                onClick={() => setDeleteTargetId(null)}
+                className="px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        .messages-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .messages-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.8);
+          border-radius: 999px;
+        }
+        .dark .messages-scroll::-webkit-scrollbar-thumb {
+          background: rgba(71, 85, 105, 0.9);
+        }
+      `}</style>
+    </div>
+  );
+}

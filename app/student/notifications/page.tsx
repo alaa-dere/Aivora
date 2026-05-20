@@ -1,0 +1,328 @@
+﻿"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, CheckCircle, Filter, Trash2, MessageSquare } from "lucide-react";
+import { getStudentNotificationHref } from "@/lib/notification-links";
+
+type NotificationItem = {
+  id: string;
+  type:
+    | "live_session"
+    | "missed_session"
+    | "course_failed"
+    | "quiz_passed"
+    | "quiz_failed"
+    | "certificate_earned"
+    | "teacher_message";
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  certificateId?: string | null;
+  courseId?: string | null;
+  conversationId?: string | null;
+  teacherId?: string | null;
+};
+
+type NotificationApiItem = {
+  id: string;
+  type: NotificationItem["type"];
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  certificateId?: string | null;
+  courseId?: string | null;
+  conversationId?: string | null;
+  teacherId?: string | null;
+};
+
+function getTypeIcon(type: NotificationItem["type"]) {
+  switch (type) {
+    case "live_session":
+      return <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    case "missed_session":
+      return <CheckCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />;
+    case "course_failed":
+      return <Bell className="w-5 h-5 text-red-600 dark:text-red-400" />;
+    case "quiz_passed":
+      return <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />;
+    case "quiz_failed":
+      return <Bell className="w-5 h-5 text-rose-600 dark:text-rose-400" />;
+    case "certificate_earned":
+      return <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
+    case "teacher_message":
+      return <MessageSquare className="w-5 h-5 text-sky-600 dark:text-sky-400" />;
+    default:
+      return <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />;
+  }
+}
+
+function getTypeBg(type: NotificationItem["type"]) {
+  switch (type) {
+    case "live_session":
+      return "bg-blue-100 dark:bg-blue-900/30";
+    case "missed_session":
+      return "bg-amber-100 dark:bg-amber-900/30";
+    case "course_failed":
+      return "bg-red-100 dark:bg-red-900/30";
+    case "quiz_passed":
+      return "bg-emerald-100 dark:bg-emerald-900/30";
+    case "quiz_failed":
+      return "bg-rose-100 dark:bg-rose-900/30";
+    case "certificate_earned":
+      return "bg-purple-100 dark:bg-purple-900/30";
+    case "teacher_message":
+      return "bg-sky-100 dark:bg-sky-900/30";
+    default:
+      return "bg-gray-100 dark:bg-gray-700";
+  }
+}
+
+export default function StudentNotificationsPage() {
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(6);
+
+  const filteredNotifications = useMemo(() => {
+    if (filter === "unread") {
+      return items.filter((n) => !n.read);
+    }
+    return items;
+  }, [filter, items]);
+
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [filter]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/student/dashboard?notifications=all", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok) return;
+        const mapped = ((data.notifications || []) as NotificationApiItem[]).map((n) => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          time: new Date(n.createdAt).toLocaleString(),
+          read: Boolean(n.readAt),
+          certificateId: n.certificateId || null,
+          courseId: n.courseId || null,
+          conversationId: n.conversationId || null,
+          teacherId: n.teacherId || null,
+        }));
+        setItems(mapped);
+      } catch (error) {
+        console.error("Failed to load notifications", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_notification_read", id }),
+      });
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_notification", id }),
+      });
+      setItems((prev) => prev.filter((n) => n.id !== id));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
+    } catch (error) {
+      console.error("Failed to delete notification", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    try {
+      await fetch("/api/student/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_all_notifications_read" }),
+      });
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      window.dispatchEvent(new Event("student-notifications:refresh"));
+    } catch (error) {
+      console.error("Failed to mark all as read", error);
+    }
+  };
+
+  const visibleNotifications = filteredNotifications.slice(0, visibleCount);
+  const isCertificateNotification = (notification: NotificationItem) =>
+    notification.type === "certificate_earned" ||
+    notification.title.toLowerCase().includes("certificate unlocked");
+
+  return (
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Updates about live sessions, quiz results, and certificates.
+          </p>
+        </div>
+      </div>
+
+      <div className="portal-surface relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 mb-6">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+          <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center">
+            <button className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors whitespace-nowrap">
+              <Filter className="w-4 h-4" />
+              All notifications
+            </button>
+            <button
+              onClick={markAllAsRead}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-2 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors whitespace-nowrap"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Mark all as read
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as "all" | "unread")}
+              className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
+            >
+              <option value="all">All</option>
+              <option value="unread">Unread</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="portal-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            Notifications List{" "}
+            <span className="text-gray-400 font-normal">({filteredNotifications.length})</span>
+          </p>
+        </div>
+
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          {loading && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+          )}
+          {!loading && filteredNotifications.length === 0 && (
+            <div className="p-5 text-sm text-gray-500 dark:text-gray-400">
+              No notifications yet.
+            </div>
+          )}
+          {visibleNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              className="p-3 md:p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+            >
+              <div className="flex gap-3">
+                <div
+                  className={`w-9 h-9 rounded-md ${getTypeBg(notification.type)} flex items-center justify-center shrink-0`}
+                >
+                  {getTypeIcon(notification.type)}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                        {notification.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                        {notification.message}
+                      </p>
+                    </div>
+
+                    {!notification.read && (
+                      <span className="mt-1 w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                    <span>{notification.time}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    {isCertificateNotification(notification) && (
+                      <Link
+                        href={
+                          notification.certificateId
+                            ? `/student/certificates/${notification.certificateId}`
+                            : "/student/certificates"
+                        }
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View certificate
+                      </Link>
+                    )}
+                    <Link
+                      href={getStudentNotificationHref(notification)}
+                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open
+                    </Link>
+                    {!notification.read && (
+                      <button
+                        onClick={() => markAsRead(notification.id)}
+                        className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      >
+                        Mark as read
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => deleteNotification(notification.id)}
+                  className="h-fit p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 text-center">
+        {filteredNotifications.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 6)}
+            className="portal-surface px-6 py-2.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            Load More Notifications
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+

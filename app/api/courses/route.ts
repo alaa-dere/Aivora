@@ -3,32 +3,128 @@ import pool from '@/lib/db';
 import { RowDataPacket, OkPacket } from 'mysql2';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { requirePermission } from '@/lib/request-auth';
+import { getRequestUser, requirePermission } from '@/lib/request-auth';
+import { ensureCourseEvaluationSchema } from '@/lib/ensure-course-evaluation-schema';
 
-export async function GET() {
+async function hasColumn(tableName: string, columnName: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    LIMIT 1
+    `,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
+async function hasTable(tableName: string): Promise<boolean> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT 1
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+    LIMIT 1
+    `,
+    [tableName]
+  );
+  return rows.length > 0;
+}
+
+export async function GET(req: Request) {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>(`
+    let canUseCourseEvaluation = true;
+    try {
+      await ensureCourseEvaluationSchema();
+      canUseCourseEvaluation = await hasColumn('course_evaluation', 'rating');
+    } catch (schemaError) {
+      canUseCourseEvaluation = false;
+      console.warn('Course evaluation schema unavailable, continuing without rating stats:', schemaError);
+    }
+
+    const user = await getRequestUser(req);
+    const includeEnrollment = user?.role === 'student';
+    const hasCategoryTable = await hasTable('category');
+    const hasCategoryId = await hasColumn('course', 'categoryId');
+    const hasImageUrl = await hasColumn('course', 'imageUrl');
+    const hasDurationWeeks = await hasColumn('course', 'durationWeeks');
+    const hasPrice = await hasColumn('course', 'price');
+    const hasTeacherSharePct = await hasColumn('course', 'teacherSharePct');
+    const hasStatus = await hasColumn('course', 'status');
+    const hasCreatedAt = await hasColumn('course', 'createdAt');
+
+    const enrollmentSelect = includeEnrollment
+      ? `, EXISTS(
+          SELECT 1
+          FROM enrollment e
+          WHERE e.courseId = c.id AND e.studentId = ?
+        ) AS enrolled`
+      : `, 0 AS enrolled`;
+    const evaluationSelect = canUseCourseEvaluation
+      ? `
+        (
+          SELECT AVG(ce.rating)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS averageRating,
+        (
+          SELECT COUNT(*)
+          FROM course_evaluation ce
+          WHERE ce.courseId = c.id
+            AND ce.rating IS NOT NULL
+        ) AS evaluationCount
+      `
+      : `
+        0 AS averageRating,
+        0 AS evaluationCount
+      `;
+
+    const categoryJoin =
+      hasCategoryTable && hasCategoryId
+        ? `LEFT JOIN category cat ON c.categoryId = cat.id`
+        : ``;
+
+    const categoryIdSelect = hasCategoryId ? `c.categoryId` : `NULL`;
+    const categoryNameSelect =
+      hasCategoryTable && hasCategoryId ? `cat.name` : `NULL`;
+
+    const sql = `
       SELECT 
         c.id,
         c.title,
         LEFT(c.description, 150) AS description,
-        c.imageUrl,
-        c.durationWeeks,
+        ${hasImageUrl ? 'c.imageUrl' : 'NULL'} AS imageUrl,
+        ${hasDurationWeeks ? 'c.durationWeeks' : '0'} AS durationWeeks,
+        ${categoryIdSelect} AS categoryId,
+        ${categoryNameSelect} AS categoryName,
         u.fullName AS teacherName,
         u.id AS teacherId,
-        c.price,
-        c.teacherSharePct,
-        c.status,
-        DATE_FORMAT(c.createdAt, '%Y-%m-%d') AS createdAt,
+        ${hasPrice ? 'c.price' : '0'} AS price,
+        ${hasTeacherSharePct ? 'c.teacherSharePct' : '70'} AS teacherSharePct,
+        ${hasStatus ? 'c.status' : "'draft'"} AS status,
+        ${hasCreatedAt ? "DATE_FORMAT(c.createdAt, '%Y-%m-%d')" : 'NULL'} AS createdAt,
         (
           SELECT COUNT(*) 
-          FROM Enrollment 
+          FROM enrollment 
           WHERE courseId = c.id
-        ) AS students
-      FROM Course c
-      JOIN User u ON c.teacherId = u.id
-      ORDER BY c.createdAt DESC
-    `);
+        ) AS students,
+        ${evaluationSelect}
+        ${enrollmentSelect}
+      FROM course c
+      ${categoryJoin}
+      JOIN user u ON c.teacherId = u.id
+      ORDER BY ${hasCreatedAt ? 'c.createdAt' : 'c.id'} DESC
+    `;
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      sql,
+      includeEnrollment ? [user?.id] : []
+    );
 
     const courses = rows.map((row) => ({
       id: row.id,
@@ -36,6 +132,8 @@ export async function GET() {
       description: row.description,
       imageUrl: row.imageUrl,
       durationWeeks: Number(row.durationWeeks || 0),
+      categoryId: row.categoryId || null,
+      categoryName: row.categoryName || null,
       teacherName: row.teacherName,
       teacherId: row.teacherId,
       price: Number(row.price),
@@ -43,15 +141,21 @@ export async function GET() {
       status: row.status,
       createdAt: row.createdAt,
       students: Number(row.students || 0),
+      enrolled: Boolean(row.enrolled),
+      averageRating:
+        row.averageRating === null || row.averageRating === undefined
+          ? 0
+          : Number(row.averageRating),
+      evaluationCount: Number(row.evaluationCount || 0),
     }));
 
     return NextResponse.json({ courses });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching courses:', error);
     return NextResponse.json(
       {
         message: 'Failed to fetch courses',
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -108,8 +212,8 @@ export async function POST(req: Request) {
     const [teacherCheck] = await pool.query<RowDataPacket[]>(
       `
       SELECT u.id
-      FROM User u
-      JOIN Role r ON u.roleId = r.id
+      FROM user u
+      JOIN role r ON u.roleId = r.id
       WHERE u.id = ? AND r.name = 'teacher'
       `,
       [teacherId]
@@ -154,7 +258,7 @@ export async function POST(req: Request) {
 
     await pool.query<OkPacket>(
       `
-      INSERT INTO Course
+      INSERT INTO course
         (id, title, description, imageUrl, durationWeeks, teacherId, price, teacherSharePct, status, createdAt, updatedAt)
       VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -181,13 +285,16 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating course:', error);
     return NextResponse.json(
       {
         message: 'Failed to create course',
-        error: error.message,
-        sqlMessage: error.sqlMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sqlMessage:
+          typeof error === 'object' && error !== null && 'sqlMessage' in error
+            ? String((error as { sqlMessage?: unknown }).sqlMessage ?? '')
+            : undefined,
       },
       { status: 500 }
     );
