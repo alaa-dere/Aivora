@@ -81,20 +81,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     let mounted = true;
     const loadCount = async () => {
-      try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch(API_ROUTES.admin.notificationsCount, { cache: 'no-store' }),
-          fetch(API_ROUTES.admin.messagesUnreadCount, { cache: 'no-store' }),
-        ]);
-        const notifData = await notifRes.json();
-        const msgData = await msgRes.json();
-        if (!notifRes.ok) return;
-        const unreadFromThreads = Number(msgData?.total || 0);
-        if (mounted) setMessageCount(unreadFromThreads);
-        if (mounted) setNotificationCount(Number(notifData.total || 0) + unreadFromThreads);
-      } catch (error) {
-        console.error('Failed to load notification count', error);
-      }
+      const safeFetchJson = async (url: string) => {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const [notifData, msgData] = await Promise.all([
+        safeFetchJson(API_ROUTES.admin.notificationsCount),
+        safeFetchJson(API_ROUTES.admin.messagesUnreadCount),
+      ]);
+
+      const unreadFromThreads = Number(msgData?.total || 0);
+      if (mounted) setMessageCount(unreadFromThreads);
+      if (mounted) setNotificationCount(Number(notifData?.total || 0) + unreadFromThreads);
     };
 
     loadCount();
@@ -868,5 +872,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
 
 
