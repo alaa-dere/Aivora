@@ -1750,9 +1750,14 @@ async function generateLessonDetailsFromAi(input: {
   '2.1 For lessons that include an explanation example, fill exampleCode with a short readable snippet (5-20 lines) using clear new lines and indentation. ' +
   '[QUIZ & LIVE EDITOR]: If enableLiveEditor=false: quizQuestions=[], hints=[], skip this section entirely. ' +
   '[Q1] QUESTION RULES: Exactly 1 question per lesson. Question must be about the starterCode output specifically. Include the lesson title in questionText to ensure uniqueness across lessons. Keep it short and clear (max 20 words). Never ask about concepts not yet introduced in this or previous lessons. Never repeat a question from another lesson. Vary question style (e.g. "What does this code print?", "What is the value of X?", "Which line causes Y?"). ' +
+  '[Q1.1] QUESTION-CONTEXT MATCH: The quiz question must closely match the exact example used in this lesson (starterCode/exampleCode), not a generic variant. Ask about the same variables/functions/data used in the lesson snippet so the question feels like a direct continuation of that example. ' +
   '[Q2] OPTIONS RULES: Exactly 4 options. correctOptionIndex must point to the option that matches expectedOutput exactly (same format and whitespace). Wrong options must be plausible but incorrect (off-by-one, common type/format mistakes, wrong order, or common beginner mistakes). No trick or absurd options. ' +
   '[Q3] LIVE EDITOR LANGUAGE: liveEditorLanguage must match the course language exactly. Never mix languages. starterCode must be valid and runnable in liveEditorLanguage. ' +
   '[Q4] HINTS (progressive): hints must be an array of exactly 3 strings. hints[0]=general direction (after 1st failed attempt), hints[1]=more specific operation/method (after 2nd failed attempt), hints[2]=almost answer structure without exact code (after 3rd failed attempt). Each hint must be exactly 1 sentence. Never reveal the answer or show code in hints. Hints must relate directly to starterCode and expectedOutput. ' +
+  '[LIVE EDITOR SELECTION]: enableLiveEditor=true only when the lesson genuinely benefits from hands-on practice. Target 60-70% of lessons per module with live editor. MUST have live editor for specific practical tasks (e.g. handling POST requests, writing SQL JOINs), lessons requiring writing/running code, and lessons with clear testable expectedOutput. Must NOT have live editor for introductions/overviews, conceptual reading-first lessons (e.g. event loop), lessons not demonstrable in a self-contained snippet, and video_embed lessons. When enableLiveEditor=false: starterCode="", exampleCode="", expectedOutput="", quizQuestions=[], hints=[]. ' +
+  '[CODE FORMATTING]: exampleCode and starterCode must use real newlines, never \\n as a literal string. Each statement should be on its own line. Add one blank line between logical blocks. Never write code as one compressed line. Use consistent indentation (2 or 4 spaces). ' +
+  '[STARTER CODE FORMATTING]: Every comment must be on its own dedicated line and never inline after code. Never place a comment and a statement on the same line. Every statement must be on its own line. Never compress multiple statements into one line. Comments must go ABOVE the code they describe, not beside it. Example WRONG: x = 1 # set x. RIGHT: # set x then x = 1 on the next line. ' +
+  'CRITICAL: starterCode must be valid, runnable code with no syntax errors. Every opening bracket/brace/parenthesis must have a matching closing one. List comprehensions must be complete: [expr for var in iterable if condition]. Never split a statement across lines unless using proper Python line continuation. Test mentally: would this code run without SyntaxError? ' +
  '4. videoUrl: one relevant YouTube link. resources: 2-3 real working links strictly related to this lesson and course language (no unrelated links). ' +
   '5. Choose type based on lesson content. If the lesson is about a specific practical task (e.g. handling POST requests), prefer code_example. If it’s about understanding concepts, prefer text. video_embed if it’s best explained visually (e.g. event loop). ' +
   '6. durationMinutes: 10-20 mins. Longer for code_example, shorter for text. ' +
@@ -1760,6 +1765,9 @@ async function generateLessonDetailsFromAi(input: {
   '8. No duplicate lesson titles within the same module. ' +
   '9. content (markdown): Write a full lesson explanation in Markdown format. Structure: "## What is [concept]" (clear definition), "## Why it matters" (real-world relevance), "## How it works" (step-by-step), "## Common mistakes" (2-3 pitfalls with fixes), and "## Summary" (3-4 bullet recap). Use **bold** for key terms and `inline code` for syntax. Do not repeat the lesson title as a heading. Length: 300-500 words. Language: same as course language (code examples aligned with liveEditorLanguage). ' +
   '10. [HINT]: hint must be 1-2 sentences max. It should guide the student toward the solution without revealing it. Focus on WHAT to do, not HOW exactly. Never provide the answer and never include code in the hint. ' +
+  '[CONTENT FORMATTING]: Use real newlines between every section, paragraph, and list item. Never use \\n as a literal string; always use actual line breaks. Always add exactly one blank line before and after ## headings. Always add exactly one blank line before and after code blocks. Never write more than 3 sentences in one paragraph. Never dump all content as one long block of text. Use **bold** for key terms and `inline code` for any syntax or function name. ' +
+  '[CODE CONSISTENCY]: starterCode and exampleCode must be about the same concept and use the same approach. exampleCode should demonstrate the concept with a complete working example. starterCode should use the same concept in a slightly different scenario where the student completes or modifies logic. Never use a completely different scenario in starterCode vs exampleCode. The student should be able to look at exampleCode and immediately understand what to do in starterCode. ' +
+  '[EXAMPLE CODE UNIQUENESS]: Each code example in the lesson content must be unique; never repeat the same example twice. exampleCode must be different from any code snippet inside content. starterCode must be different from exampleCode (same concept, different scenario). If referencing a previous example, describe it in text instead of repeating code. ' +
   '[CODE DEPENDENCY ORDER]: starterCode, exampleCode, and all code snippets inside content must ONLY use concepts and syntax introduced in this lesson or taught in previous lessons within this course. Never use a function, method, or pattern before it is introduced in the outline. If a concept is needed for the example but not yet taught, simplify the example instead. This applies to starterCode, exampleCode, content code blocks, and quiz question context. Example violation: using .reduce() in module 1 lesson 2 when .reduce() is taught in module 3. When in doubt, use simpler code over complete code.';
 
   const res = await fetch('https://api.openai.com/v1/responses', {
@@ -1791,7 +1799,17 @@ async function generateLessonDetailsFromAi(input: {
 
   if (!res.ok) return null;
   const data: unknown = await res.json();
-  const parsed = extractJsonObject(extractOpenAiText(data)) as Record<string, unknown> | null;
+  const rawText = extractOpenAiText(data);
+  const fixedText = rawText.replace(
+    /"content"\s*:\s*"((?:[^"\\]|\\[\s\S])*)"/g,
+    (match, contentValue) => {
+      const fixed = String(contentValue || '')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '  ');
+      return `"content": ${JSON.stringify(fixed)}`;
+    }
+  );
+  const parsed = extractJsonObject(fixedText) as Record<string, unknown> | null;
   if (!parsed) return null;
 
   const title = clampText(String(parsed.title || input.lessonTitle), DB_TITLE_MAX);
@@ -1833,7 +1851,149 @@ async function generateLessonDetailsFromAi(input: {
     shouldUseSimpleStarter(finalLang, safeStarterCode) ? simpleStarterForLanguage(finalLang, 0) : null;
   const shouldUseContextStarter =
     Boolean(simpleStarter) || isGenericStarter(finalLang, safeStarterCode);
-  const exampleCode = normalizeGeneratedCode(exampleCodeRaw);
+  const fixCode = (raw: string) =>
+    String(raw || '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/;(\s*)(?=[^\s])/g, ';\n')
+      .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+      .trim();
+  const fixStarterCodeFormatting = (code: string, lang: string): string => {
+    if (!code) return code;
+    return String(code)
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return [line];
+
+        if (lang === 'python' || lang === 'javascript') {
+          const inlineComment =
+            lang === 'python'
+              ? /^([^#'"]+?)\s+(#.+)$/
+              : /^([^/'"]+?)\s+(\/\/.+)$/;
+          const match = trimmed.match(inlineComment);
+          if (match && match[1].trim() && match[2].trim()) {
+            const indent = line.match(/^(\s*)/)?.[1] ?? '';
+            return [`${indent}${match[2].trim()}`, `${indent}${match[1].trim()}`];
+          }
+        }
+        return [line];
+      })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const ensureNewlinesAroundSyntax = (text: string): string => {
+    return String(text || '')
+      .replace(/([^\n])\n```/g, '$1\n\n```')
+      .replace(/```\n([^\n])/g, '```\n\n$1')
+      .replace(/([^\n`])`([^`]+)`([^\n`])/g, '$1\n`$2`\n$3')
+      .replace(/([^\n*])\*\*([^*]+)\*\*([^\n*])/g, '$1\n**$2**\n$3')
+      .replace(/([^\n])\n([-*] )/g, '$1\n\n$2')
+      .replace(/([^\n])\n(\d+\. )/g, '$1\n\n$2')
+      .replace(/([^\n])\n(> )/g, '$1\n\n$2')
+      .replace(/(> [^\n]+)\n([^\n>])/g, '$1\n\n$2')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const fixPythonCode = (code: string): string => {
+    if (!code) return code;
+
+    const raw = String(code)
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '    ')
+      .replace(/;\s*(?=\S)/g, '\n');
+
+    const baseLines = raw.split('\n');
+    const normalizedLines: string[] = [];
+    let currentIndent = 0;
+    let roundBalance = 0;
+    let squareBalance = 0;
+    let curlyBalance = 0;
+
+    for (const line of baseLines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        normalizedLines.push('');
+        continue;
+      }
+
+      // Move inline comments to their own line for readability.
+      const pyInlineComment = trimmed.match(/^([^#'"]+?)\s+(#.+)$/);
+      if (pyInlineComment && pyInlineComment[1]?.trim() && pyInlineComment[2]?.trim()) {
+        normalizedLines.push(`${' '.repeat(currentIndent)}${pyInlineComment[2].trim()}`);
+      }
+
+      const codePart = pyInlineComment ? pyInlineComment[1].trim() : trimmed;
+
+      // Dedent for continuation keywords before writing current line.
+      if (/^(elif\b|else:|except\b|finally:)/.test(codePart)) {
+        currentIndent = Math.max(0, currentIndent - 4);
+      }
+
+      let candidate = codePart;
+
+      // Repair broken one-line list/set/dict comprehensions with missing spacing.
+      candidate = candidate
+        .replace(/\[\s*([^\]]+?)\s+for\s+/g, '[ $1 for ')
+        .replace(/\{\s*([^}]+?)\s+for\s+/g, '{ $1 for ')
+        .replace(/\s+if\s+([^\]]+)\]/g, ' if $1 ]');
+
+      normalizedLines.push(`${' '.repeat(currentIndent)}${candidate}`.replace(/\s+$/g, ''));
+
+      // Track brackets to close unbalanced structures later.
+      for (const ch of candidate) {
+        if (ch === '(') roundBalance += 1;
+        if (ch === ')') roundBalance -= 1;
+        if (ch === '[') squareBalance += 1;
+        if (ch === ']') squareBalance -= 1;
+        if (ch === '{') curlyBalance += 1;
+        if (ch === '}') curlyBalance -= 1;
+      }
+
+      // Increase indent after block-open lines.
+      if (/:$/.test(candidate) && /^(def\b|class\b|if\b|elif\b|else:|for\b|while\b|try:|except\b|finally:|with\b)/.test(candidate)) {
+        currentIndent += 4;
+      }
+    }
+
+    while (roundBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)})`);
+      roundBalance -= 1;
+    }
+    while (squareBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)}]`);
+      squareBalance -= 1;
+    }
+    while (curlyBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)}}`);
+      curlyBalance -= 1;
+    }
+
+    return normalizedLines
+      .join('\n')
+      .replace(/(#[^\n]+)\n([^\n#])/g, '$1\n\n$2')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const exampleCode = fixCode(normalizeGeneratedCode(exampleCodeRaw) || '');
+  const formattedStarter = fixStarterCodeFormatting(safeStarterCode || '', finalLang);
+  const safeStarterCodeFinal = finalLang === 'python' ? fixPythonCode(formattedStarter) : formattedStarter;
+  const exampleAsStarterFormatted = fixStarterCodeFormatting(exampleCode || '', finalLang);
+  const exampleAsStarter =
+    finalLang === 'python' ? fixPythonCode(exampleAsStarterFormatted) : exampleAsStarterFormatted;
+  const shouldAlignStarterToExample =
+    Boolean(exampleAsStarter) &&
+    (!safeStarterCodeFinal || shouldUseContextStarter || isGenericStarter(finalLang, safeStarterCodeFinal || ''));
+  const finalStarterCode = shouldAlignStarterToExample
+    ? (exampleAsStarter || safeStarterCodeFinal || contextual.code)
+    : (shouldUseContextStarter ? contextual.code : safeStarterCodeFinal);
+  const finalExpectedOutput = shouldAlignStarterToExample
+    ? (String(parsed.expectedOutput || '').trim() || contextual.out || 'done')
+    : (shouldUseContextStarter ? contextual.out : String(parsed.expectedOutput || '').trim());
   const resources = Array.isArray(parsed.resources)
     ? parsed.resources.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 4)
     : [];
@@ -1844,19 +2004,28 @@ const quizQuestions = quizRaw.map(normalizeQuizQuestion).filter(Boolean) as Quiz
 return {
   title,
   description,
-  content: String(parsed.content || '').trim() || undefined,
+  content: ensureNewlinesAroundSyntax(
+    String(parsed.content || '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/(.)(\n?)(#{1,4} )/g, '$1\n\n$3')
+      .replace(/(#{1,4} [^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .trim()
+  ) || undefined,
   hint: String(parsed.hint || '').trim() || undefined,
   hints: Array.isArray(parsed.hints)
     ? parsed.hints.map((h) => String(h || '').trim()).filter(Boolean).slice(0, 3)
     : undefined,
   type,
   durationMinutes,
-  enableLiveEditor: Boolean(parsed.enableLiveEditor) && (type === 'code_example' || Boolean(simpleStarter ? simpleStarter.code : safeStarterCode)),
+  enableLiveEditor:
+    Boolean(parsed.enableLiveEditor) &&
+    (type === 'code_example' || Boolean(finalStarterCode || simpleStarter?.code || safeStarterCode)),
   liveEditorLanguage: finalLang,
-  starterCode: (shouldUseContextStarter ? contextual.code : safeStarterCode) || undefined,
-  exampleCode: exampleCode || undefined,
-  expectedOutput:
-    (shouldUseContextStarter ? contextual.out : String(parsed.expectedOutput || '').trim()) || undefined,
+  starterCode: finalStarterCode || undefined,
+  exampleCode: fixCode(exampleCode || '') || undefined,
+  expectedOutput: finalExpectedOutput || undefined,
   videoUrl: String(parsed.videoUrl || '').trim() || undefined,
   resources,
   quizQuestions, 

@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   UsersIcon,
   BookOpenIcon,
+  BriefcaseIcon,
   CurrencyDollarIcon,
   Bars3Icon,
   XMarkIcon,
@@ -547,7 +548,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <BookOpenIcon className="w-5 h-5 mr-3" />
+                <BriefcaseIcon className="w-5 h-5 mr-3" />
                 Job Postings
               </Link>
 

@@ -9,6 +9,15 @@ type LiveEditorSubmission = {
   error?: string | null;
 };
 
+const normalizeEditorCode = (raw: string) =>
+  String(raw || '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n');
+
 export default function LiveSqlEditor({
   initialCode,
   onSubmissionChange,
@@ -16,12 +25,16 @@ export default function LiveSqlEditor({
   initialCode: string;
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
 }) {
-  const [code, setCode] = useState(initialCode);
+  const [code, setCode] = useState(() => normalizeEditorCode(initialCode));
   const [output, setOutput] = useState<string>('No output yet.');
   const [error, setError] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState<boolean>(false);
   const outputRef = useRef<HTMLPreElement | null>(null);
   const lastSubmissionSignatureRef = useRef<string>('');
+
+  useEffect(() => {
+    setCode(normalizeEditorCode(initialCode));
+  }, [initialCode]);
 
   useEffect(() => {
     const signature = JSON.stringify({
@@ -85,7 +98,7 @@ export default function LiveSqlEditor({
         rows={12}
         value={code}
         onChange={(e) => {
-          setCode(e.target.value);
+          setCode(normalizeEditorCode(e.target.value));
           setHasRun(false);
         }}
         spellCheck={false}

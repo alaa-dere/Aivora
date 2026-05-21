@@ -40,6 +40,19 @@ type Module = {
   lessons: Lesson[];
 };
 
+const fixContent = (raw: string) =>
+  raw
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(.)(\n?)(#{1,4} )/g, '$1\n\n$3')
+    .replace(/(#{1,4} [^\n]+)\n([^\n])/g, '$1\n\n$2')
+
+    .trim();
+
 export default function CourseContentPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -533,9 +546,10 @@ export default function CourseContentPage() {
   };
 
   const generateDetailsWithAi = async () => {
-const prompt = aiOutlinePrompt.trim() || 
-  aiOutlineDraft?.map((m: any) => m.title).join(', ') || 
-  'Programming course';
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      'Programming course';
 
     if (!aiOutlineDraft || aiOutlineDraft.length === 0) {
       setError('Generate outline first (Phase 1)');
@@ -598,28 +612,29 @@ const prompt = aiOutlinePrompt.trim() ||
       setAiRegeneratingLessons(false);
     }
   };
-const regenerateSingleLesson = async (lessonId: string) => {
-  const prompt = aiOutlinePrompt.trim() ||
-    aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
-    modules.map((m) => m.title).join(', ') ||
-    'Programming course';
-  setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
-  try {
-    const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed');
-    await fetchContent();
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
-  } catch {
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
-  }
-};
+  const regenerateSingleLesson = async (lessonId: string) => {
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      modules.map((m) => m.title).join(', ') ||
+      'Programming course';
+    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
+    try {
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      await fetchContent();
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
+    } catch {
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
+    }
+  };
 
   const toggleSelectLesson = (lessonId: string) => {
     setSelectedLessonIds((prev) =>
@@ -1485,7 +1500,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </div>
                     <LessonContentView
                       key={lesson.id}
-                      content={lesson.content || ''}
+                      content={fixContent(lesson.content ?? '')}
                       quizQuestions={lesson.quizQuestions || []}
                       enableLiveEditor={lesson.enableLiveEditor}
                       liveEditorLanguage={lesson.liveEditorLanguage || 'python'}

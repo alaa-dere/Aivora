@@ -211,19 +211,34 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to fetch courses');
         }
 
-        setCourses(normalizeCourseList(data.data));
-        setFeedbacks(normalizeFeedbackList(data.feedbacks));
-        setEnrolledCourses(normalizeCourseList(data.enrolledCourses));
+        const normalizedCourses = normalizeCourseList(data.data);
+        const normalizedFeedbacks = normalizeFeedbackList(data.feedbacks);
+        const normalizedEnrolled = normalizeCourseList(data.enrolledCourses);
+
+        if (status === 'authenticated') {
+          setCourses(normalizedCourses);
+          setEnrolledCourses(normalizedEnrolled);
+        } else {
+          // Prevent stale "enrolled" badges after logout.
+          setCourses(normalizedCourses.map((course) => ({ ...course, enrolled: false })));
+          setEnrolledCourses([]);
+        }
+
+        setFeedbacks(normalizedFeedbacks);
       } catch (error) {
         console.error('Failed to load courses:', error);
         setCoursesError('Failed to load courses');
+        if (status !== 'authenticated') {
+          setCourses((prev) => prev.map((course) => ({ ...course, enrolled: false })));
+          setEnrolledCourses([]);
+        }
       } finally {
         setCoursesLoading(false);
       }
     };
 
     fetchCourses();
-  }, []);
+  }, [status, session?.user?.id, session?.user?.role]);
 
   useEffect(() => {
     const role = (session?.user?.role || '').toLowerCase();
@@ -328,7 +343,15 @@ export default function HomePage() {
   const isArabic = language === 'ar';
   const role = session?.user?.role?.toLowerCase() || '';
   const isAdmin = role === 'admin';
+  const isTeacher = role === 'teacher';
   const isStudent = role === 'student';
+
+  const getCourseViewHref = (course: { id: string; enrolled?: boolean }) => {
+    if (isAdmin) return `/dashboard/courses/${course.id}/content`;
+    if (isTeacher) return `/teacher/courses/${course.id}/content`;
+    if (course.enrolled) return `/student/my-courses/${course.id}`;
+    return `/Home/courses/${course.id}`;
+  };
 
   const trackCourseView = (courseId: string) => {
     const role = (session?.user?.role || '').toLowerCase();
@@ -729,7 +752,7 @@ export default function HomePage() {
                                       </span>
 
                                       <Link
-                                        href={`/Home/courses/${course.id}`}
+                                        href={getCourseViewHref(course)}
                                         onClick={() => trackCourseView(course.id)}
                                         className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
                                       >
@@ -1002,11 +1025,7 @@ export default function HomePage() {
                             </span>
 
                             <Link
-                              href={
-                                course.enrolled
-                                  ? `/student/my-courses/${course.id}`
-                                  : `/Home/courses/${course.id}`
-                              }
+                              href={getCourseViewHref(course)}
                               onClick={() => trackCourseView(course.id)}
                               className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white text-xs sm:text-sm font-semibold border transition-all duration-300 ${
                                 course.enrolled
@@ -1142,23 +1161,17 @@ export default function HomePage() {
                           ${course.price}
                         </span>
 
-                        {course.enrolled ? (
-                          <Link
-                            href={`/student/my-courses/${course.id}`}
-                            onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
-                          >
-                            {isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled'}
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/Home/courses/${course.id}`}
-                            onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
-                          >
-                            {isArabic ? '  ط¹ط±ط¶ ط§ظ„ط¯ظˆط±ط©' : 'View Course'}
-                          </Link>
-                        )}
+                        <Link
+                          href={getCourseViewHref(course)}
+                          onClick={() => trackCourseView(course.id)}
+                          className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white text-xs sm:text-sm font-semibold border transition-all duration-300 ${
+                            course.enrolled
+                              ? 'bg-emerald-600/80 hover:bg-emerald-500 border-emerald-300/40'
+                              : 'bg-white/10 hover:bg-blue-600 border-white/15'
+                          }`}
+                        >
+                          {course.enrolled ? (isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled') : isArabic ? '  ط¹ط±ط¶ ط§ظ„ط¯ظˆط±ط©' : 'View Course'}
+                        </Link>
                       </div>
                     </div>
                   </div>
