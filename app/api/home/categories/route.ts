@@ -133,7 +133,11 @@ export async function GET() {
         .map((path) => ({ id: path.id, title: path.title })),
     }));
 
-    return NextResponse.json({ categories: grouped });
+    const categoriesWithCourses = grouped.filter(
+      (category) => category.courses.length > 0
+    );
+
+    return NextResponse.json({ categories: categoriesWithCourses });
   } catch (error: unknown) {
     console.error('Error loading home categories:', error);
     return NextResponse.json(

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import Image from "next/image";
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -35,12 +35,12 @@ const navItemsEn = [
 ];
 
 const navItemsAr = [
-  { name: 'الرئيسية', id: 'home' },
-  { name: 'عنا', id: 'about' },
-  { name: 'التصنيفات', id: 'categories' },
-  { name: 'الدورات', id: 'courses' },
-  { name: 'آراء الطلاب', id: 'testimonials' },
-  { name: 'اتصل بنا', id: 'contact' },
+  { name: 'ط§ظ„ط±ط¦ظٹط³ظٹط©', id: 'home' },
+  { name: 'ط¹ظ†ط§', id: 'about' },
+  { name: 'ط§ظ„طھطµظ†ظٹظپط§طھ', id: 'categories' },
+  { name: 'ط§ظ„ط¯ظˆط±ط§طھ', id: 'courses' },
+  { name: 'ط¢ط±ط§ط، ط§ظ„ط·ظ„ط§ط¨', id: 'testimonials' },
+  { name: 'ط§طھطµظ„ ط¨ظ†ط§', id: 'contact' },
 ];
 const testimonialsEn = [
   {
@@ -68,23 +68,23 @@ const testimonialsEn = [
 
 const testimonialsAr = [
   {
-    name: 'سارة محمد',
-    role: 'مطورة Full-Stack',
-    content: 'أيفورا غيرت مسيرتي المهنية بالكامل!',
+    name: 'ط³ط§ط±ط© ظ…ط­ظ…ط¯',
+    role: 'ظ…ط·ظˆط±ط© Full-Stack',
+    content: 'ط£ظٹظپظˆط±ط§ ط؛ظٹط±طھ ظ…ط³ظٹط±طھظٹ ط§ظ„ظ…ظ‡ظ†ظٹط© ط¨ط§ظ„ظƒط§ظ…ظ„!',
     avatar: 'https://images.unsplash.com/photo-1494790108777-223d9d6b9f4f?auto=format&fit=crop&q=80&w=200',
     rating: 5,
   },
   {
-    name: 'عمر حسن',
-    role: 'عالم بيانات',
-    content: 'أفضل منصة للتعلم العملي والتطبيقي.',
+    name: 'ط¹ظ…ط± ط­ط³ظ†',
+    role: 'ط¹ط§ظ„ظ… ط¨ظٹط§ظ†ط§طھ',
+    content: 'ط£ظپط¶ظ„ ظ…ظ†طµط© ظ„ظ„طھط¹ظ„ظ… ط§ظ„ط¹ظ…ظ„ظٹ ظˆط§ظ„طھط·ط¨ظٹظ‚ظٹ.',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
     rating: 5,
   },
   {
-    name: 'لينا خليل',
-    role: 'مصممة واجهات وتجربة مستخدم',
-    content: 'مشاريع رائعة وملاحظات مفيدة جداً.',
+    name: 'ظ„ظٹظ†ط§ ط®ظ„ظٹظ„',
+    role: 'ظ…طµظ…ظ…ط© ظˆط§ط¬ظ‡ط§طھ ظˆطھط¬ط±ط¨ط© ظ…ط³طھط®ط¯ظ…',
+    content: 'ظ…ط´ط§ط±ظٹط¹ ط±ط§ط¦ط¹ط© ظˆظ…ظ„ط§ط­ط¸ط§طھ ظ…ظپظٹط¯ط© ط¬ط¯ط§ظ‹.',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
     rating: 4.8,
   },
@@ -133,6 +133,16 @@ type CategoryMenuItem = {
   paths: Array<{ id: string; title: string }>;
 };
 
+type JobPosting = {
+  id: string;
+  title: string;
+  description: string;
+  requirements: string;
+  responsibilities: string;
+  otherNotes: string | null;
+  status: 'open' | 'closed';
+};
+
 export default function HomePage() {
   const { theme, setTheme } = useTheme();
   const { data: session, status } = useSession();
@@ -154,6 +164,7 @@ export default function HomePage() {
   const [categoryMenuError, setCategoryMenuError] = useState('');
   const [categoryMenuItems, setCategoryMenuItems] = useState<CategoryMenuItem[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -200,19 +211,34 @@ export default function HomePage() {
           throw new Error(data.message || 'Failed to fetch courses');
         }
 
-        setCourses(normalizeCourseList(data.data));
-        setFeedbacks(normalizeFeedbackList(data.feedbacks));
-        setEnrolledCourses(normalizeCourseList(data.enrolledCourses));
+        const normalizedCourses = normalizeCourseList(data.data);
+        const normalizedFeedbacks = normalizeFeedbackList(data.feedbacks);
+        const normalizedEnrolled = normalizeCourseList(data.enrolledCourses);
+
+        if (status === 'authenticated') {
+          setCourses(normalizedCourses);
+          setEnrolledCourses(normalizedEnrolled);
+        } else {
+          // Prevent stale "enrolled" badges after logout.
+          setCourses(normalizedCourses.map((course) => ({ ...course, enrolled: false })));
+          setEnrolledCourses([]);
+        }
+
+        setFeedbacks(normalizedFeedbacks);
       } catch (error) {
         console.error('Failed to load courses:', error);
         setCoursesError('Failed to load courses');
+        if (status !== 'authenticated') {
+          setCourses((prev) => prev.map((course) => ({ ...course, enrolled: false })));
+          setEnrolledCourses([]);
+        }
       } finally {
         setCoursesLoading(false);
       }
     };
 
     fetchCourses();
-  }, []);
+  }, [status, session?.user?.id, session?.user?.role]);
 
   useEffect(() => {
     const role = (session?.user?.role || '').toLowerCase();
@@ -287,6 +313,20 @@ export default function HomePage() {
     fetchCategoryMenu();
   }, []);
 
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const res = await fetch(API_ROUTES.jobPostings, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) return;
+        setJobPostings(Array.isArray(data?.jobs) ? data.jobs : []);
+      } catch {
+        // ignore
+      }
+    };
+    fetchJobs();
+  }, []);
+
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
@@ -303,7 +343,15 @@ export default function HomePage() {
   const isArabic = language === 'ar';
   const role = session?.user?.role?.toLowerCase() || '';
   const isAdmin = role === 'admin';
+  const isTeacher = role === 'teacher';
   const isStudent = role === 'student';
+
+  const getCourseViewHref = (course: { id: string; enrolled?: boolean }) => {
+    if (isAdmin) return `/dashboard/courses/${course.id}/content`;
+    if (isTeacher) return `/teacher/courses/${course.id}/content`;
+    if (course.enrolled) return `/student/my-courses/${course.id}`;
+    return `/Home/courses/${course.id}`;
+  };
 
   const trackCourseView = (courseId: string) => {
     const role = (session?.user?.role || '').toLowerCase();
@@ -416,7 +464,7 @@ export default function HomePage() {
                 onClick={toggleLanguage}
                 className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle language"
-                title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
+                title={isArabic ? 'Switch to English' : 'ط§ظ„طھط¨ط¯ظٹظ„ ط¥ظ„ظ‰ ط§ظ„ط¹ط±ط¨ظٹط©'}
               >
                 <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
@@ -428,7 +476,7 @@ export default function HomePage() {
                   <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
                     <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
-                      {isArabic ? 'تسجيل الدخول' : 'Login'}
+                      {isArabic ? 'طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„' : 'Login'}
                     </span>
                   </button>
                 </Link>
@@ -460,7 +508,7 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div className={`${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
               <p className="inline-block mb-4 px-4 py-1.5 rounded-full bg-white/10 text-blue-100 text-sm md:text-base font-medium backdrop-blur-md border border-white/20 shadow-md">
-                {isArabic ? 'مرحباً بك في أيفورا' : 'Welcome to Aivora'}
+                {isArabic ? 'ظ…ط±ط­ط¨ط§ظ‹ ط¨ظƒ ظپظٹ ط£ظٹظپظˆط±ط§' : 'Welcome to Aivora'}
               </p>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-black leading-[0.95] tracking-tight text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.35)]">
@@ -468,12 +516,12 @@ export default function HomePage() {
               </h1>
 
               <h2 className="mt-3 text-xl sm:text-3xl lg:text-4xl font-semibold text-blue-100">
-                {isArabic ? 'تعلم أذكى. بنِ أسرع.' : 'Learn Smarter. Build Faster.'}
+                {isArabic ? 'طھط¹ظ„ظ… ط£ط°ظƒظ‰. ط¨ظ†ظگ ط£ط³ط±ط¹.' : 'Learn Smarter. Build Faster.'}
               </h2>
 
               <p className="mt-4 max-w-2xl mx-auto md:mx-0 text-sm sm:text-lg lg:text-xl leading-7 sm:leading-8 text-slate-200">
                 {isArabic
-                  ? 'أيفورا منصة تعلم حديثة تساعد الطلاب والمحترفين على إتقان الذكاء الاصطناعي والبرمجة والمهارات الرقمية من خلال دورات عملية ومشاريع حقيقية ومسار تعليمي واضح.'
+                  ? 'ط£ظٹظپظˆط±ط§ ظ…ظ†طµط© طھط¹ظ„ظ… ط­ط¯ظٹط«ط© طھط³ط§ط¹ط¯ ط§ظ„ط·ظ„ط§ط¨ ظˆط§ظ„ظ…ط­طھط±ظپظٹظ† ط¹ظ„ظ‰ ط¥طھظ‚ط§ظ† ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ ظˆط§ظ„ط¨ط±ظ…ط¬ط© ظˆط§ظ„ظ…ظ‡ط§ط±ط§طھ ط§ظ„ط±ظ‚ظ…ظٹط© ظ…ظ† ط®ظ„ط§ظ„ ط¯ظˆط±ط§طھ ط¹ظ…ظ„ظٹط© ظˆظ…ط´ط§ط±ظٹط¹ ط­ظ‚ظٹظ‚ظٹط© ظˆظ…ط³ط§ط± طھط¹ظ„ظٹظ…ظٹ ظˆط§ط¶ط­.'
                   : 'Aivora is a modern learning platform that helps students and professionals master AI, programming, and digital skills through practical courses, real projects, and a clear learning path.'}
               </p>
 
@@ -482,15 +530,34 @@ export default function HomePage() {
                   onClick={() => scrollTo('courses')}
                   className="px-6 py-3 sm:px-8 sm:py-4 rounded-2xl bg-blue-950 dark:bg-blue-700 hover:bg-blue-500 text-white text-base sm:text-lg font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.35)] transition-all duration-300 hover:-translate-y-1"
                 >
-                  {isArabic ? 'استكشف الدورات' : 'Explore Courses'}
+                  {isArabic ? 'ط§ط³طھظƒط´ظپ ط§ظ„ط¯ظˆط±ط§طھ' : 'Explore Courses'}
                 </button>
 
                 <button
                   onClick={() => scrollTo('about')}
                   className="px-6 py-3 sm:px-8 sm:py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-base sm:text-lg font-semibold border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300"
                 >
-                  {isArabic ? 'تعرف أكثر' : 'Learn More'}
+                  {isArabic ? 'طھط¹ط±ظپ ط£ظƒط«ط±' : 'Learn More'}
                 </button>
+              </div>
+
+              <div className="mt-6 max-w-2xl rounded-2xl border border-white/25 bg-white/10 backdrop-blur-md p-4 sm:p-5 shadow-lg">
+                <p className="text-sm sm:text-base text-slate-100 leading-7">
+                  {isArabic
+                    ? 'استكشف فرص التدريس المتاحة مع أيفورا وقدّم على الوظيفة المناسبة لخبرتك.'
+                    : 'Explore current teaching opportunities with Aivora and apply for the role that matches your expertise.'}
+                </p>
+                <Link
+                  href="/job-openings"
+                  className="mt-3 relative inline-flex items-center justify-center px-4 py-2 rounded-xl bg-blue-950/80 hover:bg-blue-600 text-white text-sm font-semibold border border-white/20 transition-all duration-300"
+                >
+                  {isArabic ? 'ط¹ط±ط¶ ط¥ط¹ظ„ط§ظ†ط§طھ ط§ظ„ظˆط¸ط§ط¦ظپ' : 'View Job Openings'}
+                  {jobPostings.length > 0 && (
+                    <span className="ml-2 inline-flex min-w-[20px] h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white">
+                      {jobPostings.length}
+                    </span>
+                  )}
+                </Link>
               </div>
             </div>
 
@@ -512,12 +579,12 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 lg:gap-16 items-start">
             <div className="text-left md:col-span-2">
               <p className={`text-blue-300 text-sm tracking-widest uppercase mb-4 ${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
-                {isArabic ? 'عن أيفورا' : 'About Aivora'}
+                {isArabic ? 'ط¹ظ† ط£ظٹظپظˆط±ط§' : 'About Aivora'}
               </p>
 
               <h2 className={`text-3xl sm:text-4xl md:text-6xl font-black text-white tracking-tight leading-tight mb-6 md:mb-8 ${isArabic ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
-                {isArabic ? 'اكتشف' : 'Discover'}{' '}
-                <span className="text-blue-300">{isArabic ? 'أيفورا' : 'Aivora'}</span>
+                {isArabic ? 'ط§ظƒطھط´ظپ' : 'Discover'}{' '}
+                <span className="text-blue-300">{isArabic ? 'ط£ظٹظپظˆط±ط§' : 'Aivora'}</span>
               </h2>
 
               <p
@@ -527,18 +594,18 @@ export default function HomePage() {
               >
                 {isArabic ? (
                   <>
-                    أيفورا هي منصة تعلم ذكية مدعومة بالذكاء الاصطناعي، مصممة لدعم الطلاب وتحسين تجربتهم التعليمية.
-                    تهدف المنصة إلى جعل التعلم أسهل وأكثر تفاعلية من خلال تقديم أدوات متقدمة تساعد الطلاب على فهم مواد
-                    الدورات بشكل أفضل وتطوير مهاراتهم خطوة بخطوة.
+                    ط£ظٹظپظˆط±ط§ ظ‡ظٹ ظ…ظ†طµط© طھط¹ظ„ظ… ط°ظƒظٹط© ظ…ط¯ط¹ظˆظ…ط© ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹطŒ ظ…طµظ…ظ…ط© ظ„ط¯ط¹ظ… ط§ظ„ط·ظ„ط§ط¨ ظˆطھط­ط³ظٹظ† طھط¬ط±ط¨طھظ‡ظ… ط§ظ„طھط¹ظ„ظٹظ…ظٹط©.
+                    طھظ‡ط¯ظپ ط§ظ„ظ…ظ†طµط© ط¥ظ„ظ‰ ط¬ط¹ظ„ ط§ظ„طھط¹ظ„ظ… ط£ط³ظ‡ظ„ ظˆط£ظƒط«ط± طھظپط§ط¹ظ„ظٹط© ظ…ظ† ط®ظ„ط§ظ„ طھظ‚ط¯ظٹظ… ط£ط¯ظˆط§طھ ظ…طھظ‚ط¯ظ…ط© طھط³ط§ط¹ط¯ ط§ظ„ط·ظ„ط§ط¨ ط¹ظ„ظ‰ ظپظ‡ظ… ظ…ظˆط§ط¯
+                    ط§ظ„ط¯ظˆط±ط§طھ ط¨ط´ظƒظ„ ط£ظپط¶ظ„ ظˆطھط·ظˆظٹط± ظ…ظ‡ط§ط±ط§طھظ‡ظ… ط®ط·ظˆط© ط¨ط®ط·ظˆط©.
                     <br />
                     <br />
-                    أيفورا توفر للطلاب الوصول إلى مسارات تعلم منظمة، مساعدة فورية بالذكاء الاصطناعي، اختبارات تفاعلية،
-                    وأدوات تساعد في تلخيص محتوى الدورات وتتبع التقدم الأكاديمي. كما تسمح للطلاب بممارسة مهاراتهم في
-                    الوقت الفعلي وتلقي دعم مستمر طوال رحلتهم التعليمية.
+                    ط£ظٹظپظˆط±ط§ طھظˆظپط± ظ„ظ„ط·ظ„ط§ط¨ ط§ظ„ظˆطµظˆظ„ ط¥ظ„ظ‰ ظ…ط³ط§ط±ط§طھ طھط¹ظ„ظ… ظ…ظ†ط¸ظ…ط©طŒ ظ…ط³ط§ط¹ط¯ط© ظپظˆط±ظٹط© ط¨ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹطŒ ط§ط®طھط¨ط§ط±ط§طھ طھظپط§ط¹ظ„ظٹط©طŒ
+                    ظˆط£ط¯ظˆط§طھ طھط³ط§ط¹ط¯ ظپظٹ طھظ„ط®ظٹطµ ظ…ط­طھظˆظ‰ ط§ظ„ط¯ظˆط±ط§طھ ظˆطھطھط¨ط¹ ط§ظ„طھظ‚ط¯ظ… ط§ظ„ط£ظƒط§ط¯ظٹظ…ظٹ. ظƒظ…ط§ طھط³ظ…ط­ ظ„ظ„ط·ظ„ط§ط¨ ط¨ظ…ظ…ط§ط±ط³ط© ظ…ظ‡ط§ط±ط§طھظ‡ظ… ظپظٹ
+                    ط§ظ„ظˆظ‚طھ ط§ظ„ظپط¹ظ„ظٹ ظˆطھظ„ظ‚ظٹ ط¯ط¹ظ… ظ…ط³طھظ…ط± ط·ظˆط§ظ„ ط±ط­ظ„طھظ‡ظ… ط§ظ„طھط¹ظ„ظٹظ…ظٹط©.
                     <br />
                     <br />
-                    من خلال هذه الميزات، تهدف أيفورا إلى خلق بيئة تعلم حديثة تساعد الطلاب على التعلم بفعالية أكبر
-                    وتوفر لهم الأدوات اللازمة لتحقيق النجاح الأكاديمي وتطوير مهارات جاهزة لسوق العمل المستقبلي.
+                    ظ…ظ† ط®ظ„ط§ظ„ ظ‡ط°ظ‡ ط§ظ„ظ…ظٹط²ط§طھطŒ طھظ‡ط¯ظپ ط£ظٹظپظˆط±ط§ ط¥ظ„ظ‰ ط®ظ„ظ‚ ط¨ظٹط¦ط© طھط¹ظ„ظ… ط­ط¯ظٹط«ط© طھط³ط§ط¹ط¯ ط§ظ„ط·ظ„ط§ط¨ ط¹ظ„ظ‰ ط§ظ„طھط¹ظ„ظ… ط¨ظپط¹ط§ظ„ظٹط© ط£ظƒط¨ط±
+                    ظˆطھظˆظپط± ظ„ظ‡ظ… ط§ظ„ط£ط¯ظˆط§طھ ط§ظ„ظ„ط§ط²ظ…ط© ظ„طھط­ظ‚ظٹظ‚ ط§ظ„ظ†ط¬ط§ط­ ط§ظ„ط£ظƒط§ط¯ظٹظ…ظٹ ظˆطھط·ظˆظٹط± ظ…ظ‡ط§ط±ط§طھ ط¬ط§ظ‡ط²ط© ظ„ط³ظˆظ‚ ط§ظ„ط¹ظ…ظ„ ط§ظ„ظ…ط³طھظ‚ط¨ظ„ظٹ.
                   </>
                 ) : (
                   <>
@@ -568,20 +635,20 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-6 sm:mb-8">
               <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                {isArabic ? 'التصنيفات' : 'Categories'}
+                {isArabic ? 'ط§ظ„طھطµظ†ظٹظپط§طھ' : 'Categories'}
               </p>
               <h3 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
-                {isArabic ? 'أفضل ' : 'Top '}
-                <span className="text-blue-300">{isArabic ? 'التصنيفات' : 'Categories'}</span>
+                {isArabic ? 'ط£ظپط¶ظ„ ' : 'Top '}
+                <span className="text-blue-300">{isArabic ? 'ط§ظ„طھطµظ†ظٹظپط§طھ' : 'Categories'}</span>
               </h3>
             </div>
 
             {categoryMenuLoading ? (
-              <p className="text-center text-white/80 text-sm">{isArabic ? 'جاري التحميل...' : 'Loading...'}</p>
+              <p className="text-center text-white/80 text-sm">{isArabic ? 'ط¬ط§ط±ظٹ ط§ظ„طھط­ظ…ظٹظ„...' : 'Loading...'}</p>
             ) : categoryMenuError ? (
               <p className="text-center text-sm text-red-500">{categoryMenuError}</p>
             ) : categoryMenuItems.length === 0 ? (
-              <p className="text-center text-sm text-white/80">{isArabic ? 'لا توجد تصنيفات حالياً' : 'No categories yet'}</p>
+              <p className="text-center text-sm text-white/80">{isArabic ? 'ظ„ط§ طھظˆط¬ط¯ طھطµظ†ظٹظپط§طھ ط­ط§ظ„ظٹط§ظ‹' : 'No categories yet'}</p>
             ) : (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 sm:mt-10 mb-6">
@@ -609,7 +676,7 @@ export default function HomePage() {
                       {selectedCategory.courses.length > 0 && (
                         <div>
                           <p className="text-sm font-semibold text-blue-200 mb-3">
-                            {isArabic ? 'الدورات' : 'Courses'}
+                            {isArabic ? 'ط§ظ„ط¯ظˆط±ط§طھ' : 'Courses'}
                           </p>
                           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                             {selectedCategory.courses.map((course) => {
@@ -620,7 +687,7 @@ export default function HomePage() {
                               return (
                                 <div
                                   key={`cat-course-${course.id}`}
-                                  className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                                  className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                                 >
                                   <div className="relative h-36 sm:h-40 overflow-hidden">
                                     <img
@@ -636,9 +703,9 @@ export default function HomePage() {
                                     />
                                   </div>
 
-                                  <div className="p-4">
+                                  <div className="p-4 flex flex-1 flex-col">
                                     <p className="text-sm text-blue-200 mb-2 font-medium">
-                                      {isArabic ? 'بواسطة' : 'By'} {course.instructor}
+                                      {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                                     </p>
 
                                     <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
@@ -674,22 +741,22 @@ export default function HomePage() {
                                         </span>
                                       ) : (
                                         <span className="ml-2 text-xs text-slate-300">
-                                          {isArabic ? 'بدون تقييم بعد' : 'No reviews yet'}
+                                          {isArabic ? 'ط¨ط¯ظˆظ† طھظ‚ظٹظٹظ… ط¨ط¹ط¯' : 'No reviews yet'}
                                         </span>
                                       )}
                                     </div>
 
-                                    <div className="flex items-center justify-between">
+                                    <div className="mt-auto pt-2 flex items-center justify-between">
                                       <span className="text-lg sm:text-xl font-black text-blue-300">
                                         ${course.price}
                                       </span>
 
                                       <Link
-                                        href={`/Home/courses/${course.id}`}
+                                        href={getCourseViewHref(course)}
                                         onClick={() => trackCourseView(course.id)}
                                         className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
                                       >
-                                        {isArabic ? 'عرض الدورة' : 'View Course'}
+                                        {isArabic ? 'ط¹ط±ط¶ ط§ظ„ط¯ظˆط±ط©' : 'View Course'}
                                       </Link>
                                     </div>
                                   </div>
@@ -703,7 +770,7 @@ export default function HomePage() {
                       {selectedCategory.paths.length > 0 && (
                         <div className="rounded-xl border border-white/15 bg-white/5 p-3">
                           <p className="text-sm font-semibold text-blue-200 mb-2">
-                            {isArabic ? 'المسارات' : 'Paths'}
+                            {isArabic ? 'ط§ظ„ظ…ط³ط§ط±ط§طھ' : 'Paths'}
                           </p>
                           <ul className="space-y-1">
                             {selectedCategory.paths.map((path) => (
@@ -729,12 +796,12 @@ export default function HomePage() {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
                 <div>
                   <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                    {isArabic ? 'مسارك الحالي' : 'Your Path'}
+                    {isArabic ? 'ظ…ط³ط§ط±ظƒ ط§ظ„ط­ط§ظ„ظٹ' : 'Your Path'}
                   </p>
                   <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
-                    {isArabic ? 'الكورسات' : 'Your'}{' '}
+                    {isArabic ? 'ط§ظ„ظƒظˆط±ط³ط§طھ' : 'Your'}{' '}
                     <span className="text-blue-300">
-                      {isArabic ? 'اللي مشارك فيها' : 'Courses'}
+                      {isArabic ? 'ط§ظ„ظ„ظٹ ظ…ط´ط§ط±ظƒ ظپظٹظ‡ط§' : 'Courses'}
                     </span>
                   </h2>
                 </div>
@@ -743,11 +810,11 @@ export default function HomePage() {
 
               {coursesLoading ? (
                 <div className="text-center py-10 text-white text-lg">
-                  {isArabic ? 'جاري تحميل الدورات...' : 'Loading courses...'}
+                  {isArabic ? 'ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ط¯ظˆط±ط§طھ...' : 'Loading courses...'}
                 </div>
               ) : enrolledCourses.length === 0 ? (
                 <div className="text-center py-10 text-white text-lg">
-                  {isArabic ? 'لا توجد كورسات مسجل بها بعد' : 'No enrolled courses yet'}
+                  {isArabic ? 'ظ„ط§ طھظˆط¬ط¯ ظƒظˆط±ط³ط§طھ ظ…ط³ط¬ظ„ ط¨ظ‡ط§ ط¨ط¹ط¯' : 'No enrolled courses yet'}
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -759,7 +826,7 @@ export default function HomePage() {
                     return (
                       <div
                         key={`enrolled-${course.id}`}
-                        className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                        className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                       >
                         <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
@@ -775,9 +842,9 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-4 flex flex-1 flex-col">
                           <p className="text-sm text-blue-200 mb-2 font-medium">
-                            {isArabic ? 'بواسطة' : 'By'} {course.instructor}
+                            {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                           </p>
 
                           <div className="flex items-start justify-between gap-3">
@@ -785,7 +852,7 @@ export default function HomePage() {
                               {course.title}
                             </h3>
                             <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30">
-                              {isArabic ? 'مسجل' : 'Enrolled'}
+                              {isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled'}
                             </span>
                           </div>
 
@@ -818,12 +885,12 @@ export default function HomePage() {
                               </span>
                             ) : (
                               <span className="ml-2 text-xs text-slate-300">
-                                {isArabic ? 'بدون تقييم بعد' : 'No reviews yet'}
+                                {isArabic ? 'ط¨ط¯ظˆظ† طھظ‚ظٹظٹظ… ط¨ط¹ط¯' : 'No reviews yet'}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          <div className="mt-auto pt-2 flex items-center justify-between">
                             <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
@@ -833,7 +900,7 @@ export default function HomePage() {
                               onClick={() => trackCourseView(course.id)}
                               className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
                             >
-                              {isArabic ? 'مسجل' : 'Enrolled'}
+                              {isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled'}
                             </Link>
                           </div>
                         </div>
@@ -853,12 +920,12 @@ export default function HomePage() {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
                 <div>
                   <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                    {isArabic ? 'آخر ما فتحته' : 'Recently Opened'}
+                    {isArabic ? 'ط¢ط®ط± ظ…ط§ ظپطھط­طھظ‡' : 'Recently Opened'}
                   </p>
                   <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
-                    {isArabic ? 'آخر' : 'Last'}{' '}
+                    {isArabic ? 'ط¢ط®ط±' : 'Last'}{' '}
                     <span className="text-blue-300">
-                      {isArabic ? 'الكورسات المفتوحة' : 'Viewed Courses'}
+                      {isArabic ? 'ط§ظ„ظƒظˆط±ط³ط§طھ ط§ظ„ظ…ظپطھظˆط­ط©' : 'Viewed Courses'}
                     </span>
                   </h2>
                 </div>
@@ -866,15 +933,15 @@ export default function HomePage() {
 
               {recentLoading ? (
                 <div className="text-center py-10 text-white text-lg">
-                  {isArabic ? 'جاري تحميل الكورسات...' : 'Loading courses...'}
+                  {isArabic ? 'ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ظƒظˆط±ط³ط§طھ...' : 'Loading courses...'}
                 </div>
               ) : recentError ? (
                 <div className="text-center py-10 text-red-300 text-lg">
-                  {isArabic ? 'فشل تحميل الكورسات' : 'Failed to load courses'}
+                  {isArabic ? 'ظپط´ظ„ طھط­ظ…ظٹظ„ ط§ظ„ظƒظˆط±ط³ط§طھ' : 'Failed to load courses'}
                 </div>
               ) : recentCourses.length === 0 ? (
                 <div className="text-center py-10 text-white text-lg">
-                  {isArabic ? 'ما في كورسات مفتوحة مؤخراً' : 'No recently opened courses'}
+                  {isArabic ? 'ظ…ط§ ظپظٹ ظƒظˆط±ط³ط§طھ ظ…ظپطھظˆط­ط© ظ…ط¤ط®ط±ط§ظ‹' : 'No recently opened courses'}
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -886,7 +953,7 @@ export default function HomePage() {
                     return (
                       <div
                         key={`recent-${course.id}`}
-                        className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                        className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                       >
                         <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
@@ -902,9 +969,9 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-4 flex flex-1 flex-col">
                           <p className="text-sm text-blue-200 mb-2 font-medium">
-                            {isArabic ? 'بواسطة' : 'By'} {course.instructor}
+                            {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                           </p>
 
                           <div className="flex items-start justify-between gap-3">
@@ -913,7 +980,7 @@ export default function HomePage() {
                             </h3>
                             {course.enrolled && (
                               <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30">
-                                {isArabic ? 'مسجل' : 'Enrolled'}
+                                {isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled'}
                               </span>
                             )}
                           </div>
@@ -947,22 +1014,18 @@ export default function HomePage() {
                               </span>
                             ) : (
                               <span className="ml-2 text-xs text-slate-300">
-                                {isArabic ? 'بدون تقييم بعد' : 'No reviews yet'}
+                                {isArabic ? 'ط¨ط¯ظˆظ† طھظ‚ظٹظٹظ… ط¨ط¹ط¯' : 'No reviews yet'}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          <div className="mt-auto pt-2 flex items-center justify-between">
                             <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
 
                             <Link
-                              href={
-                                course.enrolled
-                                  ? `/student/my-courses/${course.id}`
-                                  : `/Home/courses/${course.id}`
-                              }
+                              href={getCourseViewHref(course)}
                               onClick={() => trackCourseView(course.id)}
                               className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white text-xs sm:text-sm font-semibold border transition-all duration-300 ${
                                 course.enrolled
@@ -970,7 +1033,7 @@ export default function HomePage() {
                                   : 'bg-white/10 hover:bg-blue-600 border-white/15'
                               }`}
                             >
-                              {course.enrolled ? (isArabic ? 'مسجل' : 'Enrolled') : isArabic ? 'عرض الدورة' : 'View Course'}
+                              {course.enrolled ? (isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled') : isArabic ? 'ط¹ط±ط¶ ط§ظ„ط¯ظˆط±ط©' : 'View Course'}
                             </Link>
                           </div>
                         </div>
@@ -989,11 +1052,11 @@ export default function HomePage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12">
               <div>
                 <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                  {isArabic ? 'استكشف التعلم' : 'Explore Learning'}
+                  {isArabic ? 'ط§ط³طھظƒط´ظپ ط§ظ„طھط¹ظ„ظ…' : 'Explore Learning'}
                 </p>
                 <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight text-white">
-                  {isArabic ? 'الشائعة' : 'Popular'}{' '}
-                  <span className="text-blue-300">{isArabic ? 'الدورات' : 'Courses'}</span>
+                  {isArabic ? 'ط§ظ„ط´ط§ط¦ط¹ط©' : 'Popular'}{' '}
+                  <span className="text-blue-300">{isArabic ? 'ط§ظ„ط¯ظˆط±ط§طھ' : 'Courses'}</span>
                 </h2>
               </div>
 
@@ -1001,21 +1064,21 @@ export default function HomePage() {
                 href="/Home/courses"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-950 dark:bg-blue-700 hover:bg-blue-500 text-white text-sm sm:text-base font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.25)] transition-all duration-300 hover:-translate-y-1"
               >
-                {isArabic ? 'عرض جميع الدورات' : 'View All Courses'}
+                {isArabic ? 'ط¹ط±ط¶ ط¬ظ…ظٹط¹ ط§ظ„ط¯ظˆط±ط§طھ' : 'View All Courses'}
               </Link>
             </div>
 
             {coursesLoading ? (
               <div className="text-center py-10 text-white text-lg">
-                {isArabic ? 'جاري تحميل الدورات...' : 'Loading courses...'}
+                {isArabic ? 'ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ط¯ظˆط±ط§طھ...' : 'Loading courses...'}
               </div>
             ) : coursesError ? (
               <div className="text-center py-10 text-red-300 text-lg">
-                {isArabic ? 'فشل تحميل الدورات' : 'Failed to load courses'}
+                {isArabic ? 'ظپط´ظ„ طھط­ظ…ظٹظ„ ط§ظ„ط¯ظˆط±ط§طھ' : 'Failed to load courses'}
               </div>
             ) : courses.length === 0 ? (
               <div className="text-center py-10 text-white text-lg">
-                {isArabic ? 'لا توجد دورات حالياً' : 'No courses available right now'}
+                {isArabic ? 'ظ„ط§ طھظˆط¬ط¯ ط¯ظˆط±ط§طھ ط­ط§ظ„ظٹط§ظ‹' : 'No courses available right now'}
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -1025,10 +1088,10 @@ export default function HomePage() {
                   const filledStars = Math.round(rating);
 
                   return (
-                    <div
-                      key={course.id}
-                      className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                    >
+                  <div
+                    key={course.id}
+                    className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
+                  >
                     <div className="relative h-36 sm:h-40 overflow-hidden">
                       <img
                         src={course.image || '/default-course.jpg'}
@@ -1043,9 +1106,9 @@ export default function HomePage() {
                       />
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-4 flex flex-1 flex-col">
                       <p className="text-sm text-blue-200 mb-2 font-medium">
-                        {isArabic ? 'بواسطة' : 'By'} {course.instructor}
+                        {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                       </p>
 
                       <div className="flex items-start justify-between gap-3">
@@ -1054,7 +1117,7 @@ export default function HomePage() {
                         </h3>
                         {course.enrolled && (
                           <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30">
-                            {isArabic ? 'مسجل' : 'Enrolled'}
+                            {isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled'}
                           </span>
                         )}
                       </div>
@@ -1088,33 +1151,27 @@ export default function HomePage() {
                           </span>
                         ) : (
                           <span className="ml-2 text-xs text-slate-300">
-                            {isArabic ? 'بدون تقييم بعد' : 'No reviews yet'}
+                            {isArabic ? 'ط¨ط¯ظˆظ† طھظ‚ظٹظٹظ… ط¨ط¹ط¯' : 'No reviews yet'}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-lg sm:text-xl font-black text-blue-300">
                           ${course.price}
                         </span>
 
-                        {course.enrolled ? (
-                          <Link
-                            href={`/student/my-courses/${course.id}`}
-                            onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold border border-emerald-300/40 transition-all duration-300"
-                          >
-                            {isArabic ? 'مسجل' : 'Enrolled'}
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/Home/courses/${course.id}`}
-                            onClick={() => trackCourseView(course.id)}
-                            className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold border border-white/15 transition-all duration-300"
-                          >
-                            {isArabic ? '  عرض الدورة' : 'View Course'}
-                          </Link>
-                        )}
+                        <Link
+                          href={getCourseViewHref(course)}
+                          onClick={() => trackCourseView(course.id)}
+                          className={`inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white text-xs sm:text-sm font-semibold border transition-all duration-300 ${
+                            course.enrolled
+                              ? 'bg-emerald-600/80 hover:bg-emerald-500 border-emerald-300/40'
+                              : 'bg-white/10 hover:bg-blue-600 border-white/15'
+                          }`}
+                        >
+                          {course.enrolled ? (isArabic ? 'ظ…ط³ط¬ظ„' : 'Enrolled') : isArabic ? '  ط¹ط±ط¶ ط§ظ„ط¯ظˆط±ط©' : 'View Course'}
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -1130,15 +1187,15 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-14">
               <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                {isArabic ? 'أصوات الطلاب' : 'Student Voices'}
+                {isArabic ? 'ط£طµظˆط§طھ ط§ظ„ط·ظ„ط§ط¨' : 'Student Voices'}
               </p>
               <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white">
-                {isArabic ? 'الطلاب' : 'Student'}{' '}
-                <span className="text-blue-300">{isArabic ? 'تعليقات' : 'Feedback'}</span>
+                {isArabic ? 'ط§ظ„ط·ظ„ط§ط¨' : 'Student'}{' '}
+                <span className="text-blue-300">{isArabic ? 'طھط¹ظ„ظٹظ‚ط§طھ' : 'Feedback'}</span>
               </h2>
               <p className="mt-4 text-slate-200 max-w-2xl text-lg">
                 {isArabic
-                  ? 'اسمع ما يقوله طلابنا عن تجربتهم في التعلم مع أيفورا.'
+                  ? 'ط§ط³ظ…ط¹ ظ…ط§ ظٹظ‚ظˆظ„ظ‡ ط·ظ„ط§ط¨ظ†ط§ ط¹ظ† طھط¬ط±ط¨طھظ‡ظ… ظپظٹ ط§ظ„طھط¹ظ„ظ… ظ…ط¹ ط£ظٹظپظˆط±ط§.'
                   : 'Hear what our students say about their experience learning with Aivora.'}
               </p>
             </div>
@@ -1184,16 +1241,16 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-14">
               <p className="text-blue-300 text-sm tracking-[0.25em] uppercase mb-3">
-                {isArabic ? 'ابق على اتصال' : 'Get In Touch'}
+                {isArabic ? 'ط§ط¨ظ‚ ط¹ظ„ظ‰ ط§طھطµط§ظ„' : 'Get In Touch'}
               </p>
               <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-white">
-                {isArabic ? 'اتصل بـ' : 'Contact'}{' '}
-                <span className="text-blue-300">{isArabic ? 'أيفورا' : 'Aivora'}</span>
+                {isArabic ? 'ط§طھطµظ„ ط¨ظ€' : 'Contact'}{' '}
+                <span className="text-blue-300">{isArabic ? 'ط£ظٹظپظˆط±ط§' : 'Aivora'}</span>
               </h2>
               <p className="mt-4 text-slate-200 max-w-2xl text-lg leading-8">
                 {isArabic
-                  ? 'نحن هنا لدعم رحلتك التعليمية. تواصل معنا في أي وقت للأسئلة أو الإرشاد أو التعاون.'
-                  : 'We’re here to support your learning journey. Reach out to us anytime for questions, guidance, or collaboration.'}
+                  ? 'ظ†ط­ظ† ظ‡ظ†ط§ ظ„ط¯ط¹ظ… ط±ط­ظ„طھظƒ ط§ظ„طھط¹ظ„ظٹظ…ظٹط©. طھظˆط§طµظ„ ظ…ط¹ظ†ط§ ظپظٹ ط£ظٹ ظˆظ‚طھ ظ„ظ„ط£ط³ط¦ظ„ط© ط£ظˆ ط§ظ„ط¥ط±ط´ط§ط¯ ط£ظˆ ط§ظ„طھط¹ط§ظˆظ†.'
+                  : 'Weâ€™re here to support your learning journey. Reach out to us anytime for questions, guidance, or collaboration.'}
               </p>
             </div>
 
@@ -1204,12 +1261,12 @@ export default function HomePage() {
                 </div>
 
                 <h3 className="text-2xl font-bold text-white mb-3">
-                  {isArabic ? 'البريد الإلكتروني' : 'Email'}
+                  {isArabic ? 'ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ' : 'Email'}
                 </h3>
 
                 <p className="text-slate-300 text-sm leading-7 mb-2">
                   {isArabic
-                    ? 'أرسل أسئلتك في أي وقت وسيرد فريقنا عليك.'
+                    ? 'ط£ط±ط³ظ„ ط£ط³ط¦ظ„طھظƒ ظپظٹ ط£ظٹ ظˆظ‚طھ ظˆط³ظٹط±ط¯ ظپط±ظٹظ‚ظ†ط§ ط¹ظ„ظٹظƒ.'
                     : 'Send us your questions anytime and our team will get back to you.'}
                 </p>
 
@@ -1219,7 +1276,7 @@ export default function HomePage() {
                   rel="noopener noreferrer"
                   className="text-blue-200 font-medium hover:underline"
                 >
-                  {isArabic ? 'اضغط هنا لمراسلتنا' : 'click here to email us'}
+                  {isArabic ? 'ط§ط¶ط؛ط· ظ‡ظ†ط§ ظ„ظ…ط±ط§ط³ظ„طھظ†ط§' : 'click here to email us'}
                 </a>
               </div>
 
@@ -1229,12 +1286,12 @@ export default function HomePage() {
                 </div>
 
                 <h3 className="text-2xl font-bold text-white mb-3">
-                  {isArabic ? 'الهاتف' : 'Phone'}
+                  {isArabic ? 'ط§ظ„ظ‡ط§طھظپ' : 'Phone'}
                 </h3>
 
                 <p className="text-slate-300 text-sm leading-7 mb-2">
                   {isArabic
-                    ? 'تحدث مع فريق الدعم للحصول على مساعدة سريعة.'
+                    ? 'طھط­ط¯ط« ظ…ط¹ ظپط±ظٹظ‚ ط§ظ„ط¯ط¹ظ… ظ„ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ظ…ط³ط§ط¹ط¯ط© ط³ط±ظٹط¹ط©.'
                     : 'Talk to our support team for quick help and direct assistance.'}
                 </p>
 
@@ -1254,12 +1311,12 @@ export default function HomePage() {
                 </div>
 
                 <h3 className="text-2xl font-bold text-white mb-3">
-                  {isArabic ? 'إنستغرام' : 'Instagram'}
+                  {isArabic ? 'ط¥ظ†ط³طھط؛ط±ط§ظ…' : 'Instagram'}
                 </h3>
 
                 <p className="text-slate-300 text-sm leading-7 mb-2">
                   {isArabic
-                    ? 'تابعنا على إنستغرام لمعرفة آخر التحديثات.'
+                    ? 'طھط§ط¨ط¹ظ†ط§ ط¹ظ„ظ‰ ط¥ظ†ط³طھط؛ط±ط§ظ… ظ„ظ…ط¹ط±ظپط© ط¢ط®ط± ط§ظ„طھط­ط¯ظٹط«ط§طھ.'
                     : 'Follow us on Instagram for the latest updates.'}
                 </p>
 
@@ -1293,5 +1350,6 @@ export default function HomePage() {
     </div>
   );
 }
+
 
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   CalendarDaysIcon,
   ClockIcon,
@@ -72,6 +73,7 @@ type CalendarResponse = {
 
 type CalendarEvent = {
   id: string;
+  sessionId?: string;
   kind: 'session' | 'reminder' | 'deliverable';
   title: string;
   courseTitle: string;
@@ -92,6 +94,15 @@ function dateKey(date: Date) {
 function formatTime(iso: string) {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '-' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getInAppLiveHref(sessionId: string, courseTitle: string, fallbackLink?: string | null) {
+  const qs = new URLSearchParams();
+  qs.set('role', 'student');
+  qs.set('name', courseTitle || 'Student');
+  if (fallbackLink) qs.set('fallback', fallbackLink);
+  if (fallbackLink && /zoom\.us|zoom\.com/i.test(fallbackLink)) qs.set('provider', 'zoom');
+  return `/live-session/${encodeURIComponent(sessionId)}?${qs.toString()}`;
 }
 
 export default function StudentCalendarPage() {
@@ -129,11 +140,12 @@ export default function StudentCalendarPage() {
       .filter((s) => Boolean(s.startAt))
       .map((s) => ({
         id: `session-${s.id}`,
+        sessionId: s.id,
         kind: 'session' as const,
         title: s.title || 'Live Session',
         courseTitle: s.courseTitle,
         startsAt: s.startAt as string,
-        meta: `${formatTime(s.startAt as string)} • ${s.status}`,
+        meta: `${formatTime(s.startAt as string)} â€¢ ${s.status}`,
         meetingLink: s.meetingLink,
       }));
 
@@ -302,17 +314,28 @@ export default function StudentCalendarPage() {
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{event.title}</p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{event.courseTitle}</p>
                           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">{event.meta}</p>
-                          {event.meetingLink ? (
-                            <a
-                              href={event.meetingLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 mt-2 hover:underline"
-                            >
-                              <ClockIcon className="w-3.5 h-3.5" />
-                              Join meeting
-                            </a>
-                          ) : null}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {event.sessionId ? (
+                              <Link
+                                href={getInAppLiveHref(event.sessionId, event.courseTitle, event.meetingLink)}
+                                className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300 hover:underline"
+                              >
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                Join In-App
+                              </Link>
+                            ) : null}
+                            {event.meetingLink ? (
+                              <a
+                                href={event.meetingLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 hover:underline"
+                              >
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                Join Zoom
+                              </a>
+                            ) : null}
+                          </div>
                         </div>
                       ))
                   )}

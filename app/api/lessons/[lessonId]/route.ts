@@ -81,7 +81,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (body?.liveEditorLanguage !== undefined) {
       const langRaw = String(body.liveEditorLanguage);
       const lang =
-        langRaw === 'javascript' || langRaw === 'html_css' || langRaw === 'sql' ? langRaw : 'python';
+        langRaw === 'javascript' || langRaw === 'html_css' || langRaw === 'sql' || langRaw === 'c' ? langRaw : 'python';
       updates.push('liveEditorLanguage = ?');
       values.push(lang);
     }

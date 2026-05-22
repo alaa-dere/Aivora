@@ -1,10 +1,11 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
 import LiveHtmlPreview from '@/components/live-html-preview';
 import LiveSqlEditor from '@/components/live-sql-editor';
+import LiveCEditor from '@/components/live-c-editor';
 
 type LiveEditorSubmission = {
   code: string;
@@ -17,7 +18,7 @@ type LessonContentViewProps = {
   content: string;
   quizQuestions?: any[];
   enableLiveEditor?: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
   starterDisabledMessage?: string;
   emptyMessage?: string;
@@ -69,7 +70,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('#### ')) {
       nodes.push(
-        <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3">
+        <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(5))}
         </h4>
       );
@@ -79,7 +80,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('### ')) {
       nodes.push(
-        <h3 key={`h3-${i}`} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-3">
+        <h3 key={`h3-${i}`} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-3 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(4))}
         </h3>
       );
@@ -89,7 +90,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('## ')) {
       nodes.push(
-        <h2 key={`h2-${i}`} className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(3))}
         </h2>
       );
@@ -99,7 +100,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('# ')) {
       nodes.push(
-        <h1 key={`h1-${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-4">
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-4 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(2))}
         </h1>
       );
@@ -163,16 +164,99 @@ const renderMarkdownText = (text: string) => {
 
 const normalizeFenceText = (content: string) => {
   if (!content) return content;
-  // Handle escaped backticks that can come from copied/serialized text.
-  return content.replace(/\\`/g, '`');
+  let normalized = content;
+  // Handle escaped backticks/newlines/tabs that can come from serialized content.
+  normalized = normalized.replace(/\\`/g, '`').replace(/\\n/g, '\n').replace(/\\t/g, '  ');
+
+  // Normalize malformed headings like "# # Title" or "# # # Subtitle".
+  normalized = normalized
+    .replace(/(^|\n)\s*#\s+#\s+#\s+#\s+/g, '$1#### ')
+    .replace(/(^|\n)\s*#\s+#\s+#\s+/g, '$1### ')
+    .replace(/(^|\n)\s*#\s+#\s+/g, '$1## ');
+
+  // If a heading appears inline after paragraph text, force it to a new block.
+  normalized = normalized
+    .replace(/([^\n])\s+#\s+#\s+#\s+#\s+/g, '$1\n\n#### ')
+    .replace(/([^\n])\s+#\s+#\s+#\s+/g, '$1\n\n### ')
+    .replace(/([^\n])\s+#\s+#\s+/g, '$1\n\n## ');
+
+  // Force a real paragraph break after common section headings when AI returns
+  // heading + body in the same line.
+  normalized = normalized
+    .replace(/(#{1,4}\s*What is[^\n#]*?)(\s+)(?=[A-Z0-9])/g, '$1\n\n')
+    .replace(/(#{1,4}\s*Why it matters[^\n#]*?)(\s+)(?=[A-Z0-9])/g, '$1\n\n');
+
+  // Keep spacing consistent around headings.
+  normalized = normalized
+    .replace(/([^\n])\n(#{1,4}\s)/g, '$1\n\n$2')
+    // Ensure list markers are on their own lines so they render as lists.
+    .replace(/([^\n])\s+(-\s+)/g, '$1\n\n$2')
+    .replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n\n$2')
+    .replace(/\n\s*(-\s+)/g, '\n$1')
+    .replace(/\n\s*(\d+\.\s+)/g, '\n$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return normalized;
 };
 
 const normalizeStarterFormatting = (value: string) => {
   if (!value) return value;
-  return value
-    .replace(/\\r\\n/g, '\n')
+  // Only normalize escaped Windows newlines token to real newlines.
+  // Do NOT convert generic "\\n" because it may be part of C/JS string literals
+  // (e.g. printf("hello\\n")), and converting it breaks compilable code.
+  return value.replace(/\\r\\n/g, '\n');
+};
+
+const fixCode = (raw: string) =>
+  String(raw || '')
     .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t');
+    .replace(/\\t/g, '  ')
+    .replace(/;(\s*)(?=[^\s])/g, ';\n')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .trim();
+
+const formatCodeForDisplay = (raw: string) => {
+  const input = fixCode(raw);
+  if (!input) return input;
+  if (input.includes('\n')) {
+    return input
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('#')) return [line];
+        const noHash = trimmed.replace(/^#+\s*/, '');
+        const splitMatch = noHash.match(/\s+([a-zA-Z_][a-zA-Z0-9_]*\s*=.+)$/);
+        if (!splitMatch || !splitMatch[1]) return [line];
+        const code = splitMatch[1].trim();
+        const commentText = noHash.slice(0, noHash.lastIndexOf(code)).trim();
+        if (!commentText || !code) return [line];
+        return [`# ${commentText}`, code];
+      })
+      .join('\n');
+  }
+
+  // Heuristics for AI-compressed one-line snippets.
+  let out = input
+    .replace(/\s+(#)/g, '\n$1')
+    .replace(/\s+(\/\/)/g, '\n$1')
+    .replace(/;\s*/g, ';\n')
+    .replace(/\s+\b(def|function|class|if|for|while|try|except|return|const|let|var)\b/g, '\n$1');
+
+  // Python: move inline comment above statement when they are on one line.
+  const pyInline = out.match(/^([^#'"]+?)\s+(#.+)$/);
+  if (pyInline && pyInline[1]?.trim() && pyInline[2]?.trim()) {
+    out = `${pyInline[2].trim()}\n${pyInline[1].trim()}`;
+  }
+
+  return out
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 const parseLessonContent = (content: string) => {
@@ -216,7 +300,7 @@ const parseLessonContent = (content: string) => {
         }
       }
 
-      segments.push({ type: 'code', value: codeValue.trim() });
+      segments.push({ type: 'code', value: formatCodeForDisplay(codeValue.trim()) });
       cursor = codeEnd + advanceBy;
       continue;
     }
@@ -233,7 +317,7 @@ const parseLessonContent = (content: string) => {
     if (normalizedToken.includes('video')) {
       segments.push({ type: 'video', value });
     } else if (normalizedToken.includes('starter')) {
-      segments.push({ type: 'starter', value: normalizeStarterFormatting(value) });
+      segments.push({ type: 'starter', value: formatCodeForDisplay(normalizeStarterFormatting(value)) });
     } else {
       segments.push({ type: 'answer', value });
     }
@@ -277,7 +361,33 @@ export default function LessonContentView({
   emptyMessage = 'No lesson content yet.',
   quizQuestions = [],
 }: LessonContentViewProps) {
+  const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
   const segments = parseLessonContent(content || '');
+
+  const copyCode = async (value: string, index: number) => {
+    const text = value || '';
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedCodeIndex(index);
+      setTimeout(() => {
+        setCopiedCodeIndex((current) => (current === index ? null : current));
+      }, 1400);
+    } catch {
+      setCopiedCodeIndex(null);
+    }
+  };
 
   if (segments.length === 0) {
     return <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>;
@@ -288,9 +398,18 @@ export default function LessonContentView({
       {segments.map((seg, idx) => {
         if (seg.type === 'code') {
           return (
-            <pre key={idx} className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
-              <code>{seg.value}</code>
-            </pre>
+            <div key={idx} className="relative">
+              <button
+                type="button"
+                onClick={() => copyCode(seg.value, idx)}
+                className="absolute top-2 right-2 z-10 rounded-md border border-gray-600 bg-gray-800/90 px-2 py-1 text-[11px] font-medium text-gray-100 hover:bg-gray-700"
+              >
+                {copiedCodeIndex === idx ? 'Copied' : 'Copy'}
+              </button>
+              <pre className="rounded-lg bg-gray-900 text-gray-100 p-4 overflow-x-auto text-sm">
+                <code>{seg.value}</code>
+              </pre>
+            </div>
           );
         }
         if (seg.type === 'starter') {
@@ -309,6 +428,9 @@ export default function LessonContentView({
           }
           if (liveEditorLanguage === 'sql') {
             return <LiveSqlEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
+          }
+          if (liveEditorLanguage === 'c') {
+            return <LiveCEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
           }
           return <LivePythonEditor key={idx} initialCode={seg.value} onSubmissionChange={onSubmissionChange} />;
         }

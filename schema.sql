@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS lesson (
     videoUrl        VARCHAR(255) COLLATE utf8mb4_unicode_ci,
     type            ENUM('text', 'code_example', 'live_python', 'video_embed', 'quiz', 'mixed') DEFAULT 'text',
     enableLiveEditor BOOLEAN DEFAULT FALSE,
-    liveEditorLanguage ENUM('python', 'javascript', 'html_css') DEFAULT 'python',
+    liveEditorLanguage ENUM('python', 'javascript', 'html_css', 'sql', 'c') DEFAULT 'python',
     orderNumber     INT NOT NULL,
     durationMinutes INT DEFAULT 0,
     isPublished     BOOLEAN DEFAULT FALSE,
@@ -335,6 +335,51 @@ CREATE TABLE IF NOT EXISTS admin_notification (
     INDEX idx_createdAt (createdAt),
     INDEX idx_readAt (readAt),
     INDEX idx_type (type)
+) ENGINE=InnoDB;
+
+-- job_posting
+CREATE TABLE IF NOT EXISTS job_posting (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    title           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    description     TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    requirements    TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    responsibilities TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+    otherNotes      TEXT NULL COLLATE utf8mb4_unicode_ci,
+    status          ENUM('open', 'closed') DEFAULT 'open',
+    createdBy       VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (createdBy) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_job_posting_status (status),
+    INDEX idx_job_posting_created (createdAt)
+) ENGINE=InnoDB;
+
+-- instructor_application
+CREATE TABLE IF NOT EXISTS instructor_application (
+    id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+    fullName        VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    email           VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
+    jobPostingId    VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    phone           VARCHAR(40) NULL COLLATE utf8mb4_unicode_ci,
+    bio             TEXT NULL COLLATE utf8mb4_unicode_ci,
+    cvFileUrl       VARCHAR(255) NOT NULL COLLATE utf8mb4_unicode_ci,
+    status          ENUM('pending', 'reviewed', 'accepted', 'rejected') DEFAULT 'pending',
+    reviewedBy      VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+    reviewedAt      DATETIME NULL,
+    adminNotes      TEXT NULL COLLATE utf8mb4_unicode_ci,
+    createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (reviewedBy) REFERENCES user(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (jobPostingId) REFERENCES job_posting(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    INDEX idx_instructor_app_status (status),
+    INDEX idx_instructor_app_created (createdAt),
+    INDEX idx_instructor_app_email (email),
+    INDEX idx_instructor_app_job (jobPostingId)
 ) ENGINE=InnoDB;
 
 -- admin_teacher_thread
@@ -550,3 +595,4 @@ INSERT IGNORE INTO role (id, name) VALUES
     (UUID(), 'admin'),
     (UUID(), 'teacher'),
     (UUID(), 'student');
+

@@ -6,7 +6,7 @@ import { hasUnifiedNotificationTable } from '@/lib/notifications-unified';
 
 type NotificationRow = RowDataPacket & {
   id: string;
-  type: 'student_signup' | 'course_enroll' | 'teacher_message';
+  type: 'student_signup' | 'course_enroll' | 'teacher_message' | 'instructor_application';
   title: string;
   message: string;
   createdAt: string;

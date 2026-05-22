@@ -488,6 +488,47 @@ export async function GET(req: Request) {
 
     if (liveSessions) {
       const sessionId = (searchParams.get('sessionId') || '').trim();
+      const sharedSchedule = (searchParams.get('sharedSchedule') || '').trim();
+
+      if (sharedSchedule === '1') {
+        const [sharedRows] = await pool.query<RowDataPacket[]>(
+          `
+          SELECT
+            s.id,
+            s.teacherId,
+            u.fullName AS teacherName,
+            s.courseId,
+            c.title AS courseTitle,
+            s.title,
+            s.startAt,
+            s.endAt,
+            s.meetingLink,
+            s.status
+          FROM live_session s
+          JOIN user u ON u.id = s.teacherId
+          JOIN course c ON c.id = s.courseId
+          WHERE s.status = 'scheduled'
+          ORDER BY s.startAt ASC
+          LIMIT 500
+          `
+        );
+
+        return NextResponse.json({
+          currentTeacherId: teacherId,
+          sessions: sharedRows.map((row) => ({
+            id: row.id,
+            teacherId: row.teacherId,
+            teacherName: row.teacherName,
+            courseId: row.courseId,
+            courseTitle: row.courseTitle,
+            title: row.title,
+            startAt: row.startAt,
+            endAt: row.endAt,
+            meetingLink: row.meetingLink,
+            status: row.status,
+          })),
+        });
+      }
 
       if (sessionId) {
         const [sessionRows] = await pool.query<RowDataPacket[]>(
@@ -548,6 +589,7 @@ export async function GET(req: Request) {
         SELECT
           s.id,
           s.courseId,
+          u.fullName AS teacherName,
           s.title,
           s.description,
           s.startAt,
@@ -572,6 +614,7 @@ export async function GET(req: Request) {
           ) AS attendees
         FROM live_session s
         JOIN course c ON c.id = s.courseId
+        JOIN user u ON u.id = s.teacherId
         WHERE s.teacherId = ?
         ORDER BY s.startAt DESC
         LIMIT 200
@@ -583,6 +626,7 @@ export async function GET(req: Request) {
         sessions: rows.map((row) => ({
           id: row.id,
           courseId: row.courseId,
+          teacherName: row.teacherName,
           title: row.title,
           description: row.description,
           startAt: row.startAt,
@@ -888,6 +932,8 @@ export async function POST(req: Request) {
       d.setDate(d.getDate() + days);
       return formatDate(d);
     };
+    const hasTimeOverlap = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
+      aStart < bEnd && bStart < aEnd;
 
     if (action === 'create_session') {
       const courseId = String(body?.courseId || '').trim();
@@ -902,6 +948,17 @@ export async function POST(req: Request) {
 
       if (!courseId || !title || !date || !startTime || !endTime || !meetingLink) {
         return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+      }
+      const requestedStart = new Date(`${date}T${startTime}:00`);
+      const requestedEnd = new Date(`${date}T${endTime}:00`);
+      if (Number.isNaN(requestedStart.getTime()) || Number.isNaN(requestedEnd.getTime())) {
+        return NextResponse.json({ message: 'Invalid date or time' }, { status: 400 });
+      }
+      if (requestedEnd <= requestedStart) {
+        return NextResponse.json(
+          { message: 'End time must be after start time' },
+          { status: 400 }
+        );
       }
 
       const [courseRows] = await pool.query<RowDataPacket[]>(
@@ -930,12 +987,146 @@ export async function POST(req: Request) {
       const studentIds = studentRows.map((r) => r.studentId as string);
 
       const sessionsToCreate = repeatWeekly ? repeatCount : 1;
-      const createdIds: string[] = [];
+      const conflictErrors: Array<{
+        date: string;
+        reason: string;
+        conflictingSessionId: string;
+        conflictingCourseTitle: string;
+        conflictingStartAt: string;
+        conflictingEndAt: string;
+      }> = [];
+
+      const [teacherScheduledRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT s.id, s.startAt, s.endAt, c.title AS courseTitle
+        FROM live_session s
+        JOIN course c ON c.id = s.courseId
+        JOIN user u ON u.id = s.teacherId
+        WHERE s.teacherId = ?
+          AND s.status = 'scheduled'
+        `,
+        [teacherId]
+      );
+      const [globalScheduledRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT s.id, s.startAt, s.endAt, c.title AS courseTitle, s.teacherId, u.fullName AS teacherName
+        FROM live_session s
+        JOIN course c ON c.id = s.courseId
+        JOIN user u ON u.id = s.teacherId
+        WHERE s.status = 'scheduled'
+        `
+      );
+
+      const [studentScheduledRows] = studentIds.length
+        ? await pool.query<RowDataPacket[]>(
+            `
+            SELECT
+              s.id,
+              s.startAt,
+              s.endAt,
+              c.title AS courseTitle,
+              a.studentId
+            FROM live_session s
+            JOIN live_session_attendance a ON a.sessionId = s.id
+            JOIN course c ON c.id = s.courseId
+            WHERE s.status = 'scheduled'
+              AND a.studentId IN (${studentIds.map(() => '?').join(',')})
+            `,
+            studentIds
+          )
+        : [[] as RowDataPacket[]];
+
+      const draftSessions: Array<{ sessionDate: string; startAt: string; endAt: string }> = [];
 
       for (let i = 0; i < sessionsToCreate; i++) {
         const sessionDate = addDays(date, i * 7);
         const startAt = `${sessionDate} ${startTime}:00`;
         const endAt = `${sessionDate} ${endTime}:00`;
+        const startAtDate = new Date(`${sessionDate}T${startTime}:00`);
+        const endAtDate = new Date(`${sessionDate}T${endTime}:00`);
+
+        const teacherConflict = teacherScheduledRows.find((row) =>
+          hasTimeOverlap(
+            startAtDate,
+            endAtDate,
+            new Date(String(row.startAt)),
+            new Date(String(row.endAt))
+          )
+        );
+
+        const globalConflict = globalScheduledRows.find((row) =>
+          hasTimeOverlap(
+            startAtDate,
+            endAtDate,
+            new Date(String(row.startAt)),
+            new Date(String(row.endAt))
+          )
+        );
+
+        if (globalConflict) {
+          conflictErrors.push({
+            date: sessionDate,
+            reason: 'global_conflict',
+            conflictingSessionId: String(globalConflict.id),
+            conflictingCourseTitle: String(globalConflict.courseTitle || ''),
+            conflictingStartAt: String(globalConflict.startAt),
+            conflictingEndAt: String(globalConflict.endAt),
+          });
+          continue;
+        }
+
+        if (teacherConflict) {
+          conflictErrors.push({
+            date: sessionDate,
+            reason: 'teacher_busy',
+            conflictingSessionId: String(teacherConflict.id),
+            conflictingCourseTitle: String(teacherConflict.courseTitle || ''),
+            conflictingStartAt: String(teacherConflict.startAt),
+            conflictingEndAt: String(teacherConflict.endAt),
+          });
+          continue;
+        }
+
+        const studentConflict = studentScheduledRows.find((row) =>
+          hasTimeOverlap(
+            startAtDate,
+            endAtDate,
+            new Date(String(row.startAt)),
+            new Date(String(row.endAt))
+          )
+        );
+
+        if (studentConflict) {
+          conflictErrors.push({
+            date: sessionDate,
+            reason: 'student_conflict',
+            conflictingSessionId: String(studentConflict.id),
+            conflictingCourseTitle: String(studentConflict.courseTitle || ''),
+            conflictingStartAt: String(studentConflict.startAt),
+            conflictingEndAt: String(studentConflict.endAt),
+          });
+          continue;
+        }
+
+        draftSessions.push({ sessionDate, startAt, endAt });
+      }
+
+      if (conflictErrors.length > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Scheduling rejected: one or more requested weekly slots conflict with existing sessions.',
+            conflicts: conflictErrors,
+          },
+          { status: 409 }
+        );
+      }
+
+      const createdIds: string[] = [];
+
+      for (const draft of draftSessions) {
+        const { sessionDate, startAt, endAt } = draft;
         const sessionId = randomUUID();
 
         await pool.query(
@@ -994,9 +1185,19 @@ export async function POST(req: Request) {
         }
 
         createdIds.push(sessionId);
+        teacherScheduledRows.push({
+          id: sessionId,
+          startAt,
+          endAt,
+          courseTitle,
+        } as RowDataPacket);
       }
 
-      return NextResponse.json({ success: true, sessionIds: createdIds });
+      return NextResponse.json({
+        success: true,
+        sessionIds: createdIds,
+        conflicts: [],
+      });
     }
 
     if (action === 'notify_session') {

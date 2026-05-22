@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   UsersIcon,
   BookOpenIcon,
+  BriefcaseIcon,
   CurrencyDollarIcon,
   Bars3Icon,
   XMarkIcon,
@@ -64,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       teacherId?: string | null;
     }[]
   >([]);
-  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'student_signup' | 'course_enroll' | 'teacher_message'>('all');
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'student_signup' | 'course_enroll' | 'teacher_message' | 'instructor_application'>('all');
   const [messageNotifItems, setMessageNotifItems] = useState<
     { id: string; teacherId: string; title: string; message: string; createdAt: string }[]
   >([]);
@@ -81,20 +82,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     let mounted = true;
     const loadCount = async () => {
-      try {
-        const [notifRes, msgRes] = await Promise.all([
-          fetch(API_ROUTES.admin.notificationsCount, { cache: 'no-store' }),
-          fetch(API_ROUTES.admin.messagesUnreadCount, { cache: 'no-store' }),
-        ]);
-        const notifData = await notifRes.json();
-        const msgData = await msgRes.json();
-        if (!notifRes.ok) return;
-        const unreadFromThreads = Number(msgData?.total || 0);
-        if (mounted) setMessageCount(unreadFromThreads);
-        if (mounted) setNotificationCount(Number(notifData.total || 0) + unreadFromThreads);
-      } catch (error) {
-        console.error('Failed to load notification count', error);
-      }
+      const safeFetchJson = async (url: string) => {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const [notifData, msgData] = await Promise.all([
+        safeFetchJson(API_ROUTES.admin.notificationsCount),
+        safeFetchJson(API_ROUTES.admin.messagesUnreadCount),
+      ]);
+
+      const unreadFromThreads = Number(msgData?.total || 0);
+      if (mounted) setMessageCount(unreadFromThreads);
+      if (mounted) setNotificationCount(Number(notifData?.total || 0) + unreadFromThreads);
     };
 
     loadCount();
@@ -171,6 +176,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       console.error('Failed to load notifications', error);
     }
   }
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await fetch(`/api/admin/notifications/${id}`, { method: 'PATCH' });
+      window.dispatchEvent(new Event('notifications:refresh'));
+    } catch (error) {
+      console.error('Failed to mark notification as read', error);
+    }
+  };
+
+  const markTeacherThreadRead = async (teacherId: string) => {
+    try {
+      await fetch(`/api/admin/messages?teacherId=${encodeURIComponent(teacherId)}&markRead=1`, {
+        cache: 'no-store',
+      });
+      window.dispatchEvent(new Event('notifications:refresh'));
+    } catch (error) {
+      console.error('Failed to mark teacher thread as read', error);
+    }
+  };
 
   const markAllNotificationsRead = async () => {
     try {
@@ -254,7 +279,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       value={notificationTypeFilter}
                       onChange={(e) =>
                         setNotificationTypeFilter(
-                          e.target.value as 'all' | 'student_signup' | 'course_enroll' | 'teacher_message'
+                          e.target.value as 'all' | 'student_signup' | 'course_enroll' | 'teacher_message' | 'instructor_application'
                         )
                       }
                       className="text-xs px-2 py-1 rounded-none border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
@@ -263,6 +288,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <option value="student_signup">New Students</option>
                       <option value="course_enroll">Enrollments</option>
                       <option value="teacher_message">Teacher Msg</option>
+                      <option value="instructor_application">Instructor CV</option>
                     </select>
                     <button
                       onClick={markAllNotificationsRead}
@@ -283,7 +309,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Link
                           key={n.id}
                           href={`/dashboard/messages?teacherId=${n.teacherId}`}
-                          onClick={() => setNotificationOpen(false)}
+                          onClick={() => {
+                            setNotificationOpen(false);
+                            markTeacherThreadRead(n.teacherId);
+                          }}
                           className="block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none"
                         >
                           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -301,7 +330,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Link
                           key={n.id}
                           href={getAdminNotificationHref(n)}
-                          onClick={() => setNotificationOpen(false)}
+                          onClick={() => {
+                            setNotificationOpen(false);
+                            if (!n.read) {
+                              markNotificationRead(n.id);
+                            }
+                          }}
                           className={`px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 ${
                             ''
                           } block px-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-b-0 rounded-none shadow-none bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-none transform-none active:scale-100 focus:outline-none`}
@@ -501,6 +535,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     Teachers
                   </Link>
+
                 </div>
               )}
 
@@ -584,6 +619,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </Link>
                 </div>
               )}
+
+              <Link
+                href="/dashboard/job-postings"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
+                  isActive('/dashboard/job-postings')
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <BriefcaseIcon className="w-5 h-5 mr-3" />
+                Job Postings
+              </Link>
 
               {/* Notifications */}
               <Link
@@ -825,5 +873,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
 
 

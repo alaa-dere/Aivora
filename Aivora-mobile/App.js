@@ -3,12 +3,40 @@ import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView } from 'react-native-webview';
+import Constants from 'expo-constants';
 
 const RAW_WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000';
 
+function getRuntimeWebUrl() {
+  const hostCandidates = [
+    Constants?.expoConfig?.hostUri,
+    Constants?.manifest2?.extra?.expoClient?.hostUri,
+    Constants?.manifest?.debuggerHost,
+    Constants?.manifest?.hostUri,
+  ];
+
+  for (const candidate of hostCandidates) {
+    if (!candidate || typeof candidate !== 'string') continue;
+    const withoutProtocol = candidate.replace(/^[a-z]+:\/\//i, '');
+    const host = withoutProtocol.split(':')[0];
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:3000`;
+    }
+  }
+
+  return 'http://localhost:3000';
+}
+
 function normalizeWebUrl(url) {
   if (!url) {
-    return 'http://localhost:3000';
+    return getRuntimeWebUrl();
+  }
+
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    if (Platform.OS === 'android') {
+      return url.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+    }
+    return getRuntimeWebUrl();
   }
 
   if (Platform.OS === 'android') {

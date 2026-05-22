@@ -15,7 +15,7 @@ type Lesson = {
   title: string;
   type: 'text' | 'code_example' | 'live_python' | 'video_embed' | 'quiz' | 'mixed';
   enableLiveEditor: boolean;
-  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql';
+  liveEditorLanguage?: 'python' | 'javascript' | 'html_css' | 'sql' | 'c';
   durationMinutes: number;
   isPublished: boolean;
   content?: string;
@@ -39,6 +39,19 @@ type Module = {
   orderNumber: number;
   lessons: Lesson[];
 };
+
+const fixContent = (raw: string) =>
+  raw
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(.)(\n?)(#{1,4} )/g, '$1\n\n$3')
+    .replace(/(#{1,4} [^\n]+)\n([^\n])/g, '$1\n\n$2')
+
+    .trim();
 
 export default function CourseContentPage() {
   const params = useParams();
@@ -92,11 +105,13 @@ export default function CourseContentPage() {
       setCourseTitle(data.course?.title || '');
 
       if (Array.isArray(data.modules) && data.modules.length > 0) {
-        const initialExpanded: Record<string, boolean> = {};
-        data.modules.slice(0, 2).forEach((m: Module) => {
-          initialExpanded[m.id] = true;
+        setExpandedModules((prev) => {
+          const next: Record<string, boolean> = {};
+          data.modules.forEach((m: Module) => {
+            next[m.id] = Boolean(prev[m.id]);
+          });
+          return next;
         });
-        setExpandedModules(initialExpanded);
         const allLessons = data.modules.flatMap((m: Module) => m.lessons || []);
         const stillExists =
           selectedLessonId && allLessons.some((lesson: Lesson) => lesson.id === selectedLessonId);
@@ -118,6 +133,28 @@ export default function CourseContentPage() {
       fetchContent();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    if (!courseId || typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(`course-content-expanded:${courseId}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, boolean>;
+      if (parsed && typeof parsed === 'object') {
+        setExpandedModules(parsed);
+      }
+    } catch {
+      // ignore invalid saved state
+    }
+  }, [courseId]);
+
+  useEffect(() => {
+    if (!courseId || typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      `course-content-expanded:${courseId}`,
+      JSON.stringify(expandedModules)
+    );
+  }, [courseId, expandedModules]);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev => ({
@@ -509,9 +546,10 @@ export default function CourseContentPage() {
   };
 
   const generateDetailsWithAi = async () => {
-const prompt = aiOutlinePrompt.trim() || 
-  aiOutlineDraft?.map((m: any) => m.title).join(', ') || 
-  'Programming course';
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      'Programming course';
 
     if (!aiOutlineDraft || aiOutlineDraft.length === 0) {
       setError('Generate outline first (Phase 1)');
@@ -574,28 +612,29 @@ const prompt = aiOutlinePrompt.trim() ||
       setAiRegeneratingLessons(false);
     }
   };
-const regenerateSingleLesson = async (lessonId: string) => {
-  const prompt = aiOutlinePrompt.trim() ||
-    aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
-    modules.map((m) => m.title).join(', ') ||
-    'Programming course';
-  setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
-  try {
-    const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed');
-    await fetchContent();
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
-  } catch {
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
-  }
-};
+  const regenerateSingleLesson = async (lessonId: string) => {
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      modules.map((m) => m.title).join(', ') ||
+      'Programming course';
+    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
+    try {
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      await fetchContent();
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
+    } catch {
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
+    }
+  };
 
   const toggleSelectLesson = (lessonId: string) => {
     setSelectedLessonIds((prev) =>
@@ -947,7 +986,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
         {/* Lesson Modal */}
         {showLessonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="admin-surface w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="admin-surface w-full max-w-5xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
                 <h2 className="text-xl font-bold">
                   {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
@@ -964,7 +1003,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
 
               <form
                 onSubmit={handleSaveLesson}
-                className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+                className="p-6 space-y-4 max-h-[90vh] overflow-y-auto"
               >
 
                 <div>
@@ -1055,7 +1094,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </button>
                   </div>
                   <textarea
-                    rows={8}
+                    rows={14}
                     value={lessonForm.content}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="Write your lesson content here... Use ``` for code blocks and {{video:URL}} for videos."
@@ -1123,6 +1162,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                       <option value="javascript">JavaScript / Node.js (Replit / StackBlitz)</option>
                       <option value="html_css">HTML/CSS (CodePen / StackBlitz)</option>
                       <option value="sql">SQL (Query Practice)</option>
+                      <option value="c">C (Practice Mode)</option>
                     </select>
                   </div>
                 )}
@@ -1460,7 +1500,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </div>
                     <LessonContentView
                       key={lesson.id}
-                      content={lesson.content || ''}
+                      content={fixContent(lesson.content ?? '')}
                       quizQuestions={lesson.quizQuestions || []}
                       enableLiveEditor={lesson.enableLiveEditor}
                       liveEditorLanguage={lesson.liveEditorLanguage || 'python'}

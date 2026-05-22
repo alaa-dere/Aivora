@@ -56,7 +56,11 @@ export async function GET(req: Request) {
         c.imageUrl,
         c.durationWeeks,
         u.fullName
-      ORDER BY c.createdAt DESC
+      ORDER BY
+        studentsCount DESC,
+        COALESCE(averageRating, 0) DESC,
+        evaluationCount DESC,
+        c.createdAt DESC
       LIMIT 4
     `;
 

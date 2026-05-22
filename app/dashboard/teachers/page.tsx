@@ -199,13 +199,28 @@ export default function AdminTeachersPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
       {/* Header */}
-      <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">All Teachers</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage teacher accounts, status, and access.
           </p>
         </div>
+        <Link
+          href="/dashboard/live-sessions"
+          className="
+            group w-full sm:w-auto inline-flex items-center justify-center gap-2
+            px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl
+            bg-emerald-100 hover:bg-emerald-200
+            text-emerald-700 font-semibold text-xs sm:text-sm
+            shadow-sm border border-emerald-200
+            dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800
+            transition-all duration-200 active:scale-95
+            whitespace-nowrap
+          "
+        >
+          View Calendar
+        </Link>
       </div>
 
       {/* Search & Filter */}
@@ -242,7 +257,7 @@ export default function AdminTeachersPage() {
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | Status)}
               className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-900"
             >
               <option value="all">All Status</option>

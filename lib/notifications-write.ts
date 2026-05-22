@@ -28,7 +28,8 @@ type TeacherNotificationInput = {
 };
 
 export async function createAdminNotification(input: AdminNotificationInput) {
-  if (await hasUnifiedNotificationTable()) {
+  const isUnified = await hasUnifiedNotificationTable();
+  if (isUnified) {
     await pool.query(
       `
       INSERT INTO notification
@@ -41,6 +42,11 @@ export async function createAdminNotification(input: AdminNotificationInput) {
     return;
   }
 
+  const legacyType =
+    input.type === 'teacher_message' || input.type === 'student_signup'
+      ? input.type
+      : 'course_enroll';
+
   await pool.query(
     `
     INSERT INTO admin_notification
@@ -48,7 +54,7 @@ export async function createAdminNotification(input: AdminNotificationInput) {
     VALUES
       (UUID(), ?, ?, ?, ?, ?, NOW(), NULL)
     `,
-    [input.type, input.title, input.message, input.studentId || null, input.courseId || null]
+    [legacyType, input.title, input.message, input.studentId || null, input.courseId || null]
   );
 }
 

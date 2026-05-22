@@ -9,6 +9,15 @@ type LiveEditorSubmission = {
   error?: string | null;
 };
 
+const normalizeEditorCode = (raw: string) =>
+  String(raw || "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "  ")
+    .replace(/(#[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, "$1\n\n$2")
+    .replace(/\n{3,}/g, "\n\n");
+
 export default function LiveHtmlPreview({
   initialCode,
   onSubmissionChange,
@@ -16,8 +25,12 @@ export default function LiveHtmlPreview({
   initialCode: string;
   onSubmissionChange?: (submission: LiveEditorSubmission) => void;
 }) {
-  const [code, setCode] = useState(initialCode);
+  const [code, setCode] = useState(() => normalizeEditorCode(initialCode));
   const lastSubmissionSignatureRef = useRef<string>("");
+
+  useEffect(() => {
+    setCode(normalizeEditorCode(initialCode));
+  }, [initialCode]);
 
   const srcDoc = useMemo(() => {
     return `
@@ -55,14 +68,15 @@ export default function LiveHtmlPreview({
         <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Live HTML/CSS Preview</p>
       </div>
       <textarea
-        rows={6}
+        rows={12}
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => setCode(normalizeEditorCode(e.target.value))}
         className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-mono text-gray-900 dark:text-gray-100"
       />
       <div className="rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden bg-white">
-        <iframe title="HTML preview" className="w-full h-48" sandbox="allow-scripts allow-same-origin" srcDoc={srcDoc} />
+        <iframe title="HTML preview" className="w-full h-72" sandbox="allow-scripts allow-same-origin" srcDoc={srcDoc} />
       </div>
     </div>
   );
 }
+

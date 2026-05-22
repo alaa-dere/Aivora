@@ -85,6 +85,8 @@ export function getAdminNotificationHref(notification: BaseNotification) {
       return notification.studentId
         ? `/dashboard/students/${notification.studentId}`
         : '/dashboard/students';
+    case 'instructor_application':
+      return '/dashboard/instructor-applications';
     default:
       return '/dashboard/notifications';
   }
