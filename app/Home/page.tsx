@@ -687,7 +687,7 @@ export default function HomePage() {
                               return (
                                 <div
                                   key={`cat-course-${course.id}`}
-                                  className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                                  className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                                 >
                                   <div className="relative h-36 sm:h-40 overflow-hidden">
                                     <img
@@ -703,7 +703,7 @@ export default function HomePage() {
                                     />
                                   </div>
 
-                                  <div className="p-4">
+                                  <div className="p-4 flex flex-1 flex-col">
                                     <p className="text-sm text-blue-200 mb-2 font-medium">
                                       {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                                     </p>
@@ -746,7 +746,7 @@ export default function HomePage() {
                                       )}
                                     </div>
 
-                                    <div className="flex items-center justify-between">
+                                    <div className="mt-auto pt-2 flex items-center justify-between">
                                       <span className="text-lg sm:text-xl font-black text-blue-300">
                                         ${course.price}
                                       </span>
@@ -826,7 +826,7 @@ export default function HomePage() {
                     return (
                       <div
                         key={`enrolled-${course.id}`}
-                        className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                        className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                       >
                         <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
@@ -842,7 +842,7 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-4 flex flex-1 flex-col">
                           <p className="text-sm text-blue-200 mb-2 font-medium">
                             {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                           </p>
@@ -890,7 +890,7 @@ export default function HomePage() {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          <div className="mt-auto pt-2 flex items-center justify-between">
                             <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
@@ -953,7 +953,7 @@ export default function HomePage() {
                     return (
                       <div
                         key={`recent-${course.id}`}
-                        className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                        className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                       >
                         <div className="relative h-36 sm:h-40 overflow-hidden">
                           <img
@@ -969,7 +969,7 @@ export default function HomePage() {
                           />
                         </div>
 
-                        <div className="p-4">
+                        <div className="p-4 flex flex-1 flex-col">
                           <p className="text-sm text-blue-200 mb-2 font-medium">
                             {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                           </p>
@@ -1019,7 +1019,7 @@ export default function HomePage() {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          <div className="mt-auto pt-2 flex items-center justify-between">
                             <span className="text-lg sm:text-xl font-black text-blue-300">
                               ${course.price}
                             </span>
@@ -1088,10 +1088,10 @@ export default function HomePage() {
                   const filledStars = Math.round(rating);
 
                   return (
-                    <div
-                      key={course.id}
-                      className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                    >
+                  <div
+                    key={course.id}
+                    className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
+                  >
                     <div className="relative h-36 sm:h-40 overflow-hidden">
                       <img
                         src={course.image || '/default-course.jpg'}
@@ -1106,7 +1106,7 @@ export default function HomePage() {
                       />
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-4 flex flex-1 flex-col">
                       <p className="text-sm text-blue-200 mb-2 font-medium">
                         {isArabic ? 'ط¨ظˆط§ط³ط·ط©' : 'By'} {course.instructor}
                       </p>
@@ -1156,7 +1156,7 @@ export default function HomePage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-lg sm:text-xl font-black text-blue-300">
                           ${course.price}
                         </span>

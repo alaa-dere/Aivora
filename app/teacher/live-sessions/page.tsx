@@ -1,7 +1,8 @@
-﻿
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
 import {
   PlusIcon,
@@ -55,6 +56,20 @@ const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CALENDAR_START_HOUR = 13;
 const CALENDAR_END_HOUR = 20;
 const HOUR_ROW_HEIGHT = 72;
+
+const getInAppLiveHref = (
+  sessionId: string,
+  role: "teacher" | "student",
+  displayName?: string,
+  fallbackLink?: string | null
+) => {
+  const qs = new URLSearchParams();
+  qs.set("role", role);
+  if (displayName) qs.set("name", displayName);
+  if (fallbackLink) qs.set("fallback", fallbackLink);
+  if (fallbackLink && /zoom\.us|zoom\.com/i.test(fallbackLink)) qs.set("provider", "zoom");
+  return `/live-session/${encodeURIComponent(sessionId)}?${qs.toString()}`;
+};
 
 export default function LiveSessionsPage() {
   const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
@@ -624,14 +639,23 @@ export default function LiveSessionsPage() {
                       {calendarEvents
                         .filter((event) => event.dayIndex === day.getDay())
                         .map((event) => (
-                          <button
+                          <div
                             key={event.id}
                             onClick={() => {
                               if (event.teacherId && currentTeacherId && event.teacherId !== currentTeacherId) return;
                               openAttendance(event);
                             }}
-                            className="absolute left-1 right-1 rounded-md border border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-left shadow-sm hover:shadow"
+                            className="absolute left-1 right-1 rounded-md border border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-left shadow-sm hover:shadow cursor-pointer"
                             style={{ top: `${event.top}px`, height: `${event.height}px` }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                if (event.teacherId && currentTeacherId && event.teacherId !== currentTeacherId) return;
+                                openAttendance(event);
+                              }
+                            }}
                           >
                             <p className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 truncate">
                               {event.title}
@@ -642,7 +666,15 @@ export default function LiveSessionsPage() {
                             <p className="text-[10px] text-gray-600 dark:text-gray-300">
                               {formatTime(event.startAt)} - {formatTime(event.endAt)}
                             </p>
-                          </button>
+                            <Link
+                              href={getInAppLiveHref(event.id, "teacher", event.teacherName || "Teacher", event.meetingLink)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100"
+                            >
+                              <PlayCircleIcon className="h-3 w-3" />
+                              Join In-App
+                            </Link>
+                          </div>
                         ))}
                     </div>
                   ))}
@@ -736,6 +768,13 @@ export default function LiveSessionsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                  <Link
+                    href={getInAppLiveHref(session.id, "teacher", session.teacherName || "Teacher", session.meetingLink)}
+                    className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-emerald-200"
+                  >
+                    <PlayCircleIcon className="w-4 h-4" />
+                    Join In-App
+                  </Link>
                   {isUpcoming && (
                     <button
                       onClick={() => handleSendReminder(session.id)}

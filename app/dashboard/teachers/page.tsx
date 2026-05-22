@@ -208,7 +208,16 @@ export default function AdminTeachersPage() {
         </div>
         <Link
           href="/dashboard/live-sessions"
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-blue-900/60 dark:border-blue-700/70 bg-blue-950 dark:bg-blue-900 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-800 transition shadow-sm"
+          className="
+            group w-full sm:w-auto inline-flex items-center justify-center gap-2
+            px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl
+            bg-emerald-100 hover:bg-emerald-200
+            text-emerald-700 font-semibold text-xs sm:text-sm
+            shadow-sm border border-emerald-200
+            dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800
+            transition-all duration-200 active:scale-95
+            whitespace-nowrap
+          "
         >
           View Calendar
         </Link>

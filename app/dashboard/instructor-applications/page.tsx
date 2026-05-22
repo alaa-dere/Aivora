@@ -68,6 +68,7 @@ export default function AdminInstructorApplicationsPage() {
       (x) => x.fullName.toLowerCase().includes(q) || x.email.toLowerCase().includes(q)
     );
   }, [items, query]);
+  const filteredCount = filtered.length;
 
   async function updateStatus(id: string, status: ApplicationStatus, adminNotes: string) {
     try {
@@ -150,7 +151,7 @@ export default function AdminInstructorApplicationsPage() {
         </p>
       </div>
 
-      <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 p-3 sm:p-4 mb-4 sm:mb-5">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             value={query}
@@ -178,7 +179,13 @@ export default function AdminInstructorApplicationsPage() {
         </div>
       </div>
 
-      <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 overflow-hidden">
+      <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+          <p className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Applications List <span className="text-gray-400 font-normal">({filteredCount})</span>
+          </p>
+        </div>
         {loading ? (
           <div className="p-8 text-center text-slate-500">Loading...</div>
         ) : error ? (
@@ -200,19 +207,19 @@ export default function AdminInstructorApplicationsPage() {
               ))}
             </div>
             <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left">Applicant</th>
-                  <th className="px-4 py-3 text-left">Job</th>
-                  <th className="px-4 py-3 text-left">Contact</th>
-                  <th className="px-4 py-3 text-left">CV</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Notes</th>
-                  <th className="px-4 py-3 text-left">Submitted</th>
+              <table className="min-w-full table-auto text-sm">
+              <thead className="bg-white dark:bg-slate-900/60">
+                <tr className="text-left text-slate-600 dark:text-slate-300">
+                  <th className="px-4 py-3 font-medium">Applicant</th>
+                  <th className="px-4 py-3 font-medium">Job</th>
+                  <th className="px-4 py-3 font-medium">Contact</th>
+                  <th className="px-4 py-3 font-medium">CV</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Notes</th>
+                  <th className="px-4 py-3 font-medium">Submitted</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {filtered.map((item) => (
                   <ApplicationRowItem
                     key={item.id}
@@ -295,7 +302,7 @@ Aivora Team`;
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/40 p-3">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3">
       <p className="font-semibold text-slate-900 dark:text-slate-100">{item.fullName}</p>
       <p className="text-xs text-slate-500 mt-0.5">{item.bio || 'No bio provided'}</p>
       <p className="text-sm mt-2">{item.jobTitle || 'General Application'}</p>
@@ -333,14 +340,14 @@ Aivora Team`;
         <button
           onClick={handleSaveClick}
           disabled={saving}
-          className="px-3 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200 text-xs disabled:opacity-60"
+          className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 text-xs transition-colors disabled:opacity-60"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
         <button
           onClick={() => onDelete(item.id)}
           disabled={saving}
-          className="px-3 py-2 rounded bg-red-50 text-red-700 border border-red-200 text-xs disabled:opacity-60"
+          className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 text-xs transition-colors disabled:opacity-60"
         >
           Delete
         </button>
@@ -457,7 +464,7 @@ Aivora Team`;
 
   return (
     <>
-    <tr className="border-t border-slate-100 dark:border-slate-800">
+    <tr className="hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
       <td className="px-4 py-4">
         <p className="font-semibold text-slate-900 dark:text-slate-100">{item.fullName}</p>
         <p className="text-xs text-slate-500">{item.bio || 'No bio provided'}</p>
@@ -509,14 +516,14 @@ Aivora Team`;
           <button
             onClick={handleSaveClick}
             disabled={saving}
-            className="px-3 py-1.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-60"
+            className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
           <button
             onClick={() => onDelete(item.id)}
             disabled={saving}
-            className="px-3 py-1.5 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-60"
+            className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
           >
             Delete
           </button>
