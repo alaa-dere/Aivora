@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -146,6 +146,7 @@ export default function CourseDetailsPage() {
 
   const isDark = mounted && theme === 'dark';
   const isArabic = language === 'ar';
+  const viewedFromPath = searchParams.get('fromPath') === '1';
   const descriptionText = isArabic
     ? course?.descriptionAr || course?.description || ''
     : course?.description || '';
@@ -162,10 +163,10 @@ export default function CourseDetailsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 text-slate-900 dark:bg-slate-950 dark:text-white px-6 text-center">
         <h1 className="text-3xl font-bold mb-4">
-          {isArabic ? 'الدورة غير موجودة' : 'Course not found'}
+          {isArabic ? 'ط§ظ„ط¯ظˆط±ط© ط؛ظٹط± ظ…ظˆط¬ظˆط¯ط©' : 'Course not found'}
         </h1>
         <p className="text-slate-600 dark:text-slate-300 mb-6">
-          {errorMsg || (isArabic ? 'هذه الدورة غير متاحة.' : 'This course does not exist.')}
+          {errorMsg || (isArabic ? 'ظ‡ط°ظ‡ ط§ظ„ط¯ظˆط±ط© ط؛ظٹط± ظ…طھط§ط­ط©.' : 'This course does not exist.')}
         </p>
       </div>
     );
@@ -220,7 +221,7 @@ export default function CourseDetailsPage() {
                 onClick={toggleLanguage}
                 className="p-1.5 sm:p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle language"
-                title={isArabic ? 'Switch to English' : 'التبديل إلى العربية'}
+                title={isArabic ? 'Switch to English' : 'ط§ظ„طھط¨ط¯ظٹظ„ ط¥ظ„ظ‰ ط§ظ„ط¹ط±ط¨ظٹط©'}
               >
                 <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
@@ -232,7 +233,7 @@ export default function CourseDetailsPage() {
                   <button className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-slate-800 transition-colors text-slate-900 dark:text-white">
                     <ArrowLeftOnRectangleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
                     <span className="hidden sm:inline">
-                      {isArabic ? 'تسجيل الدخول' : 'Login'}
+                      {isArabic ? 'طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„' : 'Login'}
                     </span>
                   </button>
                 </Link>
@@ -267,14 +268,14 @@ export default function CourseDetailsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4">
                   <p className="text-sm text-slate-300 mb-1">
-                    {isArabic ? 'المدرب' : 'Instructor'}
+                    {isArabic ? 'ط§ظ„ظ…ط¯ط±ط¨' : 'Instructor'}
                   </p>
                   <p className="font-semibold text-white">{course.teacherName}</p>
                 </div>
 
                 <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg p-3 sm:p-4">
                   <p className="text-sm text-slate-300 mb-1">
-                    {isArabic ? 'السعر' : 'Price'}
+                    {isArabic ? 'ط§ظ„ط³ط¹ط±' : 'Price'}
                   </p>
                   <p className="font-semibold text-blue-300 text-lg sm:text-xl">${course.price}</p>
                 </div>
@@ -283,10 +284,10 @@ export default function CourseDetailsPage() {
                   <ClockIcon className="w-6 h-6 text-blue-300" />
                   <div>
                     <p className="text-sm text-slate-300">
-                      {isArabic ? 'المدة' : 'Duration'}
+                      {isArabic ? 'ط§ظ„ظ…ط¯ط©' : 'Duration'}
                     </p>
                     <p className="font-semibold text-white">
-                      {course.durationWeeks} {isArabic ? 'أسابيع' : 'Weeks'}
+                      {course.durationWeeks} {isArabic ? 'ط£ط³ط§ط¨ظٹط¹' : 'Weeks'}
                     </p>
                   </div>
                 </div>
@@ -295,7 +296,7 @@ export default function CourseDetailsPage() {
                   <UserGroupIcon className="w-6 h-6 text-blue-300" />
                   <div>
                     <p className="text-sm text-slate-300">
-                      {isArabic ? 'الطلاب' : 'Students'}
+                      {isArabic ? 'ط§ظ„ط·ظ„ط§ط¨' : 'Students'}
                     </p>
                     <p className="font-semibold text-white">{course.students}</p>
                   </div>
@@ -303,26 +304,28 @@ export default function CourseDetailsPage() {
               </div>
 
 
-              {course.enrolled ? (
-                <Link
-                  href={`/student/my-courses/${courseId}`}
-                  className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 transition text-white text-base sm:text-lg font-semibold shadow-lg"
-                >
-                  {isArabic ? 'أنت مسجل بالفعل' : 'Already Enrolled'}
-                </Link>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (status === 'authenticated') {
-                      router.push(`/Home/courses/${courseId}/enroll`);
-                    } else {
-                      setAuthOpen(true);
-                    }
-                  }}
-                  className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 transition text-white text-base sm:text-lg font-semibold shadow-lg"
-                >
-                  {isArabic ? 'سجّل الآن' : 'Enroll Now'}
-                </button>
+              {!viewedFromPath && (
+                course.enrolled ? (
+                  <Link
+                    href={`/student/my-courses/${courseId}`}
+                    className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 transition text-white text-base sm:text-lg font-semibold shadow-lg"
+                  >
+                    {isArabic ? 'أنت مسجل بالفعل' : 'Already Enrolled'}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (status === 'authenticated') {
+                        router.push(`/Home/courses/${courseId}/enroll`);
+                      } else {
+                        setAuthOpen(true);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 transition text-white text-base sm:text-lg font-semibold shadow-lg"
+                  >
+                    {isArabic ? 'سجّل الآن' : 'Enroll Now'}
+                  </button>
+                )
               )}
 
               {(enrollError || enrollSuccess) && (
@@ -348,3 +351,4 @@ export default function CourseDetailsPage() {
     </div>
   );
 }
+

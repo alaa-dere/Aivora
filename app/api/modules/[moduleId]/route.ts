@@ -35,22 +35,45 @@ export async function PATCH(req: Request, { params }: Params) {
       values.push(description);
     }
 
-    if (updates.length === 0) {
+    if (body?.isPublished !== undefined) {
+      const desiredState = Boolean(body.isPublished);
+      await pool.query<ResultSetHeader>(
+        `
+        UPDATE lesson
+        SET isPublished = ?, updatedAt = NOW()
+        WHERE moduleId = ?
+        `,
+        [desiredState, normalizedModuleId]
+      );
+    }
+
+    if (updates.length === 0 && body?.isPublished === undefined) {
       return NextResponse.json({ message: 'No changes provided' }, { status: 400 });
     }
 
-    values.push(normalizedModuleId);
+    let result: ResultSetHeader | null = null;
+    if (updates.length > 0) {
+      values.push(normalizedModuleId);
+      const [updateResult] = await pool.query<ResultSetHeader>(
+        `
+        UPDATE module
+        SET ${updates.join(', ')}, updatedAt = NOW()
+        WHERE id = ?
+        `,
+        values
+      );
+      result = updateResult;
+    } else {
+      const [existsRows] = await pool.query<RowDataPacket[]>(
+        `SELECT id FROM module WHERE id = ? LIMIT 1`,
+        [normalizedModuleId]
+      );
+      if (existsRows.length === 0) {
+        return NextResponse.json({ message: 'Module not found' }, { status: 404 });
+      }
+    }
 
-    const [result] = await pool.query<ResultSetHeader>(
-      `
-      UPDATE module
-      SET ${updates.join(', ')}, updatedAt = NOW()
-      WHERE id = ?
-      `,
-      values
-    );
-
-    if (result.affectedRows === 0) {
+    if (result && result.affectedRows === 0) {
       return NextResponse.json({ message: 'Module not found' }, { status: 404 });
     }
 

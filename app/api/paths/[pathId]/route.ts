@@ -3,6 +3,9 @@ import pool from '@/lib/db';
 import { OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2';
 import { requirePermission } from '@/lib/request-auth';
 import { ensureLearningPathSchema } from '@/lib/ensure-learning-path-schema';
+import { mkdir, unlink, writeFile } from 'fs/promises';
+import path from 'path';
+import fs from 'fs';
 
 interface Params {
   params: Promise<{ pathId: string }>;
@@ -21,22 +24,61 @@ export async function PUT(req: Request, { params }: Params) {
 
   const conn = await pool.getConnection();
   try {
-    const body = await req.json().catch(() => ({}));
+    const contentType = req.headers.get('content-type') || '';
+    const isMultipart = contentType.includes('multipart/form-data');
+    const isJson = contentType.includes('application/json');
 
-    const title = typeof body?.title === 'string' ? body.title.trim() : '';
-    const description =
-      typeof body?.description === 'string' ? body.description.trim() : null;
-    const categoryId =
-      typeof body?.categoryId === 'string' && body.categoryId.trim()
-        ? body.categoryId.trim()
-        : null;
-    const rawLevel = typeof body?.level === 'string' ? body.level : '';
-    const rawStatus = typeof body?.status === 'string' ? body.status : '';
-    const estimatedHours = Number(body?.estimatedHours || 0);
-    const price = Number(body?.price || 0);
-    const courseIds: string[] = Array.isArray(body?.courseIds)
-      ? body.courseIds.filter((courseId: unknown) => typeof courseId === 'string' && courseId.trim())
-      : [];
+    let title = '';
+    let description: string | null = null;
+    let imageUrl: string | null = null;
+    let categoryId: string | null = null;
+    let rawLevel = '';
+    let rawStatus = '';
+    let estimatedHours = 0;
+    let price = 0;
+    let courseIds: string[] = [];
+    let imageFile: File | null = null;
+
+    if (isMultipart) {
+      const formData = await req.formData();
+      title = String(formData.get('title') || '').trim();
+      const descriptionRaw = String(formData.get('description') || '').trim();
+      description = descriptionRaw || null;
+      const categoryRaw = String(formData.get('categoryId') || '').trim();
+      categoryId = categoryRaw || null;
+      rawLevel = String(formData.get('level') || '');
+      rawStatus = String(formData.get('status') || '');
+      estimatedHours = Number(formData.get('estimatedHours') || 0);
+      price = Number(formData.get('price') || 0);
+      const courseIdsRaw = String(formData.get('courseIds') || '[]');
+      const parsed = JSON.parse(courseIdsRaw) as unknown;
+      courseIds = Array.isArray(parsed)
+        ? parsed.filter((cid: unknown) => typeof cid === 'string' && cid.trim())
+        : [];
+      imageFile = (formData.get('image') as File | null) ?? null;
+    } else if (isJson) {
+      const body = await req.json().catch(() => ({}));
+      title = typeof body?.title === 'string' ? body.title.trim() : '';
+      description =
+        typeof body?.description === 'string' ? body.description.trim() : null;
+      imageUrl =
+        typeof body?.imageUrl === 'string' && body.imageUrl.trim()
+          ? body.imageUrl.trim()
+          : null;
+      categoryId =
+        typeof body?.categoryId === 'string' && body.categoryId.trim()
+          ? body.categoryId.trim()
+          : null;
+      rawLevel = typeof body?.level === 'string' ? body.level : '';
+      rawStatus = typeof body?.status === 'string' ? body.status : '';
+      estimatedHours = Number(body?.estimatedHours || 0);
+      price = Number(body?.price || 0);
+      courseIds = Array.isArray(body?.courseIds)
+        ? body.courseIds.filter((courseId: unknown) => typeof courseId === 'string' && courseId.trim())
+        : [];
+    } else {
+      return NextResponse.json({ message: 'Unsupported content type' }, { status: 415 });
+    }
     const uniqueCourseIds = [...new Set(courseIds)];
 
     if (!title) {
@@ -63,11 +105,42 @@ export async function PUT(req: Request, { params }: Params) {
       : 'draft';
 
     const [existingPathRows] = await conn.query<RowDataPacket[]>(
-      `SELECT id FROM learning_path WHERE id = ? LIMIT 1`,
+      `SELECT id, imageUrl FROM learning_path WHERE id = ? LIMIT 1`,
       [id]
     );
     if (existingPathRows.length === 0) {
       return NextResponse.json({ message: 'Path not found' }, { status: 404 });
+    }
+    const oldImageUrl = (existingPathRows[0].imageUrl as string | null) || null;
+
+    if (imageFile && imageFile.size > 0) {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'paths');
+      await mkdir(uploadsDir, { recursive: true });
+      const extensionFromName = imageFile.name.split('.').pop()?.toLowerCase();
+      const extensionFromType = imageFile.type.split('/').pop()?.toLowerCase();
+      const ext = extensionFromName || extensionFromType || 'jpg';
+      const fileName = `path-${id}-${Date.now()}.${ext}`;
+      const filePath = path.join(uploadsDir, fileName);
+      await writeFile(filePath, buffer);
+      imageUrl = `/uploads/paths/${fileName}`;
+
+      if (oldImageUrl && oldImageUrl.startsWith('/uploads/paths/')) {
+        const oldImagePath = path.join(process.cwd(), 'public', oldImageUrl);
+        if (fs.existsSync(oldImagePath)) {
+          try {
+            await unlink(oldImagePath);
+          } catch (unlinkError) {
+            console.error('Failed to delete old path image:', unlinkError);
+          }
+        }
+      }
+    }
+
+    // Keep existing image when admin edits path without uploading a new file.
+    if (!imageUrl) {
+      imageUrl = oldImageUrl;
     }
 
     if (categoryId) {
@@ -103,6 +176,7 @@ export async function PUT(req: Request, { params }: Params) {
         categoryId = ?,
         title = ?,
         description = ?,
+        imageUrl = ?,
         level = ?,
         price = ?,
         status = ?,
@@ -110,7 +184,7 @@ export async function PUT(req: Request, { params }: Params) {
         updatedAt = NOW()
       WHERE id = ?
       `,
-      [categoryId, title, description, level, price, status, estimatedHours, id]
+      [categoryId, title, description, imageUrl, level, price, status, estimatedHours, id]
     );
 
     await conn.query<ResultSetHeader>(`DELETE FROM learning_path_course WHERE pathId = ?`, [id]);

@@ -539,19 +539,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               )}
 
-              <Link
-                href="/dashboard/job-postings"
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                  isActive('/dashboard/job-postings')
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <BriefcaseIcon className="w-5 h-5 mr-3" />
-                Job Postings
-              </Link>
-
               {/* Courses */}
               <Link
                 href="/dashboard/courses"
@@ -563,7 +550,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }`}
               >
                 <BookOpenIcon className="w-5 h-5 mr-3" />
-                Courses
+                Courses & Paths
               </Link>
 
               {/* Finance Dropdown */}
