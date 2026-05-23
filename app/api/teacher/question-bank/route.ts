@@ -6,6 +6,8 @@ import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 
 type QuestionRow = RowDataPacket & {
   id: string;
+  moduleId: string | null;
+  lessonId: string | null;
   questionType: 'multiple_choice' | 'written' | 'true_false';
   questionText: string;
   optionsJson: unknown;
@@ -32,6 +34,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const courseId = String(searchParams.get('courseId') || '').trim();
+    const lessonId = String(searchParams.get('lessonId') || '').trim();
+    const moduleId = String(searchParams.get('moduleId') || '').trim();
 
     if (!courseId) {
       return NextResponse.json({ message: 'courseId is required' }, { status: 400 });
@@ -42,14 +46,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'Course not found' }, { status: 404 });
     }
 
+    const whereSql = moduleId
+      ? 'WHERE courseId = ? AND moduleId = ?'
+      : lessonId
+        ? 'WHERE courseId = ? AND lessonId = ?'
+        : 'WHERE courseId = ?';
+    const values = moduleId ? [courseId, moduleId] : lessonId ? [courseId, lessonId] : [courseId];
     const [rows] = await pool.query<QuestionRow[]>(
       `
-      SELECT id, questionType, questionText, optionsJson, correctOptionIndex, createdAt
+      SELECT id, moduleId, lessonId, questionType, questionText, optionsJson, correctOptionIndex, createdAt
       FROM course_question_bank
-      WHERE courseId = ?
+      ${whereSql}
       ORDER BY createdAt DESC
       `,
-      [courseId]
+      values
     );
 
     const questions = rows.map((row) => {
@@ -69,6 +79,8 @@ export async function GET(req: Request) {
 
       return {
         id: row.id,
+        moduleId: row.moduleId || null,
+        lessonId: row.lessonId || null,
         questionType: row.questionType || 'multiple_choice',
         questionText: row.questionText,
         options,
@@ -108,6 +120,8 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const courseId = String(body?.courseId || '').trim();
+    const moduleIdRaw = String(body?.moduleId || '').trim();
+    const lessonIdRaw = String(body?.lessonId || '').trim();
     const questionTypeRaw = String(body?.questionType || 'multiple_choice').trim();
     const questionType: 'multiple_choice' | 'written' | 'true_false' =
       questionTypeRaw === 'written'
@@ -171,19 +185,56 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Course not found' }, { status: 404 });
     }
 
+    let moduleId: string | null = null;
+    if (moduleIdRaw) {
+      const [moduleRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT id
+        FROM module
+        WHERE id = ? AND courseId = ?
+        LIMIT 1
+        `,
+        [moduleIdRaw, courseId]
+      );
+      if (moduleRows.length === 0) {
+        return NextResponse.json({ message: 'Chapter not found in this course' }, { status: 400 });
+      }
+      moduleId = String(moduleRows[0].id);
+    }
+
+    let lessonId: string | null = null;
+    if (!moduleId && lessonIdRaw) {
+      const [lessonRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT l.id
+        FROM lesson l
+        JOIN module m ON m.id = l.moduleId
+        WHERE l.id = ? AND m.courseId = ?
+        LIMIT 1
+        `,
+        [lessonIdRaw, courseId]
+      );
+      if (lessonRows.length === 0) {
+        return NextResponse.json({ message: 'Lesson not found in this course' }, { status: 400 });
+      }
+      lessonId = String(lessonRows[0].id);
+    }
+
     const [idRows] = await pool.query<RowDataPacket[]>(`SELECT UUID() AS id`);
     const questionId = idRows[0].id as string;
 
     await pool.query<ResultSetHeader>(
       `
       INSERT INTO course_question_bank
-        (id, courseId, teacherId, questionType, questionText, optionsJson, correctOptionIndex, createdAt, updatedAt)
+        (id, courseId, moduleId, lessonId, teacherId, questionType, questionText, optionsJson, correctOptionIndex, createdAt, updatedAt)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `,
       [
         questionId,
         courseId,
+        moduleId,
+        lessonId,
         user.id,
         questionType,
         questionText,
@@ -198,6 +249,8 @@ export async function POST(req: Request) {
         question: {
           id: questionId,
           courseId,
+          moduleId,
+          lessonId,
           questionType,
           questionText,
           options: finalOptions,

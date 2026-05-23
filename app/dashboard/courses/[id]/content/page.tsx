@@ -636,6 +636,28 @@ export default function CourseContentPage() {
     }
   };
 
+  const togglePublishModule = async (module: Module) => {
+    if (!module.lessons || module.lessons.length === 0) {
+      setError('This chapter has no lessons to publish');
+      return;
+    }
+
+    const areAllPublished = module.lessons.every((lesson) => lesson.isPublished);
+    setError(null);
+    try {
+      const res = await fetch(`/api/modules/${module.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: !areAllPublished }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update chapter publish status');
+      await fetchContent();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update chapter publish status');
+    }
+  };
+
   const toggleSelectLesson = (lessonId: string) => {
     setSelectedLessonIds((prev) =>
       prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]
@@ -1293,6 +1315,17 @@ export default function CourseContentPage() {
                     </div>
                     
                     <div className="relative flex items-center gap-3 self-end">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                        }`}
+                      >
+                        {module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                          ? 'Chapter Published'
+                          : 'Chapter Draft'}
+                      </span>
                       <span className="text-sm text-slate-500 dark:text-slate-400">
                         {module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}
                       </span>
@@ -1311,6 +1344,18 @@ export default function CourseContentPage() {
                           className="admin-surface absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenModuleMenuId(null);
+                              togglePublishModule(module);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                          >
+                            {module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                              ? 'Unpublish Chapter'
+                              : 'Publish Chapter'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => {

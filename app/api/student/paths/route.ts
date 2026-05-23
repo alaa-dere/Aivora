@@ -19,6 +19,12 @@ export async function GET(req: Request) {
         lp.level,
         lp.price,
         lp.estimatedHours,
+        (
+          SELECT COALESCE(SUM(COALESCE(c.durationWeeks, 0)), 0)
+          FROM learning_path_course lpc
+          JOIN course c ON c.id = lpc.courseId
+          WHERE lpc.pathId = lp.id
+        ) AS estimatedWeeks,
         c.name AS categoryName,
         (
           SELECT COUNT(*)
@@ -46,6 +52,7 @@ export async function GET(req: Request) {
       level: row.level as string,
       price: Number(row.price || 0),
       estimatedHours: Number(row.estimatedHours || 0),
+      estimatedWeeks: Number(row.estimatedWeeks || 0),
       categoryName: row.categoryName as string | null,
       coursesCount: Number(row.coursesCount || 0),
       enrolled: Number(row.enrolled || 0) > 0,

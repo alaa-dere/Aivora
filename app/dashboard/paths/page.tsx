@@ -8,6 +8,8 @@ type Course = {
   id: string;
   title: string;
   status: 'draft' | 'published' | 'archived';
+  categoryId?: string | null;
+  price?: number;
 };
 
 type Category = {
@@ -19,6 +21,7 @@ type LearningPath = {
   id: string;
   title: string;
   description?: string | null;
+  imageUrl?: string | null;
   level: string;
   status: 'draft' | 'published' | 'archived';
   price: number;
@@ -29,6 +32,8 @@ type LearningPath = {
   coursesCount: number;
   enrolledStudents: number;
 };
+
+const MAX_IMAGE_SIZE_MB = 5;
 
 export default function AdminPathsPage() {
   const router = useRouter();
@@ -43,18 +48,37 @@ export default function AdminPathsPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState('');
   const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced' | 'all_levels'>(
     'beginner'
   );
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [estimatedHours, setEstimatedHours] = useState('0');
+  const [estimatedHoursLoading, setEstimatedHoursLoading] = useState(false);
   const [price, setPrice] = useState('0');
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
 
-  const availableCourses = useMemo(
-    () => courses.filter((course) => course.status !== 'archived'),
-    [courses]
+  const availableCourses = useMemo(() => {
+    const activeCourses = courses.filter((course) => course.status !== 'archived');
+    if (!categoryId) return [];
+    return activeCourses.filter((course) => (course.categoryId || '') === categoryId);
+  }, [courses, categoryId]);
+
+  const selectedCoursesTotal = useMemo(
+    () =>
+      selectedCourseIds.reduce((sum, courseId) => {
+        const course = courses.find((item) => item.id === courseId);
+        return sum + Number(course?.price || 0);
+      }, 0),
+    [selectedCourseIds, courses]
+  );
+
+  const discountedTotal = useMemo(
+    () => Number((selectedCoursesTotal * 0.9).toFixed(2)),
+    [selectedCoursesTotal]
   );
 
   const fetchAll = async () => {
@@ -85,10 +109,77 @@ export default function AdminPathsPage() {
     fetchAll();
   }, []);
 
+  useEffect(() => {
+    if (!categoryId) {
+      setSelectedCourseIds([]);
+      return;
+    }
+    const allowedIds = new Set(
+      courses
+        .filter((course) => (course.categoryId || '') === categoryId && course.status !== 'archived')
+        .map((course) => course.id)
+    );
+    setSelectedCourseIds((prev) => prev.filter((id) => allowedIds.has(id)));
+  }, [categoryId, courses]);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) {
+        URL.revokeObjectURL(coverPreview);
+      }
+    };
+  }, [coverPreview]);
+
+  useEffect(() => {
+    setPrice(discountedTotal.toFixed(2));
+  }, [discountedTotal]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const computeEstimatedHours = async () => {
+      if (selectedCourseIds.length === 0) {
+        setEstimatedHours('0');
+        return;
+      }
+
+      setEstimatedHoursLoading(true);
+      try {
+        if (cancelled) return;
+        const totalWeeks = selectedCourseIds.reduce((sum, courseId) => {
+          const matched = courses.find((course) => course.id === courseId);
+          return sum + Number(matched?.durationWeeks || 0);
+        }, 0);
+        setEstimatedHours(String(totalWeeks));
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed computing estimated weeks from selected courses:', error);
+          setEstimatedHours('0');
+        }
+      } finally {
+        if (!cancelled) {
+          setEstimatedHoursLoading(false);
+        }
+      }
+    };
+
+    computeEstimatedHours();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCourseIds, courses]);
+
   const resetForm = () => {
     setEditingPathId(null);
     setTitle('');
     setDescription('');
+    setCoverFile(null);
+    if (coverPreview) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverPreview(null);
+    setExistingImageUrl(null);
     setCategoryId('');
     setLevel('beginner');
     setStatus('draft');
@@ -118,19 +209,22 @@ export default function AdminPathsPage() {
       const endpoint = isEditing ? `/api/paths/${editingPathId}` : '/api/paths';
       const method = isEditing ? 'PUT' : 'POST';
 
+      const payload = new FormData();
+      payload.append('title', title.trim());
+      payload.append('description', description.trim());
+      payload.append('categoryId', categoryId || '');
+      payload.append('level', level);
+      payload.append('status', status);
+      payload.append('estimatedHours', String(Number(estimatedHours || 0)));
+      payload.append('price', String(Number(price || 0)));
+      payload.append('courseIds', JSON.stringify(selectedCourseIds));
+      if (coverFile) {
+        payload.append('image', coverFile);
+      }
+
       const res = await fetch(endpoint, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          categoryId: categoryId || null,
-          level,
-          status,
-          estimatedHours: Number(estimatedHours || 0),
-          price: Number(price || 0),
-          courseIds: selectedCourseIds,
-        }),
+        body: payload,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -153,6 +247,12 @@ export default function AdminPathsPage() {
     setEditingPathId(path.id);
     setTitle(path.title);
     setDescription(path.description || '');
+    setCoverFile(null);
+    if (coverPreview) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverPreview(null);
+    setExistingImageUrl(path.imageUrl || null);
     setCategoryId(path.categoryId || '');
     setLevel((path.level as 'beginner' | 'intermediate' | 'advanced' | 'all_levels') || 'beginner');
     setStatus(path.status || 'draft');
@@ -189,6 +289,27 @@ export default function AdminPathsPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file only');
+      e.target.value = '';
+      return;
+    }
+    const fileSizeInMB = file.size / (1024 * 1024);
+    if (fileSizeInMB > MAX_IMAGE_SIZE_MB) {
+      alert(`Image size must be less than ${MAX_IMAGE_SIZE_MB} MB`);
+      e.target.value = '';
+      return;
+    }
+    if (coverPreview) {
+      URL.revokeObjectURL(coverPreview);
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
   };
 
   return (
@@ -392,70 +513,118 @@ export default function AdminPathsPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-3 sm:space-y-5 overflow-y-auto max-h-[calc(92vh-64px)] sm:max-h-[calc(92vh-72px)]">
-              <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
+              <div className="space-y-3">
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Path title (e.g. Frontend Developer Path)"
-                  className="admin-surface px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
+                  className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
                 />
-                <input
+                <textarea
+                  rows={5}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Path description"
-                  className="admin-surface px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
+                  className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
                 />
               </div>
 
-              <div className="grid md:grid-cols-5 gap-2 sm:gap-3">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="admin-surface px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
-                >
-                  <option value="">No category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid md:grid-cols-[1fr_auto] gap-3 items-start">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Path Image
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="admin-surface w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 file:mr-3 file:rounded-md file:border-0 file:bg-blue-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-200"
+                  />
+                </div>
+                <div className="pt-[25px]">
+                  <div className="h-40 w-64 rounded-md border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden">
+                    {coverPreview ? (
+                      <img src={coverPreview} alt="Path preview" className="h-full w-full object-cover" />
+                    ) : existingImageUrl ? (
+                      <img src={existingImageUrl} alt="Path preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[11px] text-slate-400">Preview</span>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                <select
-                  value={level}
-                  onChange={(e) =>
-                    setLevel(e.target.value as 'beginner' | 'intermediate' | 'advanced' | 'all_levels')
-                  }
-                  className="admin-surface px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
-                >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                  <option value="all_levels">All Levels</option>
-                </select>
-
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as 'draft' | 'published' | 'archived')}
-                  className="admin-surface px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
-                </select>
+              <div className="grid md:grid-cols-[1.35fr_1fr_0.8fr_1fr_1fr] gap-2 sm:gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Category
+                  </label>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="">No category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Estimated Hours
+                    Level
+                  </label>
+                  <select
+                    value={level}
+                    onChange={(e) =>
+                      setLevel(e.target.value as 'beginner' | 'intermediate' | 'advanced' | 'all_levels')
+                    }
+                    className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                    <option value="all_levels">All Levels</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Status
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as 'draft' | 'published' | 'archived')}
+                    className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Estimated Weeks
                   </label>
                   <input
                     type="number"
                     min={0}
                     value={estimatedHours}
-                    onChange={(e) => setEstimatedHours(e.target.value)}
-                    placeholder="Estimated hours"
+                    onChange={(e) => {
+                      setEstimatedHours(e.target.value);
+                    }}
+                    placeholder="Estimated weeks"
                     className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
                   />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {estimatedHoursLoading
+                      ? 'Calculating from selected course durations...'
+                      : 'Auto-calculated from selected course durations'}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -471,6 +640,10 @@ export default function AdminPathsPage() {
                     placeholder="Path price"
                     className="admin-surface w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 text-sm text-slate-800 dark:text-slate-100"
                   />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Courses total: ${selectedCoursesTotal.toFixed(2)} | After 10% discount: $
+                    {discountedTotal.toFixed(2)}
+                  </p>
                 </div>
               </div>
 
@@ -478,21 +651,31 @@ export default function AdminPathsPage() {
                 <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Select courses and order (selection order is path order)
                 </p>
-                <div className="grid md:grid-cols-2 gap-2 max-h-44 sm:max-h-56 overflow-auto">
-                  {availableCourses.map((course) => (
-                    <label
-                      key={course.id}
-                      className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 rounded-lg px-2 py-1.5"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCourseIds.includes(course.id)}
-                        onChange={() => toggleCourse(course.id)}
-                      />
-                      <span>{course.title}</span>
-                    </label>
-                  ))}
-                </div>
+                {!categoryId ? (
+                  <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-300">
+                    Select a category first to show matching courses.
+                  </p>
+                ) : availableCourses.length === 0 ? (
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    No courses found under this category.
+                  </p>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-2 max-h-44 sm:max-h-56 overflow-auto">
+                    {availableCourses.map((course) => (
+                      <label
+                        key={course.id}
+                        className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800 rounded-lg px-2 py-1.5"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCourseIds.includes(course.id)}
+                          onChange={() => toggleCourse(course.id)}
+                        />
+                        <span>{course.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 sm:gap-4 mt-2 sm:mt-6">

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle, Sparkles } from "lucide-react";
 
 type CourseOption = { id: string; name: string };
+type ModuleOption = { id: string; title: string };
 
 type QuestionDraft = {
   questionType: "multiple_choice" | "written" | "true_false";
@@ -17,6 +18,7 @@ type QuestionDraft = {
 
 type StoredQuestion = {
   id: string;
+  moduleId?: string | null;
   questionType?: "multiple_choice" | "written" | "true_false";
   questionText: string;
   options: string[];
@@ -38,7 +40,9 @@ export default function CreateQuizPage() {
   const searchParams = useSearchParams();
 
   const [courseId, setCourseId] = useState("");
+  const [moduleId, setModuleId] = useState("");
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [modules, setModules] = useState<ModuleOption[]>([]);
   const [queuedQuestions, setQueuedQuestions] = useState<QuestionDraft[]>([]);
   const [savedQuestions, setSavedQuestions] = useState<StoredQuestion[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
@@ -102,6 +106,35 @@ export default function CreateQuizPage() {
   }, []);
 
   useEffect(() => {
+    const loadCourseLessons = async () => {
+      if (!courseId) {
+        setModules([]);
+        setModuleId("");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/content`, { cache: "no-store" });
+        const data = await readJsonResponse(res);
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to load course chapters");
+        }
+        const modulesFromApi: Array<{ id?: string; title?: string }> = Array.isArray(data.modules)
+          ? data.modules
+          : [];
+        const mapped: ModuleOption[] = modulesFromApi.map((moduleItem) => ({
+          id: String(moduleItem.id || ''),
+          title: String(moduleItem.title || 'Untitled chapter'),
+        }));
+        setModules(mapped.filter((item) => item.id));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load course chapters");
+      }
+    };
+
+    loadCourseLessons();
+  }, [courseId]);
+
+  useEffect(() => {
     const loadQuestionBank = async () => {
       if (!courseId) {
         setSavedQuestions([]);
@@ -110,7 +143,9 @@ export default function CreateQuizPage() {
 
       try {
         setLoadingSaved(true);
-        const res = await fetch(`/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`, {
+        const query = new URLSearchParams({ courseId });
+        if (moduleId) query.set("moduleId", moduleId);
+        const res = await fetch(`/api/teacher/question-bank?${query.toString()}`, {
           cache: "no-store",
         });
         const data = (await readJsonResponse(res)) as QuestionBankResponse;
@@ -127,7 +162,7 @@ export default function CreateQuizPage() {
     };
 
     loadQuestionBank();
-  }, [courseId]);
+  }, [courseId, moduleId]);
 
   const addQuestion = () => {
     const text = currentQuestion.text.trim();
@@ -218,6 +253,7 @@ export default function CreateQuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
+          moduleId: moduleId || null,
           questionType: question.questionType,
           questionText: question.text,
           options: question.options,
@@ -233,10 +269,9 @@ export default function CreateQuizPage() {
 
       setQueuedQuestions((prev) => prev.filter((_, i) => i !== index));
 
-      const refreshRes = await fetch(
-        `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
-        { cache: "no-store" }
-      );
+      const refreshQuery = new URLSearchParams({ courseId });
+      if (moduleId) refreshQuery.set("moduleId", moduleId);
+      const refreshRes = await fetch(`/api/teacher/question-bank?${refreshQuery.toString()}`, { cache: "no-store" });
       const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
       if (refreshRes.ok) {
         setSavedQuestions(refreshData.questions || []);
@@ -283,6 +318,7 @@ export default function CreateQuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
+          moduleId: moduleId || null,
           count: aiCount,
           language: aiLanguage,
           difficulty: aiDifficulty,
@@ -359,6 +395,7 @@ export default function CreateQuizPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             courseId,
+            moduleId: moduleId || null,
             questionType: question.questionType,
             questionText: question.text,
             options: question.options,
@@ -373,10 +410,9 @@ export default function CreateQuizPage() {
         }
       }
 
-      const refreshRes = await fetch(
-        `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
-        { cache: "no-store" }
-      );
+      const refreshQuery = new URLSearchParams({ courseId });
+      if (moduleId) refreshQuery.set("moduleId", moduleId);
+      const refreshRes = await fetch(`/api/teacher/question-bank?${refreshQuery.toString()}`, { cache: "no-store" });
       const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
       if (refreshRes.ok) {
         setSavedQuestions(refreshData.questions || []);
@@ -419,6 +455,7 @@ export default function CreateQuizPage() {
               value={courseId}
               onChange={(e) => {
                 setCourseId(e.target.value);
+                setModuleId("");
                 setSuccess(null);
                 setError(null);
               }}
@@ -434,9 +471,28 @@ export default function CreateQuizPage() {
             </select>
 
             {courseId && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Minimum required for student quiz: 10 questions in this course bank.
-              </p>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Quiz Scope
+                </label>
+                <select
+                  value={moduleId}
+                  onChange={(e) => setModuleId(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-gray-900 dark:text-white"
+                >
+                  <option value="">Final course quiz (all chapters)</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {moduleId
+                    ? "Chapter quiz: student needs at least 3 questions in this chapter."
+                    : "Final course quiz: student needs at least 10 questions in the course bank."}
+                </p>
+              </div>
             )}
           </div>
 

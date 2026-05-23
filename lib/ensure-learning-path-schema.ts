@@ -77,6 +77,7 @@ export async function ensureLearningPathSchema() {
         categoryId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
         title VARCHAR(191) NOT NULL COLLATE utf8mb4_unicode_ci,
         description TEXT NULL COLLATE utf8mb4_unicode_ci,
+        imageUrl VARCHAR(500) NULL COLLATE utf8mb4_unicode_ci,
         level ENUM('beginner', 'intermediate', 'advanced', 'all_levels') DEFAULT 'beginner',
         price DECIMAL(10,2) DEFAULT 0.00,
         status ENUM('draft', 'published', 'archived') DEFAULT 'draft',
@@ -88,6 +89,13 @@ export async function ensureLearningPathSchema() {
         INDEX idx_learning_path_status (status)
       ) ENGINE=InnoDB
     `);
+
+    if (!(await hasColumn('learning_path', 'imageUrl'))) {
+      await pool.query(`
+        ALTER TABLE learning_path
+        ADD COLUMN imageUrl VARCHAR(500) NULL COLLATE utf8mb4_unicode_ci AFTER description
+      `);
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS learning_path_course (
