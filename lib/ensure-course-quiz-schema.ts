@@ -62,6 +62,7 @@ export async function ensureCourseQuizSchema() {
       CREATE TABLE IF NOT EXISTS course_question_bank (
           id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
           courseId            VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          moduleId            VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
           lessonId            VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
           teacherId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
           questionType        ENUM('multiple_choice', 'written', 'true_false') NOT NULL DEFAULT 'multiple_choice',
@@ -73,15 +74,39 @@ export async function ensureCourseQuizSchema() {
 
           FOREIGN KEY (courseId) REFERENCES course(id)
               ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (moduleId) REFERENCES module(id)
+              ON DELETE SET NULL ON UPDATE CASCADE,
           FOREIGN KEY (lessonId) REFERENCES lesson(id)
               ON DELETE SET NULL ON UPDATE CASCADE,
           FOREIGN KEY (teacherId) REFERENCES user(id)
               ON DELETE CASCADE ON UPDATE CASCADE,
           INDEX idx_courseId (courseId),
+          INDEX idx_moduleId (moduleId),
           INDEX idx_lessonId (lessonId),
           INDEX idx_teacherId (teacherId)
       ) ENGINE=InnoDB
     `);
+    if (!(await hasColumn('course_question_bank', 'moduleId'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD COLUMN moduleId VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci
+        AFTER courseId
+      `);
+    }
+    if (!(await hasIndex('course_question_bank', 'idx_moduleId'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD INDEX idx_moduleId (moduleId)
+      `);
+    }
+    if (!(await hasForeignKey('course_question_bank', 'fk_course_question_bank_module'))) {
+      await pool.query(`
+        ALTER TABLE course_question_bank
+        ADD CONSTRAINT fk_course_question_bank_module
+        FOREIGN KEY (moduleId) REFERENCES module(id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+      `);
+    }
     if (!(await hasColumn('course_question_bank', 'lessonId'))) {
       await pool.query(`
         ALTER TABLE course_question_bank
@@ -178,6 +203,54 @@ export async function ensureCourseQuizSchema() {
         AFTER selectedOptionIndex
       `);
     }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lesson_quiz_attempt (
+          id              VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+          courseId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          lessonId        VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          studentId       VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          totalQuestions  INT NOT NULL,
+          correctAnswers  INT NOT NULL,
+          scorePercentage DECIMAL(5,2) NOT NULL,
+          submittedAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+          createdAt       DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+          FOREIGN KEY (courseId) REFERENCES course(id)
+              ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (lessonId) REFERENCES lesson(id)
+              ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (studentId) REFERENCES user(id)
+              ON DELETE CASCADE ON UPDATE CASCADE,
+          INDEX idx_lesson_quiz_course (courseId),
+          INDEX idx_lesson_quiz_lesson (lessonId),
+          INDEX idx_lesson_quiz_student (studentId),
+          INDEX idx_lesson_quiz_submitted (submittedAt)
+      ) ENGINE=InnoDB
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lesson_quiz_attempt_answer (
+          id                  VARCHAR(36) PRIMARY KEY COLLATE utf8mb4_unicode_ci,
+          attemptId           VARCHAR(36) NOT NULL COLLATE utf8mb4_unicode_ci,
+          questionBankId      VARCHAR(36) NULL COLLATE utf8mb4_unicode_ci,
+          questionType        ENUM('multiple_choice', 'written', 'true_false') NOT NULL DEFAULT 'multiple_choice',
+          questionText        TEXT NOT NULL COLLATE utf8mb4_unicode_ci,
+          optionsJson         JSON NOT NULL,
+          selectedOptionIndex TINYINT NULL,
+          selectedTextAnswer  TEXT NULL COLLATE utf8mb4_unicode_ci,
+          correctOptionIndex  TINYINT UNSIGNED NOT NULL,
+          isCorrect           BOOLEAN NOT NULL,
+          createdAt           DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+          FOREIGN KEY (attemptId) REFERENCES lesson_quiz_attempt(id)
+              ON DELETE CASCADE ON UPDATE CASCADE,
+          FOREIGN KEY (questionBankId) REFERENCES course_question_bank(id)
+              ON DELETE SET NULL ON UPDATE CASCADE,
+          INDEX idx_lesson_attempt_answer (attemptId),
+          INDEX idx_lesson_question_bank (questionBankId)
+      ) ENGINE=InnoDB
+    `);
   })();
 
   try {

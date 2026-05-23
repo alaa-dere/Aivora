@@ -59,6 +59,15 @@ type SummaryCard = {
   title: string;
   body: string;
 };
+type LessonQuizOverview = {
+  questionCount: number;
+  canStart: boolean;
+  attempts: Array<{
+    id: string;
+    scorePercentage: number;
+    submittedAt: string;
+  }>;
+};
 
 const inlineMarkdownToNodes = (text: string): ReactNode[] => {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -223,6 +232,7 @@ export default function CoursePlayerPage() {
   const [summaryText, setSummaryText] = useState('');
   const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
   const [summaryView, setSummaryView] = useState<'text' | 'cards'>('cards');
+  const [lessonQuizOverview, setLessonQuizOverview] = useState<LessonQuizOverview | null>(null);
 
   const handleLiveSubmissionChange = useCallback(
     (submission: LiveEditorSubmission) => {
@@ -297,6 +307,11 @@ export default function CoursePlayerPage() {
     );
   }, [modules, selectedLessonId]);
 
+  const selectedModule = useMemo(
+    () => modules.find((m) => m.lessons.some((l) => l.id === selectedLessonId)) || null,
+    [modules, selectedLessonId]
+  );
+
   useEffect(() => {
     if (!selectedLessonId) return;
     setLessonInlineError(null);
@@ -310,13 +325,55 @@ export default function CoursePlayerPage() {
     }
   }, [selectedLessonId, lessonStorageKey]);
 
+  useEffect(() => {
+    const loadLessonQuizOverview = async () => {
+      if (!selectedLessonId) {
+        setLessonQuizOverview(null);
+        return;
+      }
+      try {
+        const moduleId = selectedModule?.id || '';
+        if (!moduleId) {
+          setLessonQuizOverview(null);
+          return;
+        }
+        const res = await fetch(
+          `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) {
+          setLessonQuizOverview(null);
+          return;
+        }
+        const data = await res.json();
+        setLessonQuizOverview({
+          questionCount: Number(data.questionCount || 0),
+          canStart: Boolean(data.canStart),
+          attempts: Array.isArray(data.attempts)
+            ? data.attempts.map((item: unknown) => {
+                const typed = (item || {}) as { id?: string; scorePercentage?: number; submittedAt?: string };
+                return {
+                  id: String(typed.id || ''),
+                  scorePercentage: Number(typed.scorePercentage || 0),
+                  submittedAt: String(typed.submittedAt || ''),
+                };
+              })
+            : [],
+        });
+      } catch {
+        setLessonQuizOverview(null);
+      }
+    };
+
+    loadLessonQuizOverview();
+  }, [params.id, selectedLessonId, selectedModule?.id]);
+
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId) || null;
-  const selectedModule = useMemo(
-    () => modules.find((m) => m.lessons.some((l) => l.id === selectedLessonId)) || null,
-    [modules, selectedLessonId]
-  );
   const selectedModuleId = selectedModule?.id || '';
   const lessonsInSelectedModule = selectedModule?.lessons || [];
+  const selectedLessonIndexInModule = lessonsInSelectedModule.findIndex((lesson) => lesson.id === selectedLessonId);
+  const isLastLessonInChapter =
+    selectedLessonIndexInModule >= 0 && selectedLessonIndexInModule === lessonsInSelectedModule.length - 1;
   const selectedIndex = allLessons.findIndex((l) => l.id === selectedLessonId);
   const prevLesson = selectedIndex > 0 ? allLessons[selectedIndex - 1] : null;
   const nextLesson = selectedIndex >= 0 && selectedIndex < allLessons.length - 1 ? allLessons[selectedIndex + 1] : null;
@@ -431,6 +488,17 @@ export default function CoursePlayerPage() {
     setMarking(true);
     setLessonInlineError(null);
     try {
+      if (isLastLessonInChapter) {
+        const chapterQuestionCount = Number(lessonQuizOverview?.questionCount || 0);
+        const hasAttempt = Number(lessonQuizOverview?.attempts?.length || 0) > 0;
+
+        if (chapterQuestionCount < 3) {
+          throw new Error('This chapter quiz is not ready yet. Your teacher must add at least 3 questions.');
+        }
+        if (!hasAttempt) {
+          throw new Error('Please complete the chapter quiz first, then mark this lesson as completed.');
+        }
+      }
       const liveSubmission = selectedLesson.enableLiveEditor
         ? liveSubmissionByLesson[selectedLesson.id] || null
         : null;
@@ -500,12 +568,13 @@ export default function CoursePlayerPage() {
           text: answer || 'I could not find a clear answer in this course content.',
         },
       ]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong while generating the answer.';
       setAssistantMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          text: err?.message || 'Something went wrong while generating the answer.',
+          text: message,
         },
       ]);
     } finally {
@@ -558,8 +627,9 @@ export default function CoursePlayerPage() {
       setSummaryText(answer);
       setSummaryCards(buildSummaryCards(answer));
       setSummaryView('cards');
-    } catch (err: any) {
-      setLessonInlineError(err?.message || 'Failed to summarize chapter');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to summarize chapter';
+      setLessonInlineError(message);
     } finally {
       setSummaryLoading(false);
     }
@@ -888,6 +958,15 @@ export default function CoursePlayerPage() {
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
                   {selectedLesson.title}
                 </h2>
+                {Number(lessonQuizOverview?.questionCount || 0) >= 3 && (
+                  <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    Chapter Quiz:
+                    {' '}
+                    {lessonQuizOverview?.attempts?.[0]
+                      ? `Latest score ${lessonQuizOverview.attempts[0].scorePercentage.toFixed(2)}%`
+                      : 'Not attempted yet'}
+                  </p>
+                )}
 
                 <LessonContentView
                   key={selectedLesson.id}
@@ -910,6 +989,17 @@ export default function CoursePlayerPage() {
                 className="px-3 sm:px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {summaryLoading ? 'Summarizing...' : 'AI Summarize Chapter'}
+              </button>
+
+              <button
+                onClick={() =>
+                  selectedLesson &&
+                  router.push(`/student/my-courses/${params.id}/quizzes?moduleId=${encodeURIComponent(selectedModule?.id || '')}`)
+                }
+                disabled={!selectedLesson || Number(lessonQuizOverview?.questionCount || 0) < 3}
+                className="px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Chapter Quiz
               </button>
 
               {summaryText && (

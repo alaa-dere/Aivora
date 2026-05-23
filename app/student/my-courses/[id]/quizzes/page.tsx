@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeftIcon,
@@ -17,16 +17,27 @@ type QuestionItem = {
 };
 
 type QuizOverview = {
-  course: { id: string; title: string };
-  completed: boolean;
+  course?: { id: string; title: string };
+  lesson?: { id: string; title: string };
+  completed?: boolean;
   questionCount: number;
   canStart: boolean;
+  attempts?: Array<{
+    id: string;
+    totalQuestions: number;
+    correctAnswers: number;
+    scorePercentage: number;
+    submittedAt: string;
+  }>;
 };
 
 export default function CourseQuizzesPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const courseId = params.id;
+  const moduleId = String(searchParams.get('moduleId') || '').trim();
+  const isChapterQuiz = !!moduleId;
 
   const [playerHref, setPlayerHref] = useState(`/student/my-courses/${courseId}/player`);
   const [overview, setOverview] = useState<QuizOverview | null>(null);
@@ -38,6 +49,12 @@ export default function CourseQuizzesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [latestResult, setLatestResult] = useState<null | {
+    scorePercentage: number;
+    correctAnswers: number;
+    totalQuestions: number;
+  }>(null);
+  const [insightText, setInsightText] = useState('');
 
   const readJsonResponse = async (res: Response) => {
     const raw = await res.text();
@@ -67,7 +84,10 @@ export default function CourseQuizzesPage() {
   const loadOverview = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/student/my-courses/${courseId}/quiz`, {
+      const endpoint = isChapterQuiz
+        ? `/api/student/my-courses/${courseId}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`
+        : `/api/student/my-courses/${courseId}/quiz`;
+      const res = await fetch(endpoint, {
         cache: 'no-store',
       });
       const data = await readJsonResponse(res);
@@ -80,7 +100,7 @@ export default function CourseQuizzesPage() {
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, isChapterQuiz, moduleId]);
 
   useEffect(() => {
     loadOverview();
@@ -102,7 +122,10 @@ export default function CourseQuizzesPage() {
       setError(null);
       setStarting(true);
 
-      const res = await fetch(`/api/student/my-courses/${courseId}/quiz?mode=start`, {
+      const endpoint = isChapterQuiz
+        ? `/api/student/my-courses/${courseId}/lesson-quiz?mode=start&moduleId=${encodeURIComponent(moduleId)}`
+        : `/api/student/my-courses/${courseId}/quiz?mode=start`;
+      const res = await fetch(endpoint, {
         cache: 'no-store',
       });
       const data = await readJsonResponse(res);
@@ -122,6 +145,8 @@ export default function CourseQuizzesPage() {
       setAnswers(initialAnswers);
       setTextAnswers(initialTextAnswers);
       setCurrentQuestionIndex(0);
+      setLatestResult(null);
+      setInsightText('');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to start quiz');
     } finally {
@@ -130,7 +155,8 @@ export default function CourseQuizzesPage() {
   };
 
   const submitQuiz = async () => {
-    if (activeQuestions.length !== 10) {
+    const minimumQuestions = isChapterQuiz ? 3 : 10;
+    if (activeQuestions.length < minimumQuestions) {
       setError('Quiz session is invalid. Please restart the quiz.');
       return;
     }
@@ -139,15 +165,30 @@ export default function CourseQuizzesPage() {
       setSubmitting(true);
       setError(null);
 
-      const payload = {
+      const payload: {
+        lessonId?: string;
+        answers: Array<{
+          questionId: string;
+          selectedOptionIndex: number | null;
+          textAnswer: string;
+          selectedTextAnswer: string;
+        }>;
+      } = {
         answers: activeQuestions.map((question) => ({
           questionId: question.id,
           selectedOptionIndex: answers[question.id] ?? null,
           textAnswer: textAnswers[question.id] || '',
+          selectedTextAnswer: textAnswers[question.id] || '',
         })),
       };
+      if (isChapterQuiz) {
+        payload.moduleId = moduleId;
+      }
 
-      const res = await fetch(`/api/student/my-courses/${courseId}/quiz`, {
+      const endpoint = isChapterQuiz
+        ? `/api/student/my-courses/${courseId}/lesson-quiz`
+        : `/api/student/my-courses/${courseId}/quiz`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -157,7 +198,26 @@ export default function CourseQuizzesPage() {
         throw new Error(data.message || 'Failed to submit quiz');
       }
 
-      router.push(`/student/my-courses/${courseId}/quizzes/${data.attemptId}`);
+      if (isChapterQuiz) {
+        setLatestResult({
+          scorePercentage: Number(data.scorePercentage || 0),
+          correctAnswers: Number(data.correctAnswers || 0),
+          totalQuestions: Number(data.totalQuestions || 0),
+        });
+        setActiveQuestions([]);
+        await loadOverview();
+        const insightRes = await fetch(`/api/student/my-courses/${courseId}/quiz-insights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ moduleId }),
+        });
+        const insightData = await readJsonResponse(insightRes);
+        if (insightRes.ok) {
+          setInsightText(String(insightData.summary || ''));
+        }
+      } else {
+        router.push(`/student/my-courses/${courseId}/quizzes/${data.attemptId}`);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to submit quiz');
     } finally {
@@ -188,8 +248,12 @@ export default function CourseQuizzesPage() {
 
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-          Course Quiz
-          {overview?.course?.title ? ` - ${overview.course.title}` : ''}
+          {isChapterQuiz ? 'Chapter Quiz' : 'Course Quiz'}
+          {overview?.lesson?.title
+            ? ` - ${overview.lesson.title}`
+            : overview?.course?.title
+              ? ` - ${overview.course.title}`
+              : ''}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Answer each question in order.
@@ -220,15 +284,32 @@ export default function CourseQuizzesPage() {
               </Link>
             </div>
 
-            {!overview?.completed && (
+            {!isChapterQuiz && !overview?.completed && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
                 Finish the full course first to unlock this quiz.
               </p>
             )}
-            {(overview?.questionCount || 0) < 10 && (
+            {(overview?.questionCount || 0) < (isChapterQuiz ? 3 : 10) && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                This quiz unlocks once your teacher adds at least 10 bank questions.
+                {isChapterQuiz
+                  ? 'This chapter quiz unlocks once your teacher adds at least 3 questions for this lesson.'
+                  : 'This quiz unlocks once your teacher adds at least 10 bank questions.'}
               </p>
+            )}
+            {isChapterQuiz && overview?.attempts?.[0] && (
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                Latest chapter score: {overview.attempts[0].scorePercentage.toFixed(2)}%
+              </p>
+            )}
+            {latestResult && (
+              <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                Result: {latestResult.scorePercentage.toFixed(2)}% ({latestResult.correctAnswers}/{latestResult.totalQuestions})
+              </div>
+            )}
+            {insightText && (
+              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 whitespace-pre-wrap">
+                {insightText}
+              </div>
             )}
             </div>
           )}
