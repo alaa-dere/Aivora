@@ -15,6 +15,7 @@ import {
   HomeIcon,
   UserCircleIcon,
   HeartIcon,
+  BookOpenIcon,
   CalendarDaysIcon as CalendarOutlineIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
@@ -33,9 +34,10 @@ import { getStudentNotificationHref } from '@/lib/notification-links';
 
 const headerLinks = [
   { name: 'My Courses', href: '/student/my-courses' },
+  { name: 'My Paths', href: '/student/my-paths' },
   { name: 'Explore Courses', href: '/student/courses' },
+  { name: 'Explore Paths', href: '/student/paths' },
   { name: 'Certificates', href: '/student/certificates' },
-  { name: 'Certificate Quizzes', href: '/student/certificate-quizzes' },
   { name: 'Leaderboard', href: '/student/leaderboard' },
 ];
 
@@ -504,6 +506,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <Link href="/student/calendar" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
               <CalendarOutlineIcon className="w-5 h-5 mr-3" />
               Calendar
+            </Link>
+            <Link href="/student/certificate-quizzes" onClick={() => setSidebarOpen(false)} className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <BookOpenIcon className="w-5 h-5 mr-3" />
+              Certificate Quizzes
             </Link>
           </nav>
         </div>

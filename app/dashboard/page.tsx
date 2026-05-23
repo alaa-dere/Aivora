@@ -143,12 +143,14 @@ export default function AdminDashboard() {
   const [aiDebug, setAiDebug] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     async function loadStats() {
       try {
         const res = await fetch('/api/dashboard/stats', { cache: 'no-store' });
-        if (!res.ok) return;
+        if (!res.ok || !mounted) return;
 
         const data = await res.json();
+        if (!mounted) return;
         setStats({
           totalStudents: Number(data.totalStudents || 0),
           totalTeachers: Number(data.totalTeachers || 0),
@@ -163,6 +165,14 @@ export default function AdminDashboard() {
     }
 
     loadStats();
+    const onFocus = () => loadStats();
+    window.addEventListener('focus', onFocus);
+    const id = setInterval(loadStats, 20000);
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', onFocus);
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -210,21 +220,30 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
     const loadRevenue = async () => {
       try {
         setRevenueLoading(true);
         const res = await fetch('/api/dashboard/revenue-trend', { cache: 'no-store' });
         const data = await res.json();
-        if (!res.ok) return;
+        if (!res.ok || !mounted) return;
         setRevenueData(data.trend || []);
       } catch (error) {
         console.error('Failed to load revenue trend', error);
       } finally {
-        setRevenueLoading(false);
+        if (mounted) setRevenueLoading(false);
       }
     };
 
     loadRevenue();
+    const onFocus = () => loadRevenue();
+    window.addEventListener('focus', onFocus);
+    const id = setInterval(loadRevenue, 20000);
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', onFocus);
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {

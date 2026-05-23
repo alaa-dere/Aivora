@@ -13,6 +13,7 @@ import {
   toTestimonialRecord,
 } from "@aivora/shared";
 import HomeUserMenu from "@/components/home-user-menu";
+import HomeAuthModal from '@/components/home-auth-modal';
 import CourseFavoriteButton from "@/components/course-favorite-button";
 import {
   SunIcon,
@@ -209,6 +210,8 @@ export default function HomePage() {
   const [selectedPathCoursesLoading, setSelectedPathCoursesLoading] = useState(false);
   const [studentPaths, setStudentPaths] = useState<LearningPathItem[]>([]);
   const [studentPathsLoading, setStudentPathsLoading] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authNextUrl, setAuthNextUrl] = useState('/login');
 
   useEffect(() => {
     setMounted(true);
@@ -441,10 +444,16 @@ export default function HomePage() {
     if (course.enrolled) return `/student/my-courses/${course.id}`;
     return `/Home/courses/${course.id}`;
   };
-  const getPathEnrollHref = (pathId: string) => `/Home/paths/${pathId}/enroll`;
+  const getPathEnrollHref = (pathId: string) => {
+    const enrollUrl = `/Home/paths/${pathId}/enroll`;
+    if (status !== 'authenticated') {
+      return `/login?next=${encodeURIComponent(enrollUrl)}`;
+    }
+    return enrollUrl;
+  };
   const isPathEnrolled = (pathId: string) =>
     studentPaths.some((studentPath) => studentPath.id === pathId && Boolean(studentPath.enrolled));
-  const canPayForPath = (pathId: string) => isStudent && !isPathEnrolled(pathId);
+  const canPayForPath = (pathId: string) => !isAdmin && !isTeacher && !isPathEnrolled(pathId);
 
   const trackCourseView = (courseId: string) => {
     const role = (session?.user?.role || '').toLowerCase();
@@ -1461,12 +1470,25 @@ export default function HomePage() {
                   </h3>
                   <div className="flex items-center gap-2">
                     {canPayForPath(selectedPath.id) && (
-                      <Link
-                        href={getPathEnrollHref(selectedPath.id)}
-                        className="inline-flex items-center justify-center rounded-xl border border-blue-300/40 bg-blue-700/90 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
-                      >
-                        {isArabic ? 'الدفع للمسار' : 'Pay for Path'}
-                      </Link>
+                      status === 'authenticated' ? (
+                        <Link
+                          href={getPathEnrollHref(selectedPath.id)}
+                          className="inline-flex items-center justify-center rounded-xl border border-blue-300/40 bg-blue-700/90 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
+                        >
+                          {isArabic ? 'الدفع للمسار' : 'Pay for Path'}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthNextUrl(`/Home/paths/${selectedPath.id}/enroll`);
+                            setAuthOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center rounded-xl border border-blue-300/40 bg-blue-700/90 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
+                        >
+                          {isArabic ? 'الدفع للمسار' : 'Pay for Path'}
+                        </button>
+                      )
                     )}
                     <button
                       type="button"
@@ -1821,6 +1843,12 @@ export default function HomePage() {
           }
         }
       `}</style>
+
+      <HomeAuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        nextUrl={authNextUrl}
+      />
     </div>
   );
 }

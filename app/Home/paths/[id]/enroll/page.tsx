@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -6,7 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
 import Image from 'next/image';
-import { CreditCardIcon, CheckCircleIcon, GlobeAltIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
+import { CreditCardIcon, CheckCircleIcon, GlobeAltIcon, LockClosedIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import HomeUserMenu from '@/components/home-user-menu';
 
 type PaymentMethod = 'card' | 'paypal';
@@ -22,6 +22,29 @@ type LearningPathItem = {
   coursesCount?: number;
   enrolled?: boolean;
 };
+
+const countries = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+  'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
+  'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia', 'Cameroon',
+  'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo (Congo-Brazzaville)', 'Costa Rica',
+  "Cote d'Ivoire", 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica',
+  'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji',
+  'Finland', 'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau',
+  'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica',
+  'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia',
+  'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta',
+  'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco',
+  'Mozambique', 'Myanmar (Burma)', 'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria',
+  'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru',
+  'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia',
+  'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia',
+  'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea',
+  'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania',
+  'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda',
+  'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City',
+  'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
+];
 
 export default function PathEnrollPage() {
   const params = useParams();
@@ -44,6 +67,8 @@ export default function PathEnrollPage() {
     email: '',
     country: '',
     cardNumber: '',
+    expiry: '',
+    cvc: '',
     paypalEmail: '',
     paypalTxnId: '',
   });
@@ -60,9 +85,7 @@ export default function PathEnrollPage() {
 
         const [pathsRes, studentPathsRes] = await Promise.all([
           fetch('/api/paths', { cache: 'no-store' }),
-          status === 'authenticated'
-            ? fetch('/api/student/paths', { cache: 'no-store' })
-            : Promise.resolve(null),
+          status === 'authenticated' ? fetch('/api/student/paths', { cache: 'no-store' }) : Promise.resolve(null),
         ]);
 
         const pathsData = await pathsRes.json();
@@ -207,26 +230,78 @@ export default function PathEnrollPage() {
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
-                <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder={isArabic ? 'الاسم الكامل' : 'Full Name'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
-                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" placeholder="you@example.com" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'الاسم الكامل' : 'Full Name'}</label>
+                  <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder={isArabic ? 'أدخل اسمك الكامل' : 'Enter your full name'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" placeholder="you@example.com" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                </div>
               </div>
-              <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder={isArabic ? 'الدولة (اختياري)' : 'Country (optional)'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" />
 
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setMethod('card')} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${method === 'card' ? 'border-blue-400 bg-white/10 text-white' : 'border-white/20 bg-white/5 text-slate-200'}`}>
-                  <CreditCardIcon className="w-5 h-5" /> {isArabic ? 'بطاقة' : 'Card'}
-                </button>
-                <button type="button" onClick={() => setMethod('paypal')} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${method === 'paypal' ? 'border-blue-400 bg-white/10 text-white' : 'border-white/20 bg-white/5 text-slate-200'}`}>
-                  <CheckCircleIcon className="w-5 h-5" /> PayPal
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'الدولة' : 'Country'}</label>
+                <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-300">
+                  <option value="" className="text-slate-900">{isArabic ? 'اختر الدولة' : 'Select a country'}</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country} className="text-slate-900">{country}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-3">{isArabic ? 'طريقة الدفع' : 'Payment Method'}</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setMethod('card')} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${method === 'card' ? 'border-blue-400 bg-white/10 text-white' : 'border-white/20 bg-white/5 text-slate-200'}`}>
+                    <CreditCardIcon className="w-5 h-5" /> {isArabic ? 'بطاقة' : 'Card'}
+                  </button>
+                  <button type="button" onClick={() => setMethod('paypal')} className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${method === 'paypal' ? 'border-blue-400 bg-white/10 text-white' : 'border-white/20 bg-white/5 text-slate-200'}`}>
+                    <CheckCircleIcon className="w-5 h-5" /> PayPal
+                  </button>
+                </div>
               </div>
 
               {method === 'card' ? (
-                <input value={form.cardNumber} onChange={(e) => setForm({ ...form, cardNumber: e.target.value })} placeholder={isArabic ? 'رقم البطاقة' : 'Card Number'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                <div className="rounded-xl border border-white/20 p-4 bg-white/5">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'رقم البطاقة' : 'Card Number'}</label>
+                      <div className="relative">
+                        <input value={form.cardNumber} onChange={(e) => setForm({ ...form, cardNumber: e.target.value })} placeholder="1234 5678 9012 3456" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 pr-32 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5" aria-hidden="true">
+                          <span className="px-1.5 py-0.5 rounded bg-blue-700 text-[10px] font-bold text-white tracking-wide">VISA</span>
+                          <span className="px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white tracking-wide">MC</span>
+                          <span className="px-1.5 py-0.5 rounded bg-white text-[10px] font-bold text-orange-600 tracking-wide">DISC</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'تاريخ الانتهاء' : 'Expiry'}</label>
+                      <input value={form.expiry} onChange={(e) => setForm({ ...form, expiry: e.target.value })} placeholder="MM/YY" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'رمز الأمان' : 'CVC'}</label>
+                      <input value={form.cvc} onChange={(e) => setForm({ ...form, cvc: e.target.value })} placeholder="123" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2 text-xs text-slate-200">
+                    <LockClosedIcon className="w-4 h-4" />
+                    {isArabic ? 'تفاصيل الدفع الخاصة بك مشفرة وآمنة.' : 'Your payment details are encrypted and secure.'}
+                  </div>
+                </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <input value={form.paypalEmail} onChange={(e) => setForm({ ...form, paypalEmail: e.target.value })} type="email" placeholder={isArabic ? 'بريد بايبال' : 'PayPal Email'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
-                  <input value={form.paypalTxnId} onChange={(e) => setForm({ ...form, paypalTxnId: e.target.value })} placeholder={isArabic ? 'رقم عملية بايبال' : 'PayPal Transaction ID'} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                <div className="rounded-xl border border-white/20 p-4 bg-white/5">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'بريد بايبال' : 'PayPal Email'}</label>
+                      <input value={form.paypalEmail} onChange={(e) => setForm({ ...form, paypalEmail: e.target.value })} type="email" placeholder="you@paypal.com" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{isArabic ? 'رقم عملية بايبال' : 'PayPal Transaction ID'}</label>
+                      <input value={form.paypalTxnId} onChange={(e) => setForm({ ...form, paypalTxnId: e.target.value })} placeholder="Example: 9HX12345AB678901C" className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-white placeholder-slate-300 outline-none focus:ring-2 focus:ring-blue-300" required />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -268,3 +343,4 @@ export default function PathEnrollPage() {
     </div>
   );
 }
+

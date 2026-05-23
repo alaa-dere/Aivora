@@ -25,6 +25,7 @@ type Course = {
   evaluationCount?: number;
   imageUrl?: string;
   enrolled: boolean;
+  paidViaPath?: boolean;
 };
 
 export default function StudentCoursesPage() {
@@ -189,13 +190,20 @@ export default function StudentCoursesPage() {
                 </div>
 
                 <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-                  <Link
-                    href={`/student/courses/${c.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-xs font-semibold transition-colors"
-                  >
-                    {c.enrolled ? 'Continue Course' : 'Join Our Class'}
-                    <ArrowRightIcon className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/student/courses/${c.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-xs font-semibold transition-colors"
+                    >
+                      {c.enrolled ? 'Continue Course' : 'Join Our Class'}
+                      <ArrowRightIcon className="w-3.5 h-3.5" />
+                    </Link>
+                    {c.paidViaPath && !c.enrolled ? (
+                      <span className="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-2 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
+                        Paid via Path
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-base font-bold text-gray-900 dark:text-white bg-white/70 dark:bg-slate-800/40">
                     ${c.price}
                   </div>

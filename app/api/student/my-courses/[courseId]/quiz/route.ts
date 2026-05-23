@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 import {
   createStudentNotification,
+  createAdminNotification,
   createTeacherNotification,
 } from '@/lib/notifications-write';
 
@@ -188,6 +189,98 @@ async function createQuizNotifications(input: {
       title: certTitle,
       message: certMessage,
     });
+  }
+}
+
+async function enrollStudentInNextPathCourses(input: {
+  studentId: string;
+  studentName: string;
+  completedCourseId: string;
+  completedCourseTitle: string;
+}) {
+  const [pathRows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT
+      pe.pathId,
+      lp.title AS pathTitle,
+      lpc.orderNumber
+    FROM path_enrollment pe
+    JOIN learning_path lp ON lp.id = pe.pathId
+    JOIN learning_path_course lpc
+      ON lpc.pathId = pe.pathId
+     AND lpc.courseId = ?
+    WHERE pe.studentId = ?
+      AND pe.status IN ('enrolled', 'in_progress')
+      AND lp.status = 'published'
+    `,
+    [input.completedCourseId, input.studentId]
+  );
+
+  for (const row of pathRows) {
+    const pathId = String(row.pathId || '').trim();
+    const pathTitle = String(row.pathTitle || 'Learning Path');
+    const currentOrder = Number(row.orderNumber || 0);
+    if (!pathId || !currentOrder) continue;
+
+    const [nextRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT lpc.courseId, c.title AS courseTitle, c.teacherId
+      FROM learning_path_course lpc
+      JOIN course c ON c.id = lpc.courseId
+      WHERE lpc.pathId = ?
+        AND lpc.orderNumber > ?
+        AND c.status = 'published'
+      ORDER BY lpc.orderNumber ASC
+      LIMIT 1
+      `,
+      [pathId, currentOrder]
+    );
+
+    if (nextRows.length === 0) {
+      await pool.query<ResultSetHeader>(
+        `
+        UPDATE path_enrollment
+        SET status = 'completed', progressPercentage = 100, completedAt = NOW()
+        WHERE pathId = ? AND studentId = ?
+        `,
+        [pathId, input.studentId]
+      );
+      continue;
+    }
+
+    const nextCourseId = String(nextRows[0].courseId || '').trim();
+    const nextCourseTitle = String(nextRows[0].courseTitle || 'Course');
+    const nextTeacherId = String(nextRows[0].teacherId || '').trim();
+    if (!nextCourseId) continue;
+
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT IGNORE INTO enrollment
+        (id, studentId, courseId, enrolledAt, status, progressPercentage)
+      VALUES
+        (UUID(), ?, ?, NOW(), 'enrolled', 0)
+      `,
+      [input.studentId, nextCourseId]
+    );
+
+    await createAdminNotification({
+      type: 'course_enroll',
+      title: 'Path Progress: Next Course Enrollment',
+      message: `${input.studentName} completed "${input.completedCourseTitle}" in path "${pathTitle}" and was auto-enrolled in "${nextCourseTitle}".`,
+      studentId: input.studentId,
+      courseId: nextCourseId,
+    });
+
+    if (nextTeacherId) {
+      await createTeacherNotification({
+        teacherId: nextTeacherId,
+        studentId: input.studentId,
+        courseId: nextCourseId,
+        type: 'course_enroll',
+        title: 'New Path Student Enrollment',
+        message: `${input.studentName} was auto-enrolled in your course "${nextCourseTitle}" through path "${pathTitle}".`,
+      });
+    }
   }
 }
 
@@ -581,6 +674,15 @@ export async function POST(req: Request, { params }: Params) {
       issuedCertificateNow,
       issuedCertificateOnRetake,
     });
+
+    if (issuedCertificateNow) {
+      await enrollStudentInNextPathCourses({
+        studentId: user.id,
+        studentName,
+        completedCourseId: course.id,
+        completedCourseTitle: course.title,
+      });
+    }
 
     return NextResponse.json({
       success: true,
