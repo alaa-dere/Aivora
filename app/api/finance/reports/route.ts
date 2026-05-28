@@ -10,11 +10,14 @@ type TxInsightRow = RowDataPacket & {
   amount: number;
   courseTitle?: string | null;
 };
+type TopCourseRow = RowDataPacket & { title: string; revenue: number; enrollments: number };
+type TopTeacherRow = RowDataPacket & { teacherName: string; revenue: number; enrollments: number };
+type TopCategoryRow = RowDataPacket & { categoryName: string; revenue: number; enrollments: number };
 type CourseAgg = { title: string; revenue: number; count: number };
 
 function startOfWeek(date: Date) {
   const d = new Date(date);
-  const day = (d.getDay() + 6) % 7; // Monday = 0
+  const day = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - day);
   d.setHours(0, 0, 0, 0);
   return d;
@@ -24,16 +27,35 @@ function toKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function getPreviousMonth(month: string): string {
+  const [yearRaw, monthRaw] = month.split('-');
+  const year = Number(yearRaw);
+  const m = Number(monthRaw);
+  if (!Number.isFinite(year) || !Number.isFinite(m) || m < 1 || m > 12) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 7);
+  }
+  const date = new Date(year, m - 1, 1);
+  date.setMonth(date.getMonth() - 1);
+  return date.toISOString().slice(0, 7);
+}
+
+function pctChange(current: number, previous: number) {
+  if (previous === 0) {
+    if (current === 0) return 0;
+    return 100;
+  }
+  return ((current - previous) / previous) * 100;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const month = searchParams.get('month') || '';
+    const month = searchParams.get('month') || new Date().toISOString().slice(0, 7);
+    const previousMonth = getPreviousMonth(month);
 
-    const params: Array<string> = [];
-    const monthFilter = month ? "AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?" : '';
-    if (month) {
-      params.push(month);
-    }
+    const monthFilter = "AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?";
 
     const [incomeRows] = await pool.query<SumRow[]>(
       `
@@ -43,7 +65,7 @@ export async function GET(req: Request) {
           AND ft.amount > 0
           ${monthFilter}
       `,
-      params
+      [month]
     );
 
     const [teacherRows] = await pool.query<SumRow[]>(
@@ -54,7 +76,7 @@ export async function GET(req: Request) {
           AND ft.type = 'enrollment'
           ${monthFilter}
       `,
-      params
+      [month]
     );
 
     const [platformRows] = await pool.query<SumRow[]>(
@@ -65,7 +87,7 @@ export async function GET(req: Request) {
           AND ft.type = 'enrollment'
           ${monthFilter}
       `,
-      params
+      [month]
     );
 
     const [countRows] = await pool.query<CountRow[]>(
@@ -76,7 +98,7 @@ export async function GET(req: Request) {
           ${monthFilter}
         GROUP BY ft.type
       `,
-      params
+      [month]
     );
 
     const [totalRows] = await pool.query<SumRow[]>(
@@ -86,7 +108,49 @@ export async function GET(req: Request) {
         WHERE 1=1
           ${monthFilter}
       `,
-      params
+      [month]
+    );
+
+    const [prevIncomeRows] = await pool.query<SumRow[]>(
+      `
+        SELECT COALESCE(SUM(ft.amount), 0) AS total
+        FROM finance_transaction ft
+        WHERE ft.status = 'success'
+          AND ft.amount > 0
+          AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?
+      `,
+      [previousMonth]
+    );
+
+    const [prevTeacherRows] = await pool.query<SumRow[]>(
+      `
+        SELECT COALESCE(SUM(ft.teacherShare), 0) AS total
+        FROM finance_transaction ft
+        WHERE ft.status = 'success'
+          AND ft.type = 'enrollment'
+          AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?
+      `,
+      [previousMonth]
+    );
+
+    const [prevPlatformRows] = await pool.query<SumRow[]>(
+      `
+        SELECT COALESCE(SUM(ft.platformShare), 0) AS total
+        FROM finance_transaction ft
+        WHERE ft.status = 'success'
+          AND ft.type = 'enrollment'
+          AND DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?
+      `,
+      [previousMonth]
+    );
+
+    const [prevTotalRows] = await pool.query<SumRow[]>(
+      `
+        SELECT COUNT(*) AS total
+        FROM finance_transaction ft
+        WHERE DATE_FORMAT(ft.transactionDate, '%Y-%m') = ?
+      `,
+      [previousMonth]
     );
 
     const byType: Record<string, number> = {};
@@ -107,7 +171,59 @@ export async function GET(req: Request) {
           ${monthFilter}
         ORDER BY ft.transactionDate DESC
       `,
-      params
+      [month]
+    );
+
+    const [topCoursesRows] = await pool.query<TopCourseRow[]>(
+      `
+        SELECT c.title, COALESCE(SUM(ft.amount), 0) AS revenue, COUNT(*) AS enrollments
+        FROM finance_transaction ft
+        JOIN course c ON c.id = ft.courseId
+        WHERE ft.status = 'success'
+          AND ft.type = 'enrollment'
+          ${monthFilter}
+        GROUP BY c.id, c.title
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+      [month]
+    );
+
+    const [topTeachersRows] = await pool.query<TopTeacherRow[]>(
+      `
+        SELECT
+          COALESCE(NULLIF(TRIM(u.fullName), ''), u.email, 'Teacher') AS teacherName,
+          COALESCE(SUM(ft.teacherShare), 0) AS revenue,
+          COUNT(*) AS enrollments
+        FROM finance_transaction ft
+        LEFT JOIN user u ON u.id = ft.teacherId
+        WHERE ft.status = 'success'
+          AND ft.type = 'enrollment'
+          ${monthFilter}
+        GROUP BY ft.teacherId, u.fullName, u.email
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+      [month]
+    );
+
+    const [topCategoriesRows] = await pool.query<TopCategoryRow[]>(
+      `
+        SELECT
+          COALESCE(cat.name, 'Uncategorized') AS categoryName,
+          COALESCE(SUM(ft.amount), 0) AS revenue,
+          COUNT(*) AS enrollments
+        FROM finance_transaction ft
+        LEFT JOIN course c ON c.id = ft.courseId
+        LEFT JOIN category cat ON cat.id = c.categoryId
+        WHERE ft.status = 'success'
+          AND ft.type = 'enrollment'
+          ${monthFilter}
+        GROUP BY categoryName
+        ORDER BY revenue DESC
+        LIMIT 5
+      `,
+      [month]
     );
 
     const tx = txRows.map((row) => ({
@@ -155,11 +271,11 @@ export async function GET(req: Request) {
     const trendAdj = 1 + Math.max(-0.25, Math.min(0.25, trendPct * 0.5));
     const forecastMonthly = weeklyAvg * 4 * trendAdj;
 
-    const topCourses = Array.from(courseMap.values())
+    const topCoursesFromTx = Array.from(courseMap.values())
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 3);
 
-    const topCourse = topCourses[0];
+    const topCourse = topCoursesFromTx[0];
     const topCourseShare =
       topCourse && last4Total > 0 ? Math.round((topCourse.revenue / last4Total) * 100) : 0;
 
@@ -196,7 +312,7 @@ export async function GET(req: Request) {
       prev4Total,
       weeklyAvg,
       trendPct,
-      topCourses,
+      topCourses: topCoursesFromTx,
       ruleBased: { forecastMonthly, trendPct, insights: ruleInsights },
     });
 
@@ -209,18 +325,64 @@ export async function GET(req: Request) {
       aiDebug = aiResult.debug;
     }
 
+    const income = Number(incomeRows[0]?.total || 0);
+    const teacherProfit = Number(teacherRows[0]?.total || 0);
+    const platformProfit = Number(platformRows[0]?.total || 0);
+    const count = Number(totalRows[0]?.total || 0);
+
+    const prevIncome = Number(prevIncomeRows[0]?.total || 0);
+    const prevTeacherProfit = Number(prevTeacherRows[0]?.total || 0);
+    const prevPlatformProfit = Number(prevPlatformRows[0]?.total || 0);
+    const prevCount = Number(prevTotalRows[0]?.total || 0);
+
+    const alerts: string[] = [];
+    const incomeChangePct = pctChange(income, prevIncome);
+    if (incomeChangePct < -10) alerts.push('Revenue dropped by more than 10% vs last month.');
+    if (count < prevCount) alerts.push('Total transactions are lower than last month.');
+    if (platformProfit < teacherProfit * 0.2) alerts.push('Platform margin is lower than expected this month.');
+
     return NextResponse.json({
-      income: Number(incomeRows[0]?.total || 0),
-      teacherProfit: Number(teacherRows[0]?.total || 0),
-      platformProfit: Number(platformRows[0]?.total || 0),
+      month,
+      previousMonth,
+      income,
+      teacherProfit,
+      platformProfit,
       byType,
-      count: Number(totalRows[0]?.total || 0),
+      count,
+      previous: {
+        income: prevIncome,
+        teacherProfit: prevTeacherProfit,
+        platformProfit: prevPlatformProfit,
+        count: prevCount,
+      },
+      deltas: {
+        incomePct: pctChange(income, prevIncome),
+        teacherProfitPct: pctChange(teacherProfit, prevTeacherProfit),
+        platformProfitPct: pctChange(platformProfit, prevPlatformProfit),
+        countPct: pctChange(count, prevCount),
+      },
+      topCourses: topCoursesRows.map((r) => ({
+        title: String(r.title || 'Untitled'),
+        revenue: Number(r.revenue || 0),
+        enrollments: Number(r.enrollments || 0),
+      })),
+      topTeachers: topTeachersRows.map((r) => ({
+        teacherName: String(r.teacherName || 'Teacher'),
+        revenue: Number(r.revenue || 0),
+        enrollments: Number(r.enrollments || 0),
+      })),
+      topCategories: topCategoriesRows.map((r) => ({
+        categoryName: String(r.categoryName || 'Uncategorized'),
+        revenue: Number(r.revenue || 0),
+        enrollments: Number(r.enrollments || 0),
+      })),
+      alerts,
       aiSource,
       aiForecast,
       aiTrendText,
       aiDebug,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Finance reports error:', error);
     return NextResponse.json(
       { message: 'Failed to load reports', error: error.message },

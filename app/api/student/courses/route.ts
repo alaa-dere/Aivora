@@ -51,13 +51,23 @@ export async function GET(req: Request) {
         EXISTS(
           SELECT 1 FROM enrollment e 
           WHERE e.courseId = c.id AND e.studentId = ?
-        ) AS enrolled
+        ) AS enrolled,
+        EXISTS(
+          SELECT 1
+          FROM path_enrollment pe
+          JOIN learning_path_course lpc ON lpc.pathId = pe.pathId
+          JOIN learning_path lp ON lp.id = pe.pathId
+          WHERE pe.studentId = ?
+            AND lpc.courseId = c.id
+            AND pe.status IN ('enrolled', 'in_progress')
+            AND lp.status = 'published'
+        ) AS paidViaPath
       FROM course c
       JOIN user u ON u.id = c.teacherId
       WHERE c.status = 'published'
       ORDER BY c.createdAt DESC
       `,
-      [user.id]
+      [user.id, user.id]
     );
 
     const courses = rows.map((row) => ({
@@ -77,6 +87,7 @@ export async function GET(req: Request) {
       evaluationCount: Number(row.evaluationCount || 0),
       status: row.status,
       enrolled: Boolean(row.enrolled),
+      paidViaPath: Boolean(row.paidViaPath),
     }));
 
     return NextResponse.json({ courses });

@@ -31,6 +31,9 @@ type QuizOverview = {
   }>;
 };
 
+const CHAPTER_QUIZ_QUESTION_COUNT = 5;
+const COURSE_QUIZ_QUESTION_COUNT = 10;
+
 export default function CourseQuizzesPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -54,7 +57,6 @@ export default function CourseQuizzesPage() {
     correctAnswers: number;
     totalQuestions: number;
   }>(null);
-  const [insightText, setInsightText] = useState('');
 
   const readJsonResponse = async (res: Response) => {
     const raw = await res.text();
@@ -146,7 +148,6 @@ export default function CourseQuizzesPage() {
       setTextAnswers(initialTextAnswers);
       setCurrentQuestionIndex(0);
       setLatestResult(null);
-      setInsightText('');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to start quiz');
     } finally {
@@ -155,7 +156,7 @@ export default function CourseQuizzesPage() {
   };
 
   const submitQuiz = async () => {
-    const minimumQuestions = isChapterQuiz ? 3 : 10;
+    const minimumQuestions = isChapterQuiz ? CHAPTER_QUIZ_QUESTION_COUNT : COURSE_QUIZ_QUESTION_COUNT;
     if (activeQuestions.length < minimumQuestions) {
       setError('Quiz session is invalid. Please restart the quiz.');
       return;
@@ -206,15 +207,6 @@ export default function CourseQuizzesPage() {
         });
         setActiveQuestions([]);
         await loadOverview();
-        const insightRes = await fetch(`/api/student/my-courses/${courseId}/quiz-insights`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ moduleId }),
-        });
-        const insightData = await readJsonResponse(insightRes);
-        if (insightRes.ok) {
-          setInsightText(String(insightData.summary || ''));
-        }
       } else {
         router.push(`/student/my-courses/${courseId}/quizzes/${data.attemptId}`);
       }
@@ -282,6 +274,12 @@ export default function CourseQuizzesPage() {
               >
                 Back to player
               </Link>
+              <Link
+                href={`/student/my-courses/${courseId}/grades`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors"
+              >
+                View All Grades
+              </Link>
             </div>
 
             {!isChapterQuiz && !overview?.completed && (
@@ -289,11 +287,12 @@ export default function CourseQuizzesPage() {
                 Finish the full course first to unlock this quiz.
               </p>
             )}
-            {(overview?.questionCount || 0) < (isChapterQuiz ? 3 : 10) && (
+            {(overview?.questionCount || 0) <
+              (isChapterQuiz ? CHAPTER_QUIZ_QUESTION_COUNT : COURSE_QUIZ_QUESTION_COUNT) && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                 {isChapterQuiz
-                  ? 'This chapter quiz unlocks once your teacher adds at least 3 questions for this lesson.'
-                  : 'This quiz unlocks once your teacher adds at least 10 bank questions.'}
+                  ? `This chapter quiz unlocks once your teacher adds at least ${CHAPTER_QUIZ_QUESTION_COUNT} questions for this chapter.`
+                  : `This quiz unlocks once your teacher adds at least ${COURSE_QUIZ_QUESTION_COUNT} bank questions.`}
               </p>
             )}
             {isChapterQuiz && overview?.attempts?.[0] && (
@@ -304,11 +303,6 @@ export default function CourseQuizzesPage() {
             {latestResult && (
               <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
                 Result: {latestResult.scorePercentage.toFixed(2)}% ({latestResult.correctAnswers}/{latestResult.totalQuestions})
-              </div>
-            )}
-            {insightText && (
-              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 whitespace-pre-wrap">
-                {insightText}
               </div>
             )}
             </div>

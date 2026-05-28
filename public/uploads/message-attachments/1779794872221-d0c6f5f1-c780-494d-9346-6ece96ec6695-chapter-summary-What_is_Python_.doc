@@ -1,0 +1,89 @@
+
+      <html>
+        <head><meta charset="utf-8" /></head>
+        <body style="font-family:Calibri,Arial,sans-serif;padding:18px;">
+          <h1 style="color:#1e3a8a;margin-bottom:6px;">Chapter Summary</h1>
+          <p style="margin-top:0;color:#334155;"><strong>Lesson:</strong> What is Python?</p>
+          <h2 style="color:#1e40af;">Summary Cards</h2>
+          
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Summary — Lesson 1: What is Python?</h3>
+            <p style="margin:0;line-height:1.6;">Summary — Lesson 1: What is Python?</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">What is Python?</h3>
+            <p style="margin:0;line-height:1.6;">Python is a high-level, interpreted programming language. (Lesson 1: What is Python?) Emphasizes simplicity and readability to make coding easier to learn and faster to develop.</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Key characteristics</h3>
+            <p style="margin:0;line-height:1.6;">High-level: abstracts many low-level details. Interpreted: runs line-by-line without a separate compile step. Readable syntax: designed for clarity and fewer lines of code.</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Common uses (from the lesson)</h3>
+            <p style="margin:0;line-height:1.6;">Web development Data science Artificial intelligence Automation Software development</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Why learn Python?</h3>
+            <p style="margin:0;line-height:1.6;">Low barrier to entry — good for beginners. Widely used across many fields, making skills broadly applicable. Fast development cycle due to simple syntax and interpreted nature.</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Simple example (from the lesson)</h3>
+            <p style="margin:0;line-height:1.6;">Code: print("Welcome to the Python course!") Purpose: demonstrates the basic syntax for output.</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Quick practical steps</h3>
+            <p style="margin:0;line-height:1.6;">Read Lesson 1: What is Python? to understand the language purpose and uses. Type the example: print("Welcome to the Python course!") in a text editor or interactive prompt. To run code on your machine, follow Lesson 2: Installing Python for download/installation and verification. Next study step: proceed to Lesson 3: Variables and Data Types to learn how to store and use data.</p>
+          </div>
+        
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">Quick recap</h3>
+            <p style="margin:0;line-height:1.6;">Python = readable, interpreted, high-level. Used in many domains (web, data, AI, automation). Try the single-line example (print...) and move next to variables and types.</p>
+          </div>
+        
+          <h2 style="color:#1e40af;">Full Text</h2>
+          <p style="white-space:pre-wrap;line-height:1.7;">Summary — Lesson 1: What is Python?
+
+What is Python?
+- Python is a high-level, interpreted programming language. (Lesson 1: What is Python?)
+- Emphasizes simplicity and readability to make coding easier to learn and faster to develop.
+
+Key characteristics
+- High-level: abstracts many low-level details.
+- Interpreted: runs line-by-line without a separate compile step.
+- Readable syntax: designed for clarity and fewer lines of code.
+
+Common uses (from the lesson)
+- Web development
+- Data science
+- Artificial intelligence
+- Automation
+- Software development
+
+Why learn Python?
+- Low barrier to entry — good for beginners.
+- Widely used across many fields, making skills broadly applicable.
+- Fast development cycle due to simple syntax and interpreted nature.
+
+Simple example (from the lesson)
+- Code: print("Welcome to the Python course!")
+- Purpose: demonstrates the basic syntax for output.
+
+Quick practical steps
+1. Read Lesson 1: What is Python? to understand the language purpose and uses.
+2. Type the example: print("Welcome to the Python course!") in a text editor or interactive prompt.
+3. To run code on your machine, follow Lesson 2: Installing Python for download/installation and verification.
+4. Next study step: proceed to Lesson 3: Variables and Data Types to learn how to store and use data.
+
+Quick recap
+- Python = readable, interpreted, high-level.
+- Used in many domains (web, data, AI, automation).
+- Try the single-line example (print...) and move next to variables and types.</p>
+        </body>
+      </html>
+    

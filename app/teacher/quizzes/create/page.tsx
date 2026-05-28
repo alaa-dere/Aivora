@@ -227,7 +227,7 @@ export default function CreateQuizPage() {
       correctAnswer: null,
     });
     setError(null);
-    setSuccess(null);
+    setSuccess("Question added to local queue only. Click Save to Question Bank to persist it.");
   };
 
   const removeQueuedQuestion = (index: number) => {
@@ -383,7 +383,8 @@ export default function CreateQuizPage() {
     }
 
     if (queuedQuestions.length === 0) {
-      setError("Add at least one question before saving");
+      setError(null);
+      setSuccess("No queued questions to save. The questions listed in Saved Question Bank are already saved.");
       return;
     }
 
@@ -489,7 +490,7 @@ export default function CreateQuizPage() {
                 </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {moduleId
-                    ? "Chapter quiz: student needs at least 3 questions in this chapter."
+                    ? "Chapter quiz: student needs at least 5 questions in this chapter."
                     : "Final course quiz: student needs at least 10 questions in the course bank."}
                 </p>
               </div>
@@ -727,13 +728,13 @@ export default function CreateQuizPage() {
               </>
             )}
 
-            <button
+              <button
               type="button"
               onClick={addQuestion}
               className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition flex items-center gap-1.5 sm:gap-2"
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Queue Question
+              Queue Question (Not Saved)
             </button>
           </div>
 
@@ -742,6 +743,10 @@ export default function CreateQuizPage() {
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ai Queued Questions</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">{queuedQuestions.length} queued</span>
             </div>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Queued questions are local only. They are not saved to DB until you click "Save to Question Bank" or
+              "Save All Queued Questions".
+            </p>
 
             {queuedQuestions.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No queued questions yet.</p>
@@ -834,7 +839,7 @@ export default function CreateQuizPage() {
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || queuedQuestions.length === 0}
               className="flex-1 py-2 sm:py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs sm:text-sm font-medium transition flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Send, Trash2 } from 'lucide-react';
+import { FileAudio, FileText, Image as ImageIcon, Search, Send, Trash2 } from 'lucide-react';
 
 type TabMode = 'students' | 'admin';
 
@@ -29,8 +29,26 @@ type AdminMessageItem = {
   id: string;
   senderRole: 'admin' | 'teacher';
   body: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
   createdAt: string;
 };
+
+function formatFileSize(size?: number | null) {
+  if (!size || Number.isNaN(size)) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentKind(type?: string | null) {
+  if (!type) return 'file';
+  if (type.startsWith('image/')) return 'image';
+  if (type.startsWith('audio/')) return 'audio';
+  return 'file';
+}
 
 export default function TeacherMessagesPage() {
   const [mode, setMode] = useState<TabMode>('students');
@@ -613,7 +631,52 @@ export default function TeacherMessagesPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <p>{msg.body}</p>
+                  {msg.body.trim() && <p>{msg.body}</p>}
+                  {msg.attachmentUrl && (
+                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-slate-700 dark:bg-slate-800/70">
+                      {attachmentKind(msg.attachmentType) === 'image' ? (
+                        <a href={msg.attachmentUrl} target="_blank" rel="noreferrer">
+                          <img
+                            src={msg.attachmentUrl}
+                            alt={msg.attachmentName || 'Attachment'}
+                            className="max-h-60 w-full object-cover"
+                          />
+                        </a>
+                      ) : attachmentKind(msg.attachmentType) === 'audio' ? (
+                        <div className="p-2">
+                          <audio controls src={msg.attachmentUrl} className="w-full" />
+                          <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                            {msg.attachmentName || 'Voice note'}
+                          </p>
+                        </div>
+                      ) : (
+                        <a
+                          href={msg.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 p-3 text-left"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                            {msg.attachmentType?.startsWith('audio/') ? (
+                              <FileAudio className="h-5 w-5" />
+                            ) : msg.attachmentType?.startsWith('image/') ? (
+                              <ImageIcon className="h-5 w-5" />
+                            ) : (
+                              <FileText className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {msg.attachmentName || 'Attachment'}
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {msg.attachmentSize ? formatFileSize(msg.attachmentSize) : 'File'}
+                            </p>
+                          </div>
+                        </a>
+                      )}
+                    </div>
+                  )}
                   <p className="text-[10px] opacity-70 mt-2">
                     {new Date(msg.createdAt).toLocaleString()}
                   </p>

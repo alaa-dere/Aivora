@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { createAdminNotification } from '@/lib/notifications-write';
+import { ensureAdminTeacherAttachmentColumns, saveMessageAttachment } from '@/lib/message-attachments';
 
 type MessageRow = RowDataPacket & {
   id: string;
@@ -10,6 +11,10 @@ type MessageRow = RowDataPacket & {
   senderId: string;
   senderRole: 'admin' | 'teacher';
   body: string;
+  attachmentUrl: string | null;
+  attachmentName: string | null;
+  attachmentType: string | null;
+  attachmentSize: number | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -76,6 +81,28 @@ async function ensureAdminTeacherDeleteColumns() {
   }
 }
 
+async function parseMessagePayload(req: Request) {
+  const contentType = req.headers.get('content-type') || '';
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await req.formData();
+    const adminId = String(formData.get('adminId') || '').trim();
+    const body = String(formData.get('body') || '').trim();
+    const attachment = formData.get('attachment');
+    return {
+      adminId,
+      body,
+      attachment: attachment instanceof File && attachment.size > 0 ? attachment : null,
+    };
+  }
+
+  const payload = await req.json();
+  return {
+    adminId: typeof payload.adminId === 'string' ? payload.adminId.trim() : '',
+    body: typeof payload.body === 'string' ? payload.body.trim() : '',
+    attachment: null as File | null,
+  };
+}
+
 async function getOrCreateThread(adminId: string, teacherId: string) {
   const [existingRows] = await pool.query<RowDataPacket[]>(
     `
@@ -114,6 +141,7 @@ export async function GET(req: Request) {
 
   try {
     await ensureAdminTeacherDeleteColumns();
+    await ensureAdminTeacherAttachmentColumns();
     const supportsDeleteVisibility = await hasColumn(
       'admin_teacher_message',
       'deletedForEveryoneAt'
@@ -194,6 +222,10 @@ export async function GET(req: Request) {
         senderId,
         senderRole,
         body,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
         createdAt,
         readAt
       FROM admin_teacher_message
@@ -231,12 +263,29 @@ export async function POST(req: Request) {
   }
 
   try {
-    const payload = await req.json();
-    const messageBody = typeof payload.body === 'string' ? payload.body.trim() : '';
-    const adminId = typeof payload.adminId === 'string' ? payload.adminId : '';
+    await ensureAdminTeacherAttachmentColumns();
+    const payload = await parseMessagePayload(req);
+    const messageBody = payload.body;
+    const adminId = payload.adminId;
+    const attachmentFile = payload.attachment;
+    let attachmentUrl: string | null = null;
+    let attachmentName: string | null = null;
+    let attachmentType: string | null = null;
+    let attachmentSize: number | null = null;
 
-    if (!messageBody) {
-      return NextResponse.json({ message: 'Message is required' }, { status: 400 });
+    if (!messageBody && !attachmentFile) {
+      return NextResponse.json(
+        { message: 'Message text or an attachment is required' },
+        { status: 400 }
+      );
+    }
+
+    if (attachmentFile) {
+      const saved = await saveMessageAttachment(attachmentFile, 'message-attachments');
+      attachmentUrl = saved.url;
+      attachmentName = saved.name;
+      attachmentType = saved.type;
+      attachmentSize = saved.size;
     }
 
     const admin = adminId ? { id: adminId } : await getDefaultAdmin();
@@ -255,11 +304,20 @@ export async function POST(req: Request) {
     await pool.query<ResultSetHeader>(
       `
       INSERT INTO admin_teacher_message
-        (id, threadId, senderId, senderRole, body, createdAt)
+        (id, threadId, senderId, senderRole, body, attachmentUrl, attachmentName, attachmentType, attachmentSize, createdAt)
       VALUES
-        (?, ?, ?, 'teacher', ?, NOW())
+        (?, ?, ?, 'teacher', ?, ?, ?, ?, ?, NOW())
       `,
-      [messageId, threadId, user.id, messageBody]
+      [
+        messageId,
+        threadId,
+        user.id,
+        messageBody,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
+      ]
     );
 
     await pool.query<ResultSetHeader>(
@@ -281,14 +339,22 @@ export async function POST(req: Request) {
       await createAdminNotification({
         type: 'teacher_message',
         title: `New message from ${teacherName}`,
-        message: messageBody,
+        message: messageBody || (attachmentName ? `Shared ${attachmentName}` : 'New attachment'),
       });
     } catch (notifError: unknown) {
       console.error('Admin notification insert failed:', notifError);
     }
 
     return NextResponse.json(
-      { success: true, messageId, threadId },
+      {
+        success: true,
+        messageId,
+        threadId,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
+      },
       { status: 201 }
     );
   } catch (error: unknown) {

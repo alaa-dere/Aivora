@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -68,6 +68,8 @@ type LessonQuizOverview = {
     submittedAt: string;
   }>;
 };
+
+const CHAPTER_QUIZ_QUESTION_COUNT = 5;
 
 const inlineMarkdownToNodes = (text: string): ReactNode[] => {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -233,6 +235,7 @@ export default function CoursePlayerPage() {
   const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
   const [summaryView, setSummaryView] = useState<'text' | 'cards'>('cards');
   const [lessonQuizOverview, setLessonQuizOverview] = useState<LessonQuizOverview | null>(null);
+  const [lessonQuizOverviewError, setLessonQuizOverviewError] = useState<string | null>(null);
 
   const handleLiveSubmissionChange = useCallback(
     (submission: LiveEditorSubmission) => {
@@ -329,12 +332,14 @@ export default function CoursePlayerPage() {
     const loadLessonQuizOverview = async () => {
       if (!selectedLessonId) {
         setLessonQuizOverview(null);
+        setLessonQuizOverviewError(null);
         return;
       }
       try {
         const moduleId = selectedModule?.id || '';
         if (!moduleId) {
           setLessonQuizOverview(null);
+          setLessonQuizOverviewError(null);
           return;
         }
         const res = await fetch(
@@ -342,7 +347,9 @@ export default function CoursePlayerPage() {
           { cache: 'no-store' }
         );
         if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
           setLessonQuizOverview(null);
+          setLessonQuizOverviewError(String(payload?.message || `Failed to load chapter quiz (${res.status})`));
           return;
         }
         const data = await res.json();
@@ -360,8 +367,10 @@ export default function CoursePlayerPage() {
               })
             : [],
         });
+        setLessonQuizOverviewError(null);
       } catch {
         setLessonQuizOverview(null);
+        setLessonQuizOverviewError('Failed to load chapter quiz status.');
       }
     };
 
@@ -489,11 +498,24 @@ export default function CoursePlayerPage() {
     setLessonInlineError(null);
     try {
       if (isLastLessonInChapter) {
-        const chapterQuestionCount = Number(lessonQuizOverview?.questionCount || 0);
-        const hasAttempt = Number(lessonQuizOverview?.attempts?.length || 0) > 0;
-
-        if (chapterQuestionCount < 3) {
-          throw new Error('This chapter quiz is not ready yet. Your teacher must add at least 3 questions.');
+        const moduleId = selectedModule?.id || '';
+        if (!moduleId) {
+          throw new Error('Unable to detect chapter for this lesson.');
+        }
+        const latestQuizRes = await fetch(
+          `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
+          { cache: 'no-store' }
+        );
+        const latestQuizPayload = await latestQuizRes.json().catch(() => ({}));
+        if (!latestQuizRes.ok) {
+          throw new Error(String(latestQuizPayload?.message || 'Failed to validate chapter quiz status.'));
+        }
+        const chapterQuestionCount = Number(latestQuizPayload?.questionCount || 0);
+        const hasAttempt = Number(latestQuizPayload?.attempts?.length || 0) > 0;
+        if (chapterQuestionCount < CHAPTER_QUIZ_QUESTION_COUNT) {
+          throw new Error(
+            `This chapter quiz is not ready yet. Your teacher must add at least ${CHAPTER_QUIZ_QUESTION_COUNT} questions.`
+          );
         }
         if (!hasAttempt) {
           throw new Error('Please complete the chapter quiz first, then mark this lesson as completed.');
@@ -958,7 +980,7 @@ export default function CoursePlayerPage() {
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
                   {selectedLesson.title}
                 </h2>
-                {Number(lessonQuizOverview?.questionCount || 0) >= 3 && (
+                {Number(lessonQuizOverview?.questionCount || 0) >= CHAPTER_QUIZ_QUESTION_COUNT && (
                   <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mb-3">
                     Chapter Quiz:
                     {' '}
@@ -996,7 +1018,10 @@ export default function CoursePlayerPage() {
                   selectedLesson &&
                   router.push(`/student/my-courses/${params.id}/quizzes?moduleId=${encodeURIComponent(selectedModule?.id || '')}`)
                 }
-                disabled={!selectedLesson || Number(lessonQuizOverview?.questionCount || 0) < 3}
+                disabled={
+                  !selectedLesson ||
+                  Number(lessonQuizOverview?.questionCount || 0) < CHAPTER_QUIZ_QUESTION_COUNT
+                }
                 className="px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Chapter Quiz
@@ -1049,6 +1074,11 @@ export default function CoursePlayerPage() {
             {lessonInlineError && (
               <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
                 {lessonInlineError}
+              </div>
+            )}
+            {!lessonInlineError && lessonQuizOverviewError && (
+              <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+                {lessonQuizOverviewError}
               </div>
             )}
 

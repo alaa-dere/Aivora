@@ -43,7 +43,9 @@ export default function AdminPathsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pathToDelete, setPathToDelete] = useState<LearningPath | null>(null);
   const [editingPathId, setEditingPathId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -262,15 +264,17 @@ export default function AdminPathsPage() {
     setIsAddEditModalOpen(true);
   };
 
-  const handleDelete = async (path: LearningPath) => {
-    const confirmed = window.confirm(
-      `Delete learning path "${path.title}"?\nAll enrollments and course mapping in this path will be removed.`
-    );
-    if (!confirmed) return;
+  const handleDelete = (path: LearningPath) => {
+    setPathToDelete(path);
+    setIsDeleteModalOpen(true);
+  };
 
-    setDeletingId(path.id);
+  const confirmDelete = async () => {
+    if (!pathToDelete) return;
+
+    setDeletingId(pathToDelete.id);
     try {
-      const res = await fetch(`/api/paths/${path.id}`, {
+      const res = await fetch(`/api/paths/${pathToDelete.id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -279,9 +283,11 @@ export default function AdminPathsPage() {
         return;
       }
 
-      if (editingPathId === path.id) {
+      if (editingPathId === pathToDelete.id) {
         resetForm();
       }
+      setIsDeleteModalOpen(false);
+      setPathToDelete(null);
       await fetchAll();
     } catch (error) {
       console.error('Failed deleting path:', error);
@@ -411,7 +417,7 @@ export default function AdminPathsPage() {
                         <button
                           type="button"
                           onClick={() => handleEdit(path)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/40 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800/50 transition-colors"
                         >
                           <PencilSquareIcon className="w-4 h-4" />
                           Edit
@@ -420,7 +426,7 @@ export default function AdminPathsPage() {
                           type="button"
                           onClick={() => handleDelete(path)}
                           disabled={deletingId === path.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-60 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
                         >
                           <TrashIcon className="w-4 h-4" />
                           {deletingId === path.id ? 'Deleting...' : 'Delete'}
@@ -475,7 +481,7 @@ export default function AdminPathsPage() {
                   <button
                     type="button"
                     onClick={() => handleEdit(path)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 text-[11px]"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-[11px]"
                   >
                     <PencilSquareIcon className="w-4 h-4" />
                     Edit
@@ -484,7 +490,7 @@ export default function AdminPathsPage() {
                     type="button"
                     onClick={() => handleDelete(path)}
                     disabled={deletingId === path.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-[11px] disabled:opacity-60"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-[11px] disabled:opacity-60"
                   >
                     <TrashIcon className="w-4 h-4" />
                     {deletingId === path.id ? 'Deleting...' : 'Delete'}
@@ -701,6 +707,44 @@ export default function AdminPathsPage() {
           </div>
         </div>
       )}
+
+      {isDeleteModalOpen && pathToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="admin-surface w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold">Delete Path</h2>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="text-white hover:text-gray-200 transition">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                Delete learning path <span className="font-semibold">"{pathToDelete.title}"</span>? All enrollments and course mapping in this path will be removed.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deletingId === pathToDelete.id}
+                  className="px-6 py-2 rounded-lg bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 dark:bg-slate-900/40 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20 transition disabled:opacity-60"
+                >
+                  {deletingId === pathToDelete.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+

@@ -4,6 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
+import { createStudentNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -16,6 +17,8 @@ type QuestionRow = RowDataPacket & {
   optionsJson: unknown;
   correctOptionIndex: number;
 };
+
+const CHAPTER_QUIZ_QUESTION_COUNT = 5;
 
 function parseOptions(value: unknown) {
   if (Array.isArray(value)) return value.map((item) => String(item || ''));
@@ -54,18 +57,6 @@ async function assertModuleInCourse(courseId: string, moduleId: string) {
   return rows[0] as { id: string; title: string } | undefined;
 }
 
-async function getModuleLessonIds(moduleId: string) {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `
-    SELECT id
-    FROM lesson
-    WHERE moduleId = ?
-    `,
-    [moduleId]
-  );
-  return rows.map((row) => String(row.id || '')).filter(Boolean);
-}
-
 export async function GET(req: Request, { params }: Params) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'student') {
@@ -94,30 +85,24 @@ export async function GET(req: Request, { params }: Params) {
       return NextResponse.json({ message: 'Chapter not found in this course' }, { status: 404 });
     }
 
-    const moduleLessonIds = await getModuleLessonIds(moduleId);
-    const lessonPlaceholders = moduleLessonIds.map(() => '?').join(',');
-    const whereLegacyLessons = moduleLessonIds.length
-      ? ` OR (moduleId IS NULL AND lessonId IN (${lessonPlaceholders}))`
-      : '';
-    const whereCourseWideFallback = ` OR (moduleId IS NULL AND lessonId IS NULL)`;
     const [countRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT COUNT(*) AS total
       FROM course_question_bank
       WHERE courseId = ?
-        AND (moduleId = ?${whereLegacyLessons}${whereCourseWideFallback})
+        AND moduleId = ?
       `,
-      moduleLessonIds.length
-        ? [normalizedCourseId, moduleId, ...moduleLessonIds]
-        : [normalizedCourseId, moduleId]
+      [normalizedCourseId, moduleId]
     );
     const questionCount = Number(countRows[0]?.total || 0);
-    const canStart = questionCount >= 3;
+    const canStart = questionCount >= CHAPTER_QUIZ_QUESTION_COUNT;
 
     if (mode === 'start') {
       if (!canStart) {
         return NextResponse.json(
-          { message: 'This chapter needs at least 3 questions before quiz can start.' },
+          {
+            message: `This chapter needs at least ${CHAPTER_QUIZ_QUESTION_COUNT} questions before quiz can start.`,
+          },
           { status: 400 }
         );
       }
@@ -127,13 +112,11 @@ export async function GET(req: Request, { params }: Params) {
         SELECT id, questionType, questionText, optionsJson
         FROM course_question_bank
         WHERE courseId = ?
-          AND (moduleId = ?${whereLegacyLessons}${whereCourseWideFallback})
+          AND moduleId = ?
         ORDER BY RAND()
-        LIMIT 5
+        LIMIT ${CHAPTER_QUIZ_QUESTION_COUNT}
         `,
-        moduleLessonIds.length
-          ? [normalizedCourseId, moduleId, ...moduleLessonIds]
-          : [normalizedCourseId, moduleId]
+        [normalizedCourseId, moduleId]
       );
 
       const questions = questionRows.map((row, index) => {
@@ -164,7 +147,12 @@ export async function GET(req: Request, { params }: Params) {
 
     const [attemptRows] = await pool.query<RowDataPacket[]>(
       `
-      SELECT id, totalQuestions, correctAnswers, scorePercentage, submittedAt
+      SELECT
+        lesson_quiz_attempt.id AS id,
+        lesson_quiz_attempt.totalQuestions AS totalQuestions,
+        lesson_quiz_attempt.correctAnswers AS correctAnswers,
+        lesson_quiz_attempt.scorePercentage AS scorePercentage,
+        lesson_quiz_attempt.submittedAt AS submittedAt
       FROM lesson_quiz_attempt
       JOIN lesson l ON l.id = lesson_quiz_attempt.lessonId
       WHERE lesson_quiz_attempt.courseId = ?
@@ -245,13 +233,6 @@ export async function POST(req: Request, { params }: Params) {
       return NextResponse.json({ message: 'This chapter has no lessons yet.' }, { status: 400 });
     }
     const attemptLessonId = String(lessonRows[0].id);
-    const moduleLessonIds = await getModuleLessonIds(moduleId);
-    const lessonPlaceholders = moduleLessonIds.map(() => '?').join(',');
-    const whereLegacyLessons = moduleLessonIds.length
-      ? ` OR (moduleId IS NULL AND lessonId IN (${lessonPlaceholders}))`
-      : '';
-    const whereCourseWideFallback = ` OR (moduleId IS NULL AND lessonId IS NULL)`;
-
     const questionIdSet = new Set<string>();
     const normalizedAnswers = answersRaw
       .map((item: unknown) => {
@@ -274,9 +255,11 @@ export async function POST(req: Request, { params }: Params) {
       })
       .filter(Boolean) as Array<{ questionId: string; selectedOptionIndex: number | null; selectedTextAnswer: string }>;
 
-    if (normalizedAnswers.length < 3) {
+    if (normalizedAnswers.length !== CHAPTER_QUIZ_QUESTION_COUNT) {
       return NextResponse.json(
-        { message: 'A chapter quiz submission must include at least 3 questions.' },
+        {
+          message: `A chapter quiz submission must include exactly ${CHAPTER_QUIZ_QUESTION_COUNT} questions.`,
+        },
         { status: 400 }
       );
     }
@@ -287,12 +270,10 @@ export async function POST(req: Request, { params }: Params) {
       SELECT id, questionType, questionText, optionsJson, correctOptionIndex
       FROM course_question_bank
       WHERE courseId = ?
-        AND (moduleId = ?${whereLegacyLessons}${whereCourseWideFallback})
+        AND moduleId = ?
         AND id IN (${placeholders})
       `,
-      moduleLessonIds.length
-        ? [normalizedCourseId, moduleId, ...moduleLessonIds, ...normalizedAnswers.map((a) => a.questionId)]
-        : [normalizedCourseId, moduleId, ...normalizedAnswers.map((a) => a.questionId)]
+      [normalizedCourseId, moduleId, ...normalizedAnswers.map((a) => a.questionId)]
     );
 
     if (questionRows.length !== normalizedAnswers.length) {
@@ -363,6 +344,52 @@ export async function POST(req: Request, { params }: Params) {
         ]
       );
     }
+
+    const [historyRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT a.scorePercentage
+      FROM lesson_quiz_attempt a
+      JOIN lesson l ON l.id = a.lessonId
+      WHERE a.courseId = ? AND a.studentId = ? AND l.moduleId = ?
+      ORDER BY a.submittedAt DESC
+      LIMIT 10
+      `,
+      [normalizedCourseId, user.id, moduleId]
+    );
+
+    const historyScores = historyRows.map((row) => Number(row.scorePercentage || 0));
+    const latest = Number(scorePercentage || 0);
+    const previousBest = historyScores.slice(1).length ? Math.max(...historyScores.slice(1)) : null;
+    const trendText =
+      previousBest === null
+        ? 'First attempt for this chapter.'
+        : latest >= previousBest
+          ? `Improved from best previous ${previousBest.toFixed(2)}% to ${latest.toFixed(2)}%.`
+          : `Current ${latest.toFixed(2)}%, best previous ${previousBest.toFixed(2)}%.`;
+
+    const weakQuestions = graded
+      .filter((item) => !item.isCorrect)
+      .slice(0, 2)
+      .map((item) => item.question.questionText)
+      .join(' | ');
+    const strongQuestions = graded
+      .filter((item) => item.isCorrect)
+      .slice(0, 2)
+      .map((item) => item.question.questionText)
+      .join(' | ');
+
+    await createStudentNotification({
+      studentId: user.id,
+      courseId: normalizedCourseId,
+      type: scorePercentage >= 60 ? 'quiz_passed' : 'quiz_failed',
+      title: `Chapter Quiz: ${moduleRow.title}`,
+      message: [
+        `Score ${latest.toFixed(2)}% (${correctAnswers}/${totalQuestions}).`,
+        trendText,
+        strongQuestions ? `Strengths: ${strongQuestions}` : 'Strengths: Keep practicing.',
+        weakQuestions ? `Weak points: ${weakQuestions}` : 'Weak points: None in this attempt.',
+      ].join(' '),
+    });
 
     return NextResponse.json({
       success: true,

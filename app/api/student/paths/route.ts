@@ -16,6 +16,7 @@ export async function GET(req: Request) {
         lp.id,
         lp.title,
         lp.description,
+        lp.imageUrl,
         lp.level,
         lp.price,
         lp.estimatedHours,
@@ -36,19 +37,41 @@ export async function GET(req: Request) {
           FROM path_enrollment pe
           WHERE pe.pathId = lp.id
             AND pe.studentId = ?
-        ) AS enrolled
+        ) AS enrolled,
+        (
+          SELECT pe.status
+          FROM path_enrollment pe
+          WHERE pe.pathId = lp.id
+            AND pe.studentId = ?
+          LIMIT 1
+        ) AS enrollmentStatus,
+        (
+          SELECT pe.progressPercentage
+          FROM path_enrollment pe
+          WHERE pe.pathId = lp.id
+            AND pe.studentId = ?
+          LIMIT 1
+        ) AS enrollmentProgressPercentage,
+        (
+          SELECT pe.completedAt
+          FROM path_enrollment pe
+          WHERE pe.pathId = lp.id
+            AND pe.studentId = ?
+          LIMIT 1
+        ) AS enrollmentCompletedAt
       FROM learning_path lp
       LEFT JOIN category c ON c.id = lp.categoryId
       WHERE lp.status = 'published'
       ORDER BY lp.createdAt DESC
       `,
-      [user.id]
+      [user.id, user.id, user.id, user.id]
     );
 
     const paths = rows.map((row) => ({
       id: row.id as string,
       title: row.title as string,
       description: row.description as string | null,
+      imageUrl: row.imageUrl as string | null,
       level: row.level as string,
       price: Number(row.price || 0),
       estimatedHours: Number(row.estimatedHours || 0),
@@ -56,6 +79,9 @@ export async function GET(req: Request) {
       categoryName: row.categoryName as string | null,
       coursesCount: Number(row.coursesCount || 0),
       enrolled: Number(row.enrolled || 0) > 0,
+      enrollmentStatus: row.enrollmentStatus ? String(row.enrollmentStatus) : null,
+      enrollmentProgressPercentage: Number(row.enrollmentProgressPercentage || 0),
+      enrollmentCompletedAt: row.enrollmentCompletedAt || null,
     }));
 
     return NextResponse.json({ paths });

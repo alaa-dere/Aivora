@@ -9,7 +9,8 @@ import {
   TrashIcon,
   FunnelIcon,
   XMarkIcon,
-  EyeIcon 
+  EyeIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
 type Status = 'active' | 'inactive';
@@ -211,14 +212,15 @@ export default function AdminTeachersPage() {
           className="
             group w-full sm:w-auto inline-flex items-center justify-center gap-2
             px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl
-            bg-emerald-100 hover:bg-emerald-200
-            text-emerald-700 font-semibold text-xs sm:text-sm
-            shadow-sm border border-emerald-200
-            dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800
+            bg-green-100 hover:bg-green-200
+            text-green-700 font-semibold text-xs sm:text-sm
+            shadow-sm border border-green-200
+            dark:bg-green-900/30 dark:hover:bg-green-900/40 dark:text-green-200 dark:border-green-800
             transition-all duration-200 active:scale-95
             whitespace-nowrap
           "
         >
+          <CalendarDaysIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           View Calendar
         </Link>
       </div>
