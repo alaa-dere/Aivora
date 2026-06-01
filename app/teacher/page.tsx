@@ -10,11 +10,9 @@ import {
   AcademicCapIcon,
   ChartBarIcon,
   ChevronRightIcon,
-  ArrowTrendingUpIcon,
   SunIcon,
   MoonIcon,
   ClockIcon,
-  ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon,
   VideoCameraIcon,
@@ -31,8 +29,7 @@ import {
   UserPlusIcon,
   ChatBubbleLeftRightIcon,
   EyeIcon,
-  EllipsisVerticalIcon,
-  ArrowTrendingDownIcon
+  EllipsisVerticalIcon
 } from "@heroicons/react/24/outline";
 
 /* ================= Stat Card ================= */
@@ -205,19 +202,6 @@ function getActivityAppearance(type: string) {
   };
 }
 
-/* ================= AI Insight Item ================= */
-const AIInsightItem = ({ icon: Icon, title, description, color = "text-blue-600 dark:text-blue-400" }: any) => (
-  <div className="flex items-start gap-3">
-    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-      <Icon className={`w-4 h-4 ${color}`} />
-    </div>
-    <div>
-      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200">{title}</h3>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{description}</p>
-    </div>
-  </div>
-);
-
 /* ================= Main Dashboard ================= */
 export default function TeacherDashboard() {
   const { theme } = useTheme();
@@ -233,11 +217,6 @@ export default function TeacherDashboard() {
   const [courses, setCourses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [aiInsights, setAiInsights] = useState<{ title: string; description: string; type: 'forecast' | 'trend' | 'recommendation' }[]>([]);
-  const [aiLoading, setAiLoading] = useState(true);
-  const [aiSource, setAiSource] = useState<'openai' | 'rule-based' | 'unknown'>('unknown');
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiDebug, setAiDebug] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -265,37 +244,6 @@ export default function TeacherDashboard() {
 
     if (mounted) {
       loadDashboard();
-    }
-  }, [mounted]);
-
-  useEffect(() => {
-    const loadAiInsights = async () => {
-      try {
-        setAiLoading(true);
-        setAiError(null);
-        const res = await fetch('/api/teacher/ai/insights', { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) {
-          setAiError(data?.message || 'Failed to load AI insights');
-          return;
-        }
-        setAiInsights(data.insights || []);
-        setAiDebug(typeof data?.aiDebug?.message === 'string' ? data.aiDebug.message : null);
-        setAiSource(
-          data.source === 'openai' || data.source === 'rule-based'
-            ? data.source
-            : 'unknown'
-        );
-      } catch (error) {
-        console.error('Failed to load AI insights', error);
-        setAiError('Failed to load AI insights');
-      } finally {
-        setAiLoading(false);
-      }
-    };
-
-    if (mounted) {
-      loadAiInsights();
     }
   }, [mounted]);
 
@@ -335,8 +283,8 @@ export default function TeacherDashboard() {
         ))}
       </div>
 
-      {/* باقي الأقسام (My Courses, AI Insights, Student Performance, Recent Activity) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      {/* باقي الأقسام (My Courses, Student Performance, Recent Activity) */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* My Courses */}
         <div className="admin-surface lg:col-span-2 relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
@@ -365,68 +313,10 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {/* AI Insights */}
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400" />
-          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
-            AI Insights
-          </h2>
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
-            <span>Smart analytics & suggestions</span>
-            <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              SOURCE:{' '}
-              {aiSource === 'openai'
-                ? 'OpenAI'
-                : aiSource === 'rule-based'
-                    ? 'Rule-based'
-                    : 'Unknown'}
-            </span>
-          </div>
-          <Link
-            href="/teacher/earnings"
-            className="inline-flex mb-4 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline"
-          >
-            Go to Forecast
-          </Link>
-          {aiSource === 'rule-based' && aiDebug && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
-              AI fallback reason: {aiDebug}
-            </p>
-          )}
-          <div className="space-y-4">
-            {aiLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading insights...</p>
-            ) : aiError ? (
-              <p className="text-sm text-rose-600 dark:text-rose-400">{aiError}</p>
-            ) : aiInsights.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No insights yet.</p>
-            ) : (
-              aiInsights.map((insight, index) => {
-                const isDown = insight.type === 'trend' && insight.description.toLowerCase().includes('down');
-                const icon =
-                  insight.type === 'forecast'
-                    ? SparklesIcon
-                    : insight.type === 'recommendation'
-                      ? AcademicCapIcon
-                      : isDown
-                        ? ArrowTrendingDownIcon
-                        : ArrowTrendingUpIcon;
-                return (
-                  <AIInsightItem
-                    key={`${insight.title}-${index}`}
-                    icon={icon}
-                    title={insight.title}
-                    description={insight.description}
-                  />
-                );
-              })
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Student Performance + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
           <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">

@@ -56,6 +56,11 @@ export default function CreateQuizPage() {
   const [writtenPct, setWrittenPct] = useState<number>(20);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const shortenLabel = (value: string, max = 42) => {
+    const text = String(value || "").trim();
+    if (text.length <= max) return text;
+    return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+  };
 
   const [currentQuestion, setCurrentQuestion] = useState<QuestionDraft>({
     questionType: "multiple_choice",
@@ -460,13 +465,13 @@ export default function CreateQuizPage() {
                 setSuccess(null);
                 setError(null);
               }}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-gray-900 dark:text-white"
+              className="w-full max-w-full p-2.5 sm:p-3 pr-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm sm:text-base text-gray-900 dark:text-white"
               required
             >
               <option value="">Select a course</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
-                  {course.name}
+                  {shortenLabel(course.name, 52)}
                 </option>
               ))}
             </select>
@@ -479,12 +484,12 @@ export default function CreateQuizPage() {
                 <select
                   value={moduleId}
                   onChange={(e) => setModuleId(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-gray-900 dark:text-white"
+                  className="w-full max-w-full p-2.5 sm:p-3 pr-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm sm:text-base text-gray-900 dark:text-white"
                 >
                   <option value="">Final course quiz (all chapters)</option>
                   {modules.map((module) => (
                     <option key={module.id} value={module.id}>
-                      {module.title}
+                      {shortenLabel(module.title, 42)}
                     </option>
                   ))}
                 </select>
@@ -508,11 +513,11 @@ export default function CreateQuizPage() {
                     AI will create questions from this course modules and lesson content.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full sm:w-auto items-center gap-2">
                   <select
                     value={aiCount}
                     onChange={(e) => setAiCount(Number(e.target.value))}
-                    className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+                    className="w-[42%] sm:w-auto p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
                   >
                     <option value={3}>3 questions</option>
                     <option value={5}>5 questions</option>
@@ -523,7 +528,7 @@ export default function CreateQuizPage() {
                     type="button"
                     onClick={generateWithAi}
                     disabled={!courseId || generatingAi}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
+                    className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
                   >
                     <Sparkles className="w-4 h-4" />
                     {generatingAi ? "Generating..." : "Generate with AI"}

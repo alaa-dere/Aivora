@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { portalStyles } from '../styles';
 
@@ -9,45 +9,7 @@ const formatDateTime = (value) => {
   return parsed.toLocaleString();
 };
 
-const pickInsightIcon = (type) => {
-  if (type === 'forecast') return 'Forecast';
-  if (type === 'recommendation') return 'Recommendation';
-  return 'Trend';
-};
-
-export default function TeacherDashboardView({ data, loading, error, apiFetch, theme }) {
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [insights, setInsights] = useState([]);
-  const [insightsSource, setInsightsSource] = useState('unknown');
-
-  const loadInsights = useCallback(async () => {
-    try {
-      setInsightsLoading(true);
-      const res = await apiFetch('/api/teacher/ai/insights', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      const payload = await res.json();
-      if (!res.ok) {
-        setInsights([]);
-        setInsightsSource('unknown');
-        return;
-      }
-      setInsights(Array.isArray(payload?.insights) ? payload.insights : []);
-      setInsightsSource(payload?.source || 'unknown');
-    } catch {
-      setInsights([]);
-      setInsightsSource('unknown');
-    } finally {
-      setInsightsLoading(false);
-    }
-  }, [apiFetch]);
-
-  useEffect(() => {
-    loadInsights();
-  }, [loadInsights]);
-
+export default function TeacherDashboardView({ data, loading, error, theme }) {
   const stats = data?.stats || {};
   const courses = Array.isArray(data?.courses) ? data.courses : [];
   const students = Array.isArray(data?.students) ? data.students : [];
@@ -109,31 +71,6 @@ export default function TeacherDashboardView({ data, loading, error, apiFetch, t
                 </Text>
                 <Text style={[portalStyles.listItemMeta, { color: theme.textMuted }]}>
                   Status: {String(course?.status || 'draft')}
-                </Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-
-      <View style={[portalStyles.adminSection, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-        <Text style={[portalStyles.adminSectionTitle, { color: theme.textPrimary }]}>AI Insights</Text>
-        <Text style={[portalStyles.listItemMeta, { color: theme.textMuted }]}>
-          Source: {insightsSource === 'openai' ? 'OpenAI' : insightsSource === 'rule-based' ? 'Rule-based' : 'Unknown'}
-        </Text>
-        {insightsLoading ? (
-          <Text style={portalStyles.empty}>Loading insights...</Text>
-        ) : insights.length === 0 ? (
-          <Text style={portalStyles.empty}>No insights yet.</Text>
-        ) : (
-          insights.map((insight, idx) => (
-            <View key={`${insight?.title || 'insight'}-${idx}`} style={portalStyles.listItem}>
-              <View style={portalStyles.listItemContent}>
-                <Text style={[portalStyles.listItemTitle, { color: theme.textPrimary }]}>
-                  {pickInsightIcon(insight?.type)}: {insight?.title || 'Insight'}
-                </Text>
-                <Text style={[portalStyles.listItemMeta, { color: theme.textMuted }]}>
-                  {insight?.description || '-'}
                 </Text>
               </View>
             </View>

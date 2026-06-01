@@ -68,11 +68,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           WHERE a.courseId = c.id AND a.studentId = e.studentId
         ) AS chapterQuizCount,
         (
-          SELECT COUNT(*)
-          FROM course_quiz_attempt a
-          WHERE a.courseId = c.id AND a.studentId = e.studentId
-        ) AS quizAttempts,
-        (
           SELECT COALESCE(m.missedCount, 0)
           FROM student_live_miss m
           WHERE m.studentId = e.studentId AND m.courseId = e.courseId
@@ -148,7 +143,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             SELECT AVG(a.scorePercentage)
             FROM lesson_quiz_attempt a
             JOIN lesson l ON l.id = a.lessonId
-            JOIN course c3 ON c3.id = l.courseId
+            JOIN module m ON m.id = l.moduleId
+            JOIN course c3 ON c3.id = m.courseId
             WHERE a.studentId = ? AND c3.teacherId = ?
           ),
           0
@@ -158,7 +154,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             SELECT COUNT(*)
             FROM lesson_quiz_attempt a
             JOIN lesson l ON l.id = a.lessonId
-            JOIN course c3 ON c3.id = l.courseId
+            JOIN module m ON m.id = l.moduleId
+            JOIN course c3 ON c3.id = m.courseId
             WHERE a.studentId = ? AND c3.teacherId = ?
           ),
           0
@@ -267,7 +264,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 Number(row.chapterQuizAvg || 0) * Number(row.chapterQuizCount || 0)) /
               (Number(row.finalQuizCount || 0) + Number(row.chapterQuizCount || 0))
             : 0,
-        quizAttempts: Number(row.quizAttempts || 0),
+        quizAttempts: Number(row.finalQuizCount || 0) + Number(row.chapterQuizCount || 0),
         missedSessions: Number(row.missedSessions || 0),
         attendedSessions: Number(row.attendedSessions || 0),
         totalSessions: Number(row.totalSessions || 0),
