@@ -134,7 +134,7 @@ type CategoryMenuItem = {
     averageRating?: number;
     evaluationCount?: number;
   }>;
-  paths: Array<{ id: string; title: string }>;
+  paths: LearningPathItem[];
 };
 
 type JobPosting = {
@@ -434,6 +434,10 @@ export default function HomePage() {
   const isDark = mounted && theme === 'dark';
   const isArabic = language === 'ar';
   const role = session?.user?.role?.toLowerCase() || '';
+  const hasValidSession =
+    status === 'authenticated' &&
+    Boolean(session?.user?.id || session?.user?.email) &&
+    ['admin', 'teacher', 'student'].includes(role);
   const isAdmin = role === 'admin';
   const isTeacher = role === 'teacher';
   const isStudent = role === 'student';
@@ -446,7 +450,7 @@ export default function HomePage() {
   };
   const getPathEnrollHref = (pathId: string) => {
     const enrollUrl = `/Home/paths/${pathId}/enroll`;
-    if (status !== 'authenticated') {
+    if (!hasValidSession) {
       return `/login?next=${encodeURIComponent(enrollUrl)}`;
     }
     return enrollUrl;
@@ -632,7 +636,7 @@ export default function HomePage() {
                 <GlobeAltIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-900 dark:text-white" />
               </button>
 
-              {status === "authenticated" ? (
+              {hasValidSession ? (
                 <HomeUserMenu isArabic={isArabic} />
               ) : (
                 <Link href="/login">
@@ -814,7 +818,7 @@ export default function HomePage() {
               <p className="text-center text-sm text-white/80">{isArabic ? 'لا توجد تصنيفات حالياً' : 'No categories yet'}</p>
             ) : (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8 sm:mt-10 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-8 sm:mt-10 mb-6">
                   {categoryMenuItems.map((cat) => (
                     <button
                       key={`cat-pill-${cat.id}`}
@@ -931,17 +935,94 @@ export default function HomePage() {
                       )}
 
                       {selectedCategory.paths.length > 0 && (
-                        <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                          <p className="text-sm font-semibold text-blue-200 mb-2">
+                        <div>
+                          <p className="text-sm font-semibold text-blue-200 mb-3">
                             {isArabic ? 'المسارات' : 'Paths'}
                           </p>
-                          <ul className="space-y-1">
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                             {selectedCategory.paths.map((path) => (
-                              <li key={`sel-path-${path.id}`} className="text-sm text-slate-100">
-                                {path.title}
-                              </li>
+                              <div
+                                key={`cat-path-${path.id}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedPath(path)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    setSelectedPath(path);
+                                  }
+                                }}
+                                className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer flex flex-col"
+                              >
+                                <div className="relative h-36 sm:h-40 overflow-hidden">
+                                  <img
+                                    src={path.imageUrl || '/default-course.jpg'}
+                                    alt={path.title}
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                  />
+                                </div>
+
+                                <div className="p-4 flex flex-1 flex-col">
+                                  <p className="text-xs uppercase tracking-wider text-blue-200 mb-2">
+                                    {path.categoryName || selectedCategory.name}
+                                  </p>
+
+                                  <h3 className="text-base sm:text-lg font-bold text-white mb-2 sm:mb-3 leading-snug line-clamp-2">
+                                    {path.title}
+                                  </h3>
+
+                                  <p className="text-sm text-slate-200 line-clamp-3 mb-4">
+                                    {path.description ||
+                                      (isArabic
+                                        ? 'مسار منظم خطوة بخطوة لبناء مهاراتك بشكل عملي.'
+                                        : 'A structured step-by-step path to build your skills effectively.')}
+                                  </p>
+
+                                  <div className="flex items-center justify-between text-sm text-slate-200 mb-3">
+                                    <div className="flex items-center gap-1">
+                                      <ClockIcon className="w-4 h-4 text-blue-300" />
+                                      {isArabic
+                                        ? `${Number((path.estimatedWeeks ?? path.estimatedHours) || 0)} أسابيع`
+                                        : `${Number((path.estimatedWeeks ?? path.estimatedHours) || 0)} Weeks`}
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                      <UserGroupIcon className="w-4 h-4 text-blue-300" />
+                                      {Number(path.enrolledStudents || 0)}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-sm text-slate-200 mb-4">
+                                    <span>
+                                      {isArabic ? 'الدورات' : 'Courses'}: {Number(path.coursesCount || 0)}
+                                    </span>
+                                    <span className="font-semibold text-blue-200">
+                                      ${Number(path.price || 0).toFixed(2)}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-auto pt-2">
+                                    {isStudent && isPathEnrolled(path.id) ? (
+                                      <span className="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-200">
+                                        {isArabic ? 'مسجل في المسار' : 'Enrolled in Path'}
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedPath(path);
+                                        }}
+                                        className="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
+                                      >
+                                        {isArabic ? 'عرض المسار' : 'View Path'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1470,7 +1551,7 @@ export default function HomePage() {
                   </h3>
                   <div className="flex items-center gap-2">
                     {canPayForPath(selectedPath.id) && (
-                      status === 'authenticated' ? (
+                      hasValidSession ? (
                         <Link
                           href={getPathEnrollHref(selectedPath.id)}
                           className="inline-flex items-center justify-center rounded-xl border border-blue-300/40 bg-blue-700/90 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
@@ -1746,7 +1827,7 @@ export default function HomePage() {
               <p className="mt-4 text-slate-200 max-w-2xl text-lg leading-8">
                 {isArabic
                   ? 'نحن هنا لدعم رحلتك التعليمية. تواصل معنا في أي وقت للأسئلة أو الإرشاد أو التعاون.'
-                  : 'Weâ€™re here to support your learning journey. Reach out to us anytime for questions, guidance, or collaboration.'}
+                  : 'We are here to support your learning journey. Reach out to us anytime for questions, guidance, or collaboration.'}
               </p>
             </div>
 

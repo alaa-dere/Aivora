@@ -51,7 +51,7 @@ export default function PathEnrollPage() {
   const pathId = params.id as string;
   const router = useRouter();
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
@@ -77,6 +77,19 @@ export default function PathEnrollPage() {
     setMounted(true);
   }, []);
 
+  const role = session?.user?.role?.toLowerCase() || '';
+  const hasValidSession =
+    status === 'authenticated' &&
+    Boolean(session?.user?.id || session?.user?.email) &&
+    ['admin', 'teacher', 'student'].includes(role);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!hasValidSession) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [hasValidSession, pathname, router, status]);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -85,7 +98,7 @@ export default function PathEnrollPage() {
 
         const [pathsRes, studentPathsRes] = await Promise.all([
           fetch('/api/paths', { cache: 'no-store' }),
-          status === 'authenticated' ? fetch('/api/student/paths', { cache: 'no-store' }) : Promise.resolve(null),
+          hasValidSession ? fetch('/api/student/paths', { cache: 'no-store' }) : Promise.resolve(null),
         ]);
 
         const pathsData = await pathsRes.json();
@@ -111,7 +124,7 @@ export default function PathEnrollPage() {
     };
 
     if (pathId) load();
-  }, [pathId, status]);
+  }, [pathId, hasValidSession]);
 
   const isArabic = language === 'ar';
   const isDark = mounted && theme === 'dark';
@@ -121,7 +134,7 @@ export default function PathEnrollPage() {
     e.preventDefault();
     setSubmitError('');
 
-    if (status !== 'authenticated') {
+    if (!hasValidSession) {
       router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
@@ -166,6 +179,10 @@ export default function PathEnrollPage() {
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-white">{isArabic ? 'جاري التحميل...' : 'Loading...'}</div>;
+  }
+
+  if (!hasValidSession) {
+    return <div className="min-h-screen flex items-center justify-center text-white">{isArabic ? 'جاري تحويلك لتسجيل الدخول...' : 'Redirecting to login...'}</div>;
   }
 
   if (errorMsg || !pathData) {
