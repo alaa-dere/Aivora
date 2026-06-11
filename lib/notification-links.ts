@@ -57,6 +57,8 @@ export function getTeacherNotificationHref(notification: BaseNotification) {
     case 'course_enroll':
       return '/teacher/students';
     case 'teacher_notification':
+    case 'quiz_result':
+    case 'quiz_certificate':
       return notification.courseId
         ? `/teacher/courses/${notification.courseId}`
         : '/teacher/notifications';

@@ -383,9 +383,10 @@ export async function GET(req: Request) {
       aiDebug,
     });
   } catch (error: unknown) {
+    const err = error as { message?: string };
     console.error('Finance reports error:', error);
     return NextResponse.json(
-      { message: 'Failed to load reports', error: error.message },
+      { message: 'Failed to load reports', error: err.message || 'Unknown error' },
       { status: 500 }
     );
   }

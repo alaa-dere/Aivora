@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useSession } from 'next-auth/react';
@@ -35,7 +35,7 @@ type Course = {
   enrolled?: boolean;
 };
 
-export default function CourseDetailsPage() {
+function CourseDetailsPageContent() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -369,6 +369,14 @@ export default function CourseDetailsPage() {
         nextUrl={`/Home/courses/${courseId}/enroll`}
       />
     </div>
+  );
+}
+
+export default function CourseDetailsPage() {
+  return (
+    <Suspense fallback={null}>
+      <CourseDetailsPageContent />
+    </Suspense>
   );
 }
 

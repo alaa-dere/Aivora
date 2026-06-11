@@ -9,6 +9,7 @@ const HOUR_ROW_HEIGHT = 64;
 
 type AdminLiveSession = {
   id: string;
+  courseId: string;
   title: string;
   startAt: string;
   endAt: string;

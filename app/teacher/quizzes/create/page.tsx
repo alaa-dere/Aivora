@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle, Sparkles } from "lucide-react";
@@ -35,7 +35,7 @@ type QuestionBankResponse = {
   message?: string;
 };
 
-export default function CreateQuizPage() {
+function CreateQuizPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -862,5 +862,13 @@ export default function CreateQuizPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function CreateQuizPage() {
+  return (
+    <Suspense fallback={null}>
+      <CreateQuizPageContent />
+    </Suspense>
   );
 }

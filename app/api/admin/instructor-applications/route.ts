@@ -4,6 +4,7 @@ import { RowDataPacket } from 'mysql2';
 import { requireAdmin } from '@/lib/request-auth';
 import { ensureInstructorApplicationSchema } from '@/lib/ensure-instructor-application-schema';
 import nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 type ApplicationRow = RowDataPacket & {
   id: string;
@@ -282,7 +283,7 @@ async function sendDecisionEmail(input: {
       `
       : defaultHtml;
 
-    const transportCandidates: Array<Parameters<typeof nodemailer.createTransport>[0]> = smtpHost
+    const transportCandidates: SMTPTransport.Options[] = smtpHost
       ? [
           {
             host: smtpHost,

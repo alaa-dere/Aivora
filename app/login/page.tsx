@@ -1,6 +1,6 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, EyeOff, Eye, ArrowRight, User } from "lucide-react";
 import Image from "next/image";
@@ -15,7 +15,7 @@ import {
   validateAuthInput,
 } from "@aivora/shared";
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const params = useSearchParams();
@@ -763,4 +763,11 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
   );
 }
 
+export default function AuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthPageContent />
+    </Suspense>
+  );
+}
 

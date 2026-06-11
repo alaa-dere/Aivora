@@ -201,7 +201,7 @@ export default function StudentDashboard() {
                   <Tooltip
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}
                     labelStyle={{ color: '#1e293b' }}
-                    formatter={(value: number) => [`${value} min`, 'Study Time']}
+                    formatter={(value: number | string | undefined) => [`${Number(value || 0)} min`, 'Study Time']}
                     labelFormatter={(label) => `Day: ${label}`}
                   />
                   <Area
@@ -217,7 +217,7 @@ export default function StudentDashboard() {
                     dot={{ r: 3, strokeWidth: 1.5, fill: '#3b82f6', stroke: '#ffffff' }}
                     activeDot={{ r: 5, fill: '#2563eb', stroke: '#ffffff', strokeWidth: 2 }}
                   >
-                    <LabelList dataKey="minutes" position="top" formatter={(value: number) => `${value}m`} fontSize={10} />
+                    <LabelList dataKey="minutes" position="top" fontSize={10} />
                   </Area>
                 </AreaChart>
               </ResponsiveContainer>

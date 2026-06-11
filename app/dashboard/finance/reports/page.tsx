@@ -286,7 +286,7 @@ export default function AdminFinanceReportsPage() {
                     <Cell fill="#60a5fa" />
                     <Cell fill="#6ee7b7" />
                   </Pie>
-                  <Tooltip formatter={(v: number) => money(Number(v || 0))} />
+                  <Tooltip formatter={(value: number | string | undefined) => money(Number(value || 0))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -311,7 +311,7 @@ export default function AdminFinanceReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#dbe3ef" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => money(Number(v || 0))} />
+                  <Tooltip formatter={(value: number | string | undefined) => money(Number(value || 0))} />
                   <Bar dataKey="revenue" fill="#60a5fa" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -327,7 +327,7 @@ export default function AdminFinanceReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#dbe3ef" />
                   <XAxis dataKey="key" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => money(Number(v || 0))} />
+                  <Tooltip formatter={(value: number | string | undefined) => money(Number(value || 0))} />
                   <Bar dataKey="previous" fill="#bfdbfe" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="current" fill="#6ee7b7" radius={[6, 6, 0, 0]} />
                 </BarChart>

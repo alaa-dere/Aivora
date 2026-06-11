@@ -19,6 +19,12 @@ type QuestionRow = RowDataPacket & {
   correctOptionIndex: number;
 };
 
+type NormalizedAnswer = {
+  questionId: string;
+  selectedOptionIndex: number | null;
+  textAnswer: string;
+};
+
 const TOTAL_QUESTIONS = 15;
 const PASSING_SCORE_PERCENTAGE = 60;
 
@@ -278,7 +284,7 @@ export async function POST(req: Request, { params }: Params) {
       );
     }
 
-    const normalizedAnswers = answersRaw
+    const normalizedAnswers: NormalizedAnswer[] = answersRaw
       .map((item: unknown) => {
         const maybe = (item || {}) as {
           questionId?: string;
@@ -294,7 +300,7 @@ export async function POST(req: Request, { params }: Params) {
           textAnswer: String(maybe.textAnswer || '').trim(),
         };
       })
-      .filter((item) => Boolean(item.questionId));
+      .filter((item: NormalizedAnswer) => Boolean(item.questionId));
 
     const questionIdSet = new Set<string>();
     for (const answer of normalizedAnswers) {

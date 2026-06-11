@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -202,7 +202,7 @@ const renderMarkdownText = (text: string) => {
   return <div className="space-y-2">{nodes}</div>;
 };
 
-export default function CoursePlayerPage() {
+function CoursePlayerPageContent() {
   const params = useParams<{ id: string }>();
   const lessonStorageKey = `aivora:last-lesson:${params.id}`;
   const searchParams = useSearchParams();
@@ -344,7 +344,7 @@ export default function CoursePlayerPage() {
         }
         const res = await fetch(
           `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
-          { cache: 'no-store' }
+          { cache: 'no-store', credentials: 'include' }
         );
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
@@ -504,14 +504,19 @@ export default function CoursePlayerPage() {
         }
         const latestQuizRes = await fetch(
           `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
-          { cache: 'no-store' }
+          { cache: 'no-store', credentials: 'include' }
         );
         const latestQuizPayload = await latestQuizRes.json().catch(() => ({}));
         if (!latestQuizRes.ok) {
+          if (latestQuizRes.status === 403) {
+            throw new Error('Your session could not be verified. Refresh the page and try marking the lesson again.');
+          }
           throw new Error(String(latestQuizPayload?.message || 'Failed to validate chapter quiz status.'));
         }
         const chapterQuestionCount = Number(latestQuizPayload?.questionCount || 0);
-        const hasAttempt = Number(latestQuizPayload?.attempts?.length || 0) > 0;
+        const hasAttempt =
+          Number(latestQuizPayload?.attempts?.length || 0) > 0 ||
+          Number(lessonQuizOverview?.attempts?.length || 0) > 0;
         if (chapterQuestionCount < CHAPTER_QUIZ_QUESTION_COUNT) {
           throw new Error(
             `This chapter quiz is not ready yet. Your teacher must add at least ${CHAPTER_QUIZ_QUESTION_COUNT} questions.`
@@ -1200,6 +1205,14 @@ export default function CoursePlayerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CoursePlayerPage() {
+  return (
+    <Suspense fallback={null}>
+      <CoursePlayerPageContent />
+    </Suspense>
   );
 }
 

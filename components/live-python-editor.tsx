@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type PyodideInstance = {
   runPythonAsync: (code: string) => Promise<unknown>;
-  globals: { set: (name: string, value: unknown) => void };
+  globals: {
+    set: (name: string, value: unknown) => void;
+    get: (name: string) => unknown;
+  };
 };
 
 type LiveEditorSubmission = {

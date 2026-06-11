@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-export default function InAppLiveSessionPage() {
+function InAppLiveSessionPageContent() {
   const params = useParams<{ sessionId: string }>();
   const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -158,5 +158,13 @@ export default function InAppLiveSessionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InAppLiveSessionPage() {
+  return (
+    <Suspense fallback={null}>
+      <InAppLiveSessionPageContent />
+    </Suspense>
   );
 }

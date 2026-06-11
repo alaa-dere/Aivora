@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import {
@@ -65,7 +65,7 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
 };
 
-export default function TeacherStudentDetailsPage() {
+function TeacherStudentDetailsPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const studentId = String(params?.id || "");
@@ -313,6 +313,14 @@ export default function TeacherStudentDetailsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TeacherStudentDetailsPage() {
+  return (
+    <Suspense fallback={null}>
+      <TeacherStudentDetailsPageContent />
+    </Suspense>
   );
 }
 

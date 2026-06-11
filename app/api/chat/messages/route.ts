@@ -274,6 +274,8 @@ export async function DELETE(req: Request) {
   }
 
   try {
+    await ensureChatDeleteColumns();
+    const supportsDeleteVisibility = await hasColumn('chat_message', 'deletedForEveryoneAt');
     const body = await req.json();
     const messageId = String(body?.messageId || '').trim();
     const scope = body?.scope === 'both' ? 'both' : 'self';

@@ -10,6 +10,7 @@ type Course = {
   status: 'draft' | 'published' | 'archived';
   categoryId?: string | null;
   price?: number;
+  durationWeeks?: number | null;
 };
 
 type Category = {

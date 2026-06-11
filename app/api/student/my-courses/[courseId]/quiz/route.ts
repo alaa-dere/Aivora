@@ -22,6 +22,12 @@ type QuestionRow = RowDataPacket & {
   correctOptionIndex: number;
 };
 
+type NormalizedQuizAnswer = {
+  questionId: string;
+  selectedOptionIndex: number | null;
+  textAnswer: string;
+};
+
 const PASSING_SCORE_PERCENTAGE = 60;
 const COURSE_QUIZ_QUESTION_COUNT = 10;
 
@@ -148,13 +154,29 @@ async function createQuizNotifications(input: {
   scorePercentage: number;
   passed: boolean;
   attemptNumber: number;
+  previousLatestScore: number | null;
+  previousBestScore: number | null;
   issuedCertificateNow: boolean;
   issuedCertificateOnRetake: boolean;
 }) {
   const baseTitle = input.passed ? 'Quiz passed' : 'Quiz failed';
+  const trendMessage =
+    input.previousLatestScore === null
+      ? 'This is the student first final-quiz attempt.'
+      : input.scorePercentage > input.previousLatestScore
+        ? `Improved by ${(input.scorePercentage - input.previousLatestScore).toFixed(2)} points from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`
+        : input.scorePercentage < input.previousLatestScore
+          ? `Dropped by ${(input.previousLatestScore - input.scorePercentage).toFixed(2)} points from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`
+          : `No change from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`;
+  const bestMessage =
+    input.previousBestScore === null
+      ? ''
+      : input.scorePercentage >= input.previousBestScore
+        ? ` New best score; previous best was ${input.previousBestScore.toFixed(2)}%.`
+        : ` Previous best remains ${input.previousBestScore.toFixed(2)}%.`;
   const baseMessage = `${input.studentName} ${
     input.passed ? 'passed' : 'failed'
-  } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}).`;
+  } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}). ${trendMessage}${bestMessage}`;
 
   await createTeacherNotification({
     teacherId: input.teacherId,
@@ -500,13 +522,32 @@ export async function POST(req: Request, { params }: Params) {
 
     const [attemptCountRows] = await pool.query<RowDataPacket[]>(
       `
-      SELECT COUNT(*) AS total
+      SELECT
+        COUNT(*) AS total,
+        MAX(scorePercentage) AS bestScore
       FROM course_quiz_attempt
       WHERE courseId = ? AND studentId = ?
       `,
       [normalizedCourseId, user.id]
     );
     const attemptNumber = Number(attemptCountRows[0]?.total || 0) + 1;
+    const previousBestScore =
+      attemptNumber > 1 && attemptCountRows[0]?.bestScore !== null && attemptCountRows[0]?.bestScore !== undefined
+        ? Number(attemptCountRows[0].bestScore)
+        : null;
+
+    const [previousAttemptRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT scorePercentage
+      FROM course_quiz_attempt
+      WHERE courseId = ? AND studentId = ?
+      ORDER BY submittedAt DESC
+      LIMIT 1
+      `,
+      [normalizedCourseId, user.id]
+    );
+    const previousLatestScore =
+      previousAttemptRows.length > 0 ? Number(previousAttemptRows[0].scorePercentage || 0) : null;
 
     if (answersRaw.length !== COURSE_QUIZ_QUESTION_COUNT) {
       return NextResponse.json(
@@ -516,7 +557,7 @@ export async function POST(req: Request, { params }: Params) {
     }
 
     const questionIdSet = new Set<string>();
-    const normalizedAnswers = answersRaw
+    const normalizedAnswers: NormalizedQuizAnswer[] = answersRaw
       .map((item: unknown) => {
         const maybe = (item || {}) as {
           questionId?: string;
@@ -524,15 +565,15 @@ export async function POST(req: Request, { params }: Params) {
           textAnswer?: string;
         };
         return {
-        questionId: String(maybe.questionId || '').trim(),
-        selectedOptionIndex:
-          maybe.selectedOptionIndex === null || maybe.selectedOptionIndex === undefined
-            ? null
-            : Number(maybe.selectedOptionIndex),
-        textAnswer: String(maybe.textAnswer || '').trim(),
-      };
+          questionId: String(maybe.questionId || '').trim(),
+          selectedOptionIndex:
+            maybe.selectedOptionIndex === null || maybe.selectedOptionIndex === undefined
+              ? null
+              : Number(maybe.selectedOptionIndex),
+          textAnswer: String(maybe.textAnswer || '').trim(),
+        };
       })
-      .filter((item) => Boolean(item.questionId));
+      .filter((item: NormalizedQuizAnswer) => Boolean(item.questionId));
 
     for (const answer of normalizedAnswers) {
       if (questionIdSet.has(answer.questionId)) {
@@ -683,6 +724,8 @@ export async function POST(req: Request, { params }: Params) {
       scorePercentage: roundedScore,
       passed: roundedScore >= PASSING_SCORE_PERCENTAGE,
       attemptNumber,
+      previousLatestScore,
+      previousBestScore,
       issuedCertificateNow,
       issuedCertificateOnRetake,
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   FileAudio,
@@ -73,7 +73,7 @@ function attachmentKind(type?: string | null) {
   return "file";
 }
 
-export default function AdminMessagesPage() {
+function AdminMessagesPageContent() {
   const searchParams = useSearchParams();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
@@ -892,5 +892,13 @@ export default function AdminMessagesPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function AdminMessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminMessagesPageContent />
+    </Suspense>
   );
 }

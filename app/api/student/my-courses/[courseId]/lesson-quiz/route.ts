@@ -4,7 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
 import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
-import { createStudentNotification } from '@/lib/notifications-write';
+import { createStudentNotification, createTeacherNotification } from '@/lib/notifications-write';
 
 interface Params {
   params: Promise<{ courseId: string }>;
@@ -29,6 +29,34 @@ function parseOptions(value: unknown) {
     // ignore parse errors
   }
   return [] as string[];
+}
+
+function buildTrendMessage(input: {
+  latest: number;
+  previousLatest: number | null;
+  previousBest: number | null;
+}) {
+  if (input.previousLatest === null) {
+    return 'This is the student first attempt for this chapter quiz.';
+  }
+
+  const previousMessage =
+    input.latest > input.previousLatest
+      ? `Improved by ${(input.latest - input.previousLatest).toFixed(2)} points from the previous attempt (${input.previousLatest.toFixed(2)}%).`
+      : input.latest < input.previousLatest
+        ? `Dropped by ${(input.previousLatest - input.latest).toFixed(2)} points from the previous attempt (${input.previousLatest.toFixed(2)}%).`
+        : `No change from the previous attempt (${input.previousLatest.toFixed(2)}%).`;
+
+  if (input.previousBest === null) {
+    return previousMessage;
+  }
+
+  const bestMessage =
+    input.latest >= input.previousBest
+      ? ` New best score for this chapter; previous best was ${input.previousBest.toFixed(2)}%.`
+      : ` Previous best for this chapter remains ${input.previousBest.toFixed(2)}%.`;
+
+  return `${previousMessage}${bestMessage}`;
 }
 
 async function getEnrollment(studentId: string, courseId: string) {
@@ -73,7 +101,13 @@ export async function GET(req: Request, { params }: Params) {
 
     const enrollment = await getEnrollment(user.id, normalizedCourseId);
     if (!enrollment) {
-      return NextResponse.json({ message: 'Enrollment required' }, { status: 403 });
+      return NextResponse.json({
+        module: null,
+        questionCount: 0,
+        canStart: false,
+        attempts: [],
+        unavailableReason: 'Enrollment required',
+      });
     }
 
     if (!moduleId) {
@@ -219,6 +253,19 @@ export async function POST(req: Request, { params }: Params) {
       return NextResponse.json({ message: 'Chapter not found in this course' }, { status: 404 });
     }
 
+    const [courseRows] = await pool.query<RowDataPacket[]>(
+      `SELECT title, teacherId FROM course WHERE id = ? LIMIT 1`,
+      [normalizedCourseId]
+    );
+    const courseTitle = String(courseRows[0]?.title || 'Course');
+    const teacherId = String(courseRows[0]?.teacherId || '');
+
+    const [studentRows] = await pool.query<RowDataPacket[]>(
+      `SELECT fullName FROM user WHERE id = ? LIMIT 1`,
+      [user.id]
+    );
+    const studentName = String(studentRows[0]?.fullName || 'Student');
+
     const [lessonRows] = await pool.query<RowDataPacket[]>(
       `
       SELECT id
@@ -359,6 +406,7 @@ export async function POST(req: Request, { params }: Params) {
 
     const historyScores = historyRows.map((row) => Number(row.scorePercentage || 0));
     const latest = Number(scorePercentage || 0);
+    const previousLatest = historyScores.length > 1 ? historyScores[1] : null;
     const previousBest = historyScores.slice(1).length ? Math.max(...historyScores.slice(1)) : null;
     const trendText =
       previousBest === null
@@ -391,6 +439,25 @@ export async function POST(req: Request, { params }: Params) {
       ].join(' '),
     });
 
+    if (teacherId) {
+      try {
+        await createTeacherNotification({
+          teacherId,
+          studentId: user.id,
+          courseId: normalizedCourseId,
+          type: 'quiz_result',
+          title: `Chapter quiz ${scorePercentage >= 60 ? 'passed' : 'failed'}`,
+          message: [
+            `${studentName} ${scorePercentage >= 60 ? 'passed' : 'failed'} chapter quiz "${moduleRow.title}" in ${courseTitle} with ${latest.toFixed(2)}% (${correctAnswers}/${totalQuestions}).`,
+            buildTrendMessage({ latest, previousLatest, previousBest }),
+            weakQuestions ? `Weak points: ${weakQuestions}` : 'No weak points in this attempt.',
+          ].join(' '),
+        });
+      } catch (notifyError) {
+        console.warn('Teacher chapter quiz notification skipped:', notifyError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       attemptId,
@@ -399,6 +466,33 @@ export async function POST(req: Request, { params }: Params) {
       correctAnswers,
       scorePercentage,
       passed: scorePercentage >= 60,
+      reviewAnswers: graded.map((item, index) => {
+        const selectedOptionIndex =
+          item.answer?.selectedOptionIndex === null || item.answer?.selectedOptionIndex === undefined
+            ? null
+            : Number(item.answer.selectedOptionIndex);
+        const correctOptionIndex = Number(item.question.correctOptionIndex || 0);
+        return {
+          id: item.question.id,
+          order: index + 1,
+          questionType: item.questionType,
+          questionText: item.question.questionText,
+          options: item.options,
+          selectedOptionIndex,
+          correctOptionIndex,
+          selectedAnswer:
+            item.questionType === 'written'
+              ? item.answer?.selectedTextAnswer || ''
+              : selectedOptionIndex !== null
+                ? item.options[selectedOptionIndex] || ''
+                : '',
+          correctAnswer:
+            item.questionType === 'written'
+              ? item.options[0] || ''
+              : item.options[correctOptionIndex] || '',
+          isCorrect: item.isCorrect,
+        };
+      }),
     });
   } catch (error: unknown) {
     console.error('Lesson quiz POST error:', error);

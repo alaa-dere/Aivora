@@ -8,7 +8,7 @@ interface CourseDetail {
   price: number;
   teacherSharePct: number;
   status: 'draft' | 'published' | 'archived';
-  coverImage?: string | null;
+  imageUrl?: string | null;
   students: number;
   createdAt: string;
   // You can add more later: modules count, lessons count, etc.
