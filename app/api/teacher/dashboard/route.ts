@@ -469,7 +469,7 @@ export async function GET(req: Request) {
       }));
       const quizItems = quizNotifRows.map((row) => ({
         id: row.id,
-        type: 'teacher_notification',
+        type: String(row.type || 'teacher_notification'),
         title: row.title || 'Quiz update',
         message: row.message || '',
         createdAt: row.createdAt,
@@ -1274,7 +1274,7 @@ export async function POST(req: Request) {
         emailSent = emailResult.sentCount;
         emailFailed = emailResult.failedCount;
         emailSkippedReason = emailResult.skippedReason;
-        emailFailureMessage = emailResult.failureMessage;
+        emailFailureMessage = emailResult.failureMessage || null;
       }
 
       return NextResponse.json({

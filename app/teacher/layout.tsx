@@ -63,7 +63,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
-  const [notificationTypeFilter, setNotificationTypeFilter] = useState<'all' | 'course_enroll' | 'admin_message' | 'student_message'>('all');
+  type NotificationFilter = 'all' | 'course_enroll' | 'admin_message' | 'student_message' | 'quiz_result' | 'quiz_certificate';
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState<NotificationFilter>('all');
   const [notificationItems, setNotificationItems] = useState<
     {
       id: string;
@@ -314,13 +315,15 @@ const handleLogout = async () => {
                       value={notificationTypeFilter}
                       onChange={(e) =>
                         setNotificationTypeFilter(
-                          e.target.value as 'all' | 'course_enroll' | 'admin_message' | 'student_message'
+                          e.target.value as NotificationFilter
                         )
                       }
                       className="text-[11px] sm:text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 min-w-0 w-full"
                     >
                       <option value="all">All</option>
                       <option value="course_enroll">Enrollments</option>
+                      <option value="quiz_result">Quiz Results</option>
+                      <option value="quiz_certificate">Certificates</option>
                       <option value="admin_message">Admin Msg</option>
                       <option value="student_message">Student Msg</option>
                     </select>

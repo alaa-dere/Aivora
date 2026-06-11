@@ -68,6 +68,11 @@ const renderMarkdownText = (text: string) => {
       continue;
     }
 
+    if (/^#{1,6}$/.test(trimmed)) {
+      i += 1;
+      continue;
+    }
+
     if (trimmed.startsWith('#### ')) {
       nodes.push(
         <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3 mb-2">
@@ -167,6 +172,13 @@ const normalizeFenceText = (content: string) => {
   let normalized = content;
   // Handle escaped backticks/newlines/tabs that can come from serialized content.
   normalized = normalized.replace(/\\`/g, '`').replace(/\\n/g, '\n').replace(/\\t/g, '  ');
+
+  // Normalize spaced heading markers like "# # # Title" into "### Title".
+  normalized = normalized.replace(/(^|\n|\s)((?:#\s+){1,5}#)(?=\s+\S)/g, (_match, prefix, hashes) => {
+    const compact = String(hashes).replace(/\s+/g, '');
+    const blockPrefix = String(prefix).includes('\n') || String(prefix).trim() === '' ? prefix : `${prefix}\n\n`;
+    return `${blockPrefix}${compact}`;
+  });
 
   // Normalize malformed headings like "# # Title" or "# # # Subtitle".
   normalized = normalized

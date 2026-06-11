@@ -16,6 +16,19 @@ type QuestionItem = {
   options: string[];
 };
 
+type ReviewAnswer = {
+  id: string;
+  order: number;
+  questionType: 'multiple_choice' | 'written' | 'true_false';
+  questionText: string;
+  options: string[];
+  selectedOptionIndex: number | null;
+  correctOptionIndex: number;
+  selectedAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+};
+
 type QuizOverview = {
   course?: { id: string; title: string };
   lesson?: { id: string; title: string };
@@ -57,6 +70,7 @@ export default function CourseQuizzesPage() {
     correctAnswers: number;
     totalQuestions: number;
   }>(null);
+  const [latestReviewAnswers, setLatestReviewAnswers] = useState<ReviewAnswer[]>([]);
 
   const readJsonResponse = async (res: Response) => {
     const raw = await res.text();
@@ -91,6 +105,7 @@ export default function CourseQuizzesPage() {
         : `/api/student/my-courses/${courseId}/quiz`;
       const res = await fetch(endpoint, {
         cache: 'no-store',
+        credentials: 'include',
       });
       const data = await readJsonResponse(res);
       if (!res.ok) {
@@ -129,6 +144,7 @@ export default function CourseQuizzesPage() {
         : `/api/student/my-courses/${courseId}/quiz?mode=start`;
       const res = await fetch(endpoint, {
         cache: 'no-store',
+        credentials: 'include',
       });
       const data = await readJsonResponse(res);
       if (!res.ok) {
@@ -148,6 +164,7 @@ export default function CourseQuizzesPage() {
       setTextAnswers(initialTextAnswers);
       setCurrentQuestionIndex(0);
       setLatestResult(null);
+      setLatestReviewAnswers([]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to start quiz');
     } finally {
@@ -168,6 +185,7 @@ export default function CourseQuizzesPage() {
 
       const payload: {
         lessonId?: string;
+        moduleId?: string;
         answers: Array<{
           questionId: string;
           selectedOptionIndex: number | null;
@@ -192,6 +210,7 @@ export default function CourseQuizzesPage() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       const data = await readJsonResponse(res);
@@ -205,6 +224,28 @@ export default function CourseQuizzesPage() {
           correctAnswers: Number(data.correctAnswers || 0),
           totalQuestions: Number(data.totalQuestions || 0),
         });
+        setLatestReviewAnswers(
+          Array.isArray(data.reviewAnswers)
+            ? data.reviewAnswers.map((item: unknown) => {
+                const typed = (item || {}) as Partial<ReviewAnswer>;
+                return {
+                  id: String(typed.id || ''),
+                  order: Number(typed.order || 0),
+                  questionType: typed.questionType || 'multiple_choice',
+                  questionText: String(typed.questionText || ''),
+                  options: Array.isArray(typed.options) ? typed.options.map((option) => String(option || '')) : [],
+                  selectedOptionIndex:
+                    typed.selectedOptionIndex === null || typed.selectedOptionIndex === undefined
+                      ? null
+                      : Number(typed.selectedOptionIndex),
+                  correctOptionIndex: Number(typed.correctOptionIndex || 0),
+                  selectedAnswer: String(typed.selectedAnswer || ''),
+                  correctAnswer: String(typed.correctAnswer || ''),
+                  isCorrect: Boolean(typed.isCorrect),
+                };
+              })
+            : []
+        );
         setActiveQuestions([]);
         await loadOverview();
       } else {
@@ -303,6 +344,47 @@ export default function CourseQuizzesPage() {
             {latestResult && (
               <div className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
                 Result: {latestResult.scorePercentage.toFixed(2)}% ({latestResult.correctAnswers}/{latestResult.totalQuestions})
+              </div>
+            )}
+            {isChapterQuiz && latestReviewAnswers.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">Your Answers</h2>
+                {latestReviewAnswers.map((answer) => (
+                  <div
+                    key={answer.id}
+                    className={`rounded-lg border p-3 ${
+                      answer.isCorrect
+                        ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
+                        : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+                        {answer.order}. {answer.questionText}
+                      </p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          answer.isCorrect
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200'
+                            : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-200'
+                        }`}
+                      >
+                        {answer.isCorrect ? 'Correct' : 'Incorrect'}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid gap-1 text-xs text-gray-700 dark:text-gray-300">
+                      <p>
+                        <span className="font-semibold">Your answer:</span>{' '}
+                        {answer.selectedAnswer || 'No answer selected'}
+                      </p>
+                      {!answer.isCorrect && (
+                        <p>
+                          <span className="font-semibold">Correct answer:</span> {answer.correctAnswer || 'Not provided'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             </div>
