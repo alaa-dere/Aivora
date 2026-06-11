@@ -16,16 +16,47 @@ export async function POST() {
       maxAge: 0,
     });
 
-    // Clear NextAuth cookies as fallback
-    const secure = process.env.NODE_ENV === 'production';
-    const nextAuthCookies = secure
-      ? ['__Secure-next-auth.session-token', '__Secure-next-auth.callback-url', '__Host-next-auth.csrf-token']
-      : ['next-auth.session-token', 'next-auth.callback-url', 'next-auth.csrf-token'];
+    // Clear NextAuth/Auth.js cookies across dev/prod and chunked cookie variants.
+    const nextAuthCookieBases = [
+      'next-auth.session-token',
+      '__Secure-next-auth.session-token',
+      'authjs.session-token',
+      '__Secure-authjs.session-token',
+      'next-auth.callback-url',
+      '__Secure-next-auth.callback-url',
+      'authjs.callback-url',
+      '__Secure-authjs.callback-url',
+      'next-auth.csrf-token',
+      '__Host-next-auth.csrf-token',
+      'authjs.csrf-token',
+      '__Host-authjs.csrf-token',
+      'next-auth.pkce.code_verifier',
+      '__Secure-next-auth.pkce.code_verifier',
+      'authjs.pkce.code_verifier',
+      '__Secure-authjs.pkce.code_verifier',
+      'next-auth.state',
+      '__Secure-next-auth.state',
+      'authjs.state',
+      '__Secure-authjs.state',
+      'next-auth.nonce',
+      '__Secure-next-auth.nonce',
+      'authjs.nonce',
+      '__Secure-authjs.nonce',
+    ];
+    const nextAuthCookies = nextAuthCookieBases.flatMap((name) => [
+      name,
+      ...Array.from({ length: 8 }, (_, index) => `${name}.${index}`),
+    ]);
 
     for (const name of nextAuthCookies) {
       response.cookies.set(name, '', {
-        httpOnly: name.includes('session-token') || name.includes('csrf-token'),
-        secure,
+        httpOnly:
+          name.includes('session-token') ||
+          name.includes('csrf-token') ||
+          name.includes('pkce') ||
+          name.includes('state') ||
+          name.includes('nonce'),
+        secure: name.startsWith('__Secure-') || name.startsWith('__Host-'),
         sameSite: 'lax',
         path: '/',
         maxAge: 0,

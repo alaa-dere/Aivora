@@ -15,6 +15,7 @@ import {
   UserGroupIcon,
   StarIcon,
   GlobeAltIcon,
+  ArrowLeftIcon,
   ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -74,8 +75,8 @@ export default function AllCoursesPage() {
         );
 
         setCourses(publishedCourses);
-      } catch (error: any) {
-        setErrorMsg(error.message || 'Failed to load courses');
+      } catch (error: unknown) {
+        setErrorMsg(error instanceof Error ? error.message : 'Failed to load courses');
       } finally {
         setLoadingCourses(false);
       }
@@ -229,6 +230,16 @@ export default function AllCoursesPage() {
       {/* Main Content */}
       <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-5 sm:mb-6">
+            <Link
+              href="/Home"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg transition hover:bg-white/20"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              {isArabic ? 'رجوع للرئيسية' : 'Back to Home'}
+            </Link>
+          </div>
+
           <div className="mb-6 sm:mb-8 flex justify-center">
             <div className="w-full max-w-2xl">
               <div className="relative">

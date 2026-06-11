@@ -14,8 +14,14 @@ const roleRoute: Record<string, string> = {
 export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
   const { data: session, status } = useSession();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  const normalizedRole = session?.user?.role?.toLowerCase() || "";
+  const hasValidUser =
+    status === "authenticated" &&
+    Boolean(session?.user?.id || session?.user?.email) &&
+    normalizedRole in roleRoute;
   const name = session?.user?.name || session?.user?.email || "User";
   const initial = name.trim().charAt(0).toUpperCase();
   const sessionImageUrl =
@@ -23,7 +29,7 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     (session?.user as { imageUrl?: string | null } | undefined)?.imageUrl ||
     null;
   const [fetchedImageUrl, setFetchedImageUrl] = useState<string | null>(null);
-  const role = session?.user?.role?.toLowerCase() || "student";
+  const role = normalizedRole;
   const imageUrl = sessionImageUrl || fetchedImageUrl;
   const dashboard = roleRoute[role] || "/student";
 
@@ -66,7 +72,21 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
     };
   }, []);
 
-  if (status !== "authenticated") return null;
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+    setOpen(false);
+
+    try {
+      await fetch(API_ROUTES.auth.logout, { method: "POST" });
+      await signOut({ redirect: false });
+    } finally {
+      window.location.assign("/");
+    }
+  };
+
+  if (!hasValidUser) return null;
 
   return (
     <div className="relative" ref={menuRef}>
@@ -120,10 +140,17 @@ export default function HomeUserMenu({ isArabic }: { isArabic?: boolean }) {
             </Link>
           ) : null}
           <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800 disabled:opacity-60"
           >
-            {isArabic ? "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C" : "Logout"}
+            {loggingOut
+              ? isArabic
+                ? "\u062C\u0627\u0631\u064A \u0627\u0644\u062E\u0631\u0648\u062C..."
+                : "Logging out..."
+              : isArabic
+                ? "\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C"
+                : "Logout"}
           </button>
         </div>
       )}

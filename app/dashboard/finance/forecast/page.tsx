@@ -136,7 +136,10 @@ export default function AdminFinanceForecastPage() {
     load();
   }, [month]);
 
-  const trendPercentLabel = useMemo(() => `${Math.round((forecast.trendPct || 0) * 100)}%`, [forecast.trendPct]);
+  const trendPercentLabel = useMemo(
+    () => `${((forecast.trendPct || 0) * 100).toFixed(1)}%`,
+    [forecast.trendPct]
+  );
   const riskCounts = useMemo(() => {
     const counts = { high: 0, medium: 0, low: 0 };
     for (const item of forecast.studentRiskAlerts) {

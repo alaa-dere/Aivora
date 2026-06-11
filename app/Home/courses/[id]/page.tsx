@@ -14,6 +14,7 @@ import {
   SunIcon,
   MoonIcon,
   GlobeAltIcon,
+  ArrowLeftIcon,
   ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -41,7 +42,7 @@ export default function CourseDetailsPage() {
   const searchParams = useSearchParams();
   const courseId = params.id as string;
   const { theme, setTheme } = useTheme();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [mounted, setMounted] = useState(false);
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
@@ -53,6 +54,11 @@ export default function CourseDetailsPage() {
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const role = session?.user?.role?.toLowerCase() || '';
+  const hasValidSession =
+    status === 'authenticated' &&
+    Boolean(session?.user?.id || session?.user?.email) &&
+    ['admin', 'teacher', 'student'].includes(role);
 
   useEffect(() => {
     setMounted(true);
@@ -76,8 +82,8 @@ export default function CourseDetailsPage() {
         }
 
         setCourse(data.course);
-      } catch (error: any) {
-        setErrorMsg(error.message || 'Failed to load course');
+      } catch (error: unknown) {
+        setErrorMsg(error instanceof Error ? error.message : 'Failed to load course');
       } finally {
         setLoading(false);
       }
@@ -98,6 +104,11 @@ export default function CourseDetailsPage() {
   const handleEnroll = async () => {
     if (!courseId) return;
     if (course?.enrolled) return;
+    if (!hasValidSession) {
+      const next = buildReturnUrl();
+      router.push(`/login?next=${encodeURIComponent(next)}`);
+      return;
+    }
     setEnrollError(null);
     setEnrollSuccess(null);
 
@@ -122,8 +133,8 @@ export default function CourseDetailsPage() {
 
       setEnrollSuccess('Enrollment successful.');
       router.push(`/student/my-courses/${courseId}`);
-    } catch (err: any) {
-      setEnrollError(err.message || 'Failed to enroll');
+    } catch (err: unknown) {
+      setEnrollError(err instanceof Error ? err.message : 'Failed to enroll');
     } finally {
       setEnrolling(false);
     }
@@ -131,10 +142,10 @@ export default function CourseDetailsPage() {
 
   useEffect(() => {
     const enrollFlag = searchParams.get('enroll');
-    if (enrollFlag === '1' && status === 'authenticated' && !course?.enrolled) {
+    if (enrollFlag === '1' && hasValidSession && !course?.enrolled) {
       void handleEnroll();
     }
-  }, [searchParams, status, courseId, course?.enrolled]);
+  }, [searchParams, hasValidSession, courseId, course?.enrolled]);
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -246,6 +257,15 @@ export default function CourseDetailsPage() {
 
       <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
+          <div className="mb-5 sm:mb-6">
+            <Link
+              href="/Home/courses"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg transition hover:bg-white/20"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              {isArabic ? 'رجوع للدورات' : 'Back to Courses'}
+            </Link>
+          </div>
 
           <div className="grid lg:grid-cols-2 gap-6 sm:gap-10 items-start">
             <div className="overflow-hidden rounded-3xl border border-white/15 bg-white/10 backdrop-blur-lg shadow-xl">
@@ -315,7 +335,7 @@ export default function CourseDetailsPage() {
                 ) : (
                   <button
                     onClick={() => {
-                      if (status === 'authenticated') {
+                      if (hasValidSession) {
                         router.push(`/Home/courses/${courseId}/enroll`);
                       } else {
                         setAuthOpen(true);
