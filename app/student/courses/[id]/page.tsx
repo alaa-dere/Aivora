@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   ArrowLeftIcon,
+  BookOpenIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CreditCardIcon,
@@ -24,6 +25,10 @@ type CourseData = {
   durationWeeks: number;
   imageUrl?: string | null;
   enrolled: boolean;
+  paidViaPath?: boolean;
+  pathLocked?: boolean;
+  lockedByCourseTitle?: string | null;
+  lockedPathTitle?: string | null;
 };
 
 type CourseLesson = {
@@ -234,6 +239,11 @@ export default function CourseDetailsPage() {
               <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300">
                 {course.durationWeeks} weeks
               </span>
+              {course.paidViaPath && !course.enrolled && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300">
+                  Paid via Path
+                </span>
+              )}
               {course.enrolled && (
                 <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300">
                   Enrolled
@@ -341,8 +351,34 @@ export default function CourseDetailsPage() {
                   )}
                 </div>
               </div>
+            ) : course.paidViaPath && course.pathLocked ? (
+              <div className="rounded-xl border border-amber-100 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20 p-5">
+                <p className="text-sm text-amber-700 dark:text-amber-200 font-medium">
+                  This course is already paid through your enrolled path.
+                </p>
+                <p className="mt-2 text-sm text-amber-700/90 dark:text-amber-200/90">
+                  Finish "{course.lockedByCourseTitle || 'the previous course'}" first to unlock this step
+                  in "{course.lockedPathTitle || 'your path'}".
+                </p>
+                <div className="mt-4">
+                  <button
+                    onClick={() => router.push('/student/paths')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <BookOpenIcon className="w-4 h-4" />
+                    Go to My Paths
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="rounded-xl border border-blue-100 dark:border-blue-800 p-5">
+                {course.paidViaPath && (
+                  <div className="mb-4 rounded-lg border border-indigo-100 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/20 p-3">
+                    <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
+                      This course is already paid through your enrolled path.
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mb-3">
                   <CreditCardIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Payment Information</p>

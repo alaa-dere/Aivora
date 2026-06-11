@@ -5,7 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Filter, MessageSquare, Trash2 } from 'lucide-react';
 import { getTeacherNotificationHref } from '@/lib/notification-links';
 
-type NotificationType = 'course_enroll' | 'admin_message' | 'student_message' | 'teacher_notification';
+type NotificationType =
+  | 'course_enroll'
+  | 'admin_message'
+  | 'student_message'
+  | 'teacher_notification'
+  | 'quiz_result'
+  | 'quiz_certificate';
 
 type NotificationItem = {
   id: string;

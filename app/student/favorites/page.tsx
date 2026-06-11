@@ -119,7 +119,7 @@ export default function StudentFavoritesPage() {
           return (
             <div
               key={c.id}
-              className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+              className="portal-surface bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full flex flex-col"
             >
               <div className="relative overflow-hidden rounded-xl">
                 <img
@@ -135,7 +135,7 @@ export default function StudentFavoritesPage() {
                 />
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-1 flex-col">
                 <span className="inline-flex items-center rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2.5 py-1 text-xs font-semibold">
                   #Favorites
                 </span>
@@ -175,7 +175,7 @@ export default function StudentFavoritesPage() {
                   )}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="mt-auto pt-2 flex items-center justify-between gap-3">
                   <Link
                     href={`/student/courses/${c.id}`}
                     className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-sm font-semibold transition-colors"

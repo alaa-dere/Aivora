@@ -11,6 +11,7 @@
   "dependencies": {
     "@aivora/shared": "file:packages/shared",
     "@heroicons/react": "^2.2.0",
+    "@zoom/meetingsdk": "^6.0.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -31,6 +32,7 @@
     "react-dom": "^19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.6.0",
+    "react-is": "^19.2.6",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.5.0"
   },

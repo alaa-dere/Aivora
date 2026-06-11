@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useParams } from 'next/navigation';
 import {
   AcademicCapIcon,
   TrophyIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
-  ArrowTrendingUpIcon,
   UserCircleIcon,
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
@@ -84,31 +82,13 @@ const formatDate = (value?: string | null) => {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 };
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 export default function StudentProfilePage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const studentId = (params?.id as string) || '';
-  const tabParam = (searchParams.get('tab') || 'overview').toLowerCase();
-  const tab: 'overview' | 'courses' | 'transactions' =
-    tabParam === 'courses' || tabParam === 'transactions'
-      ? (tabParam as 'courses' | 'transactions')
-      : 'overview';
   const [data, setData] = useState<StudentProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTable, setActiveTable] = useState<'courses' | 'transactions'>('courses');
 
   useEffect(() => {
     if (!studentId) return;
@@ -120,20 +100,13 @@ export default function StudentProfilePage() {
         setError('');
         const res = await fetch(`/api/students?id=${studentId}`, { cache: 'no-store' });
         const payload = await res.json();
-        if (!res.ok) {
-          throw new Error(payload?.message || 'Failed to load student profile');
-        }
-        if (isMounted) {
-          setData(payload);
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err?.message || 'Failed to load student profile');
-        }
+        if (!res.ok) throw new Error(payload?.message || 'Failed to load student profile');
+        if (isMounted) setData(payload);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load student profile';
+        if (isMounted) setError(message);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -144,90 +117,28 @@ export default function StudentProfilePage() {
   }, [studentId]);
 
   const stats = data?.stats;
-  const overviewCards = useMemo(() => {
-    return [
-      {
-        title: 'Enrolled Courses',
-        value: stats?.totalCourses ?? 0,
-        icon: AcademicCapIcon,
-      },
-      {
-        title: 'Completed Courses',
-        value: stats?.completedEnrollments ?? 0,
-        icon: TrophyIcon,
-      },
-      {
-        title: 'Avg Progress',
-        value: `${Number(stats?.avgProgress || 0).toFixed(1)}%`,
-        icon: ChartBarIcon,
-      },
-      {
-        title: 'Total Spent',
-        value: money(stats?.totalSpent ?? 0),
-        icon: CurrencyDollarIcon,
-      },
-    ];
-  }, [stats]);
+  const overviewCards = useMemo(
+    () => [
+      { title: 'Enrolled Courses', value: stats?.totalCourses ?? 0, icon: AcademicCapIcon },
+      { title: 'Completed Courses', value: stats?.completedEnrollments ?? 0, icon: TrophyIcon },
+      { title: 'Avg Progress', value: `${Number(stats?.avgProgress || 0).toFixed(1)}%`, icon: ChartBarIcon },
+      { title: 'Total Spent', value: money(stats?.totalSpent ?? 0), icon: CurrencyDollarIcon },
+    ],
+    [stats]
+  );
 
   return (
-      <div className="min-h-screen bg-transparent p-4 md:p-6">
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 mb-6">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="h-11 w-11 rounded-xl bg-sky-50 dark:bg-white/10 border border-sky-100 dark:border-white/20 flex items-center justify-center overflow-hidden">
-              {data?.student.imageUrl ? (
-                <img
-                  src={data.student.imageUrl}
-                  alt={data.student.fullName || 'Student'}
-                  className="h-full w-full rounded-xl object-cover"
-                />
-              ) : (
-                <UserCircleIcon className="h-7 w-7 text-sky-700 dark:text-white" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Student Profile</h1>
-              <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 font-medium">
-                {data?.student.fullName || '-'}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 inline-flex items-center gap-1.5">
-                <EnvelopeIcon className="w-4 h-4" />
-                {data?.student.email || '-'}
-              </p>
-              <div className="mt-3">
-                <div className="flex items-center gap-6 text-sm font-semibold">
-                  {[
-                    { key: 'overview', label: 'Overview' },
-                    { key: 'courses', label: 'Courses' },
-                    { key: 'transactions', label: 'Transactions' },
-                  ].map((item) => (
-                    <Link
-                      key={item.key}
-                      href={`/dashboard/students/${studentId}?tab=${item.key}`}
-                      className={`transition-colors ${
-                        tab === item.key
-                          ? 'text-blue-700 dark:text-blue-300'
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-                <div className="mt-2 h-px w-full bg-gradient-to-r from-slate-300 via-sky-300 to-cyan-200 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
-              </div>
-            </div>
-          </div>
-          <div />
-        </div>
+    <div className="min-h-screen bg-transparent p-4 md:p-6">
+      <div className="mb-5">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">Student Profile</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Overview, courses, and transactions in one place.</p>
       </div>
 
-        {loading && (
-          <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
-            Loading student profile...
-          </div>
-        )}
+      {loading && (
+        <div className="admin-surface bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
+          Loading student profile...
+        </div>
+      )}
 
       {!loading && error && (
         <div className="bg-red-50 dark:bg-red-900/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 text-center text-red-700 dark:text-red-200">
@@ -235,309 +146,273 @@ export default function StudentProfilePage() {
         </div>
       )}
 
-        {!loading && !error && data && (
-          <div className="space-y-6">
-            {tab === 'overview' && (
-              <div className="space-y-6">
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      {!loading && !error && data && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+            <aside className="xl:col-span-3">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 pt-7 bg-white dark:bg-slate-900/70 shadow-sm h-full min-h-[560px]">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200 dark:from-green-700 dark:via-sky-700 dark:to-blue-700" />
+                <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-5">Profile Details</h2>
+                <div className="flex flex-col items-center text-center mb-6 mt-2">
+                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 dark:from-white/10 dark:to-white/10 border border-green-100 dark:border-white/20 flex items-center justify-center overflow-hidden">
+                    {data.student.imageUrl ? (
+                      <img src={data.student.imageUrl} alt={data.student.fullName || 'Student'} className="h-full w-full rounded-2xl object-cover" />
+                    ) : (
+                      <UserCircleIcon className="h-12 w-12 text-blue-700 dark:text-white" />
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{data.student.fullName}</p>
+                    <p className="text-[15px] text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5 mt-1">
+                      <EnvelopeIcon className="w-4 h-4" />
+                      {data.student.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <ProfileField label="Joined" value={formatDate(data.student.createdAt)} />
+                  <ProfileField label="Last Updated" value={formatDate(data.student.updatedAt)} />
+                  <ProfileField label="Last Enrollment" value={formatDate(stats?.lastEnrollmentDate)} />
+                  <ProfileField label="Total Enrollments" value={String(stats?.totalEnrollments ?? 0)} />
+                </div>
+              </div>
+            </aside>
+
+            <section className="xl:col-span-9 space-y-4 pt-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {overviewCards.map((card) => (
                   <InfoCard key={card.title} title={card.title} value={card.value} icon={card.icon} />
                 ))}
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
-                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
-                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <dt className="text-gray-500">Full Name</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{data.student.fullName}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Email</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{data.student.email}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Joined</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{formatDate(data.student.createdAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Last Updated</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{formatDate(data.student.updatedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Last Enrollment</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{formatDate(stats?.lastEnrollmentDate)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Total Enrollments</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{stats?.totalEnrollments ?? 0}</dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
-                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Payment Snapshot</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <SummaryRow label="Total Spent" value={money(stats?.totalSpent ?? 0)} />
-                    <SummaryRow label="This Month" value={money(stats?.monthSpent ?? 0)} />
-                    <SummaryRow label="Avg Progress" value={`${Number(stats?.avgProgress || 0).toFixed(1)}%`} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tab === 'courses' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Pill label={`Courses ${stats?.totalCourses ?? 0}`} />
-                <Pill label={`Completed ${stats?.completedEnrollments ?? 0}`} />
+              <div className="mt-8 flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTable('courses')}
+                  className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTable === 'courses'
+                      ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+                      : 'bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <AcademicCapIcon className="w-4 h-4" />
+                  Courses
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTable('transactions')}
+                  className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTable === 'transactions'
+                      ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+                      : 'bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <CurrencyDollarIcon className="w-4 h-4" />
+                  Transactions
+                </button>
               </div>
 
-              <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
-                <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
-                    <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Course</th>
-                      <th className="px-4 py-3 font-medium">Teacher</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Progress</th>
-                      <th className="px-4 py-3 font-medium">Price</th>
-                      <th className="px-4 py-3 font-medium">Enrolled</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {data.courses.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
-                          No enrollments found for this student.
-                        </td>
-                      </tr>
-                    ) : (
-                      data.courses.map((course) => (
-                        <tr key={course.enrollmentId} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                            {course.teacherName || '-'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <EnrollmentStatus status={course.status} />
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="h-2 w-20 rounded-full bg-gray-200 dark:bg-gray-700">
+              <div className="md:hidden space-y-4">
+                {activeTable === 'courses' ? (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                      <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Courses</h2>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {data.courses.length === 0 ? (
+                        <p className="px-1 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No enrollments found for this student.</p>
+                      ) : (
+                        data.courses.map((course) => (
+                          <div key={course.enrollmentId} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 line-clamp-2">{course.title}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{formatDate(course.enrolledAt)}</p>
+                              </div>
+                              <EnrollmentStatus status={course.status} />
+                            </div>
+                            <div className="mt-3 flex items-center gap-3">
+                              <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
                                 <div
-                                  className="h-2 rounded-full bg-blue-600"
+                                  className="h-full rounded-full bg-blue-500"
                                   style={{ width: `${Math.min(100, Math.max(0, course.progressPercentage || 0))}%` }}
                                 />
                               </div>
-                              <span className="text-xs text-gray-500 dark:text-gray-300">
-                                {Number(course.progressPercentage || 0).toFixed(0)}%
-                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-300">{Number(course.progressPercentage || 0).toFixed(0)}%</span>
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                            {money(course.price)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
-                            {formatDate(course.enrolledAt)}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                </div>
-
-                <div className="md:hidden p-2.5 space-y-2.5">
-                  {data.courses.length === 0 ? (
-                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
-                      No enrollments found for this student.
-                    </div>
-                  ) : (
-                    data.courses.map((course) => (
-                      <div
-                        key={`mobile-${course.enrollmentId}`}
-                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
-                      >
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {course.title}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          Teacher: {course.teacherName || '-'}
-                        </p>
-
-                        <div className="mt-2">
-                          <EnrollmentStatus status={course.status} />
-                        </div>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                            <div
-                              className="h-2 rounded-full bg-blue-600"
-                              style={{ width: `${Math.min(100, Math.max(0, course.progressPercentage || 0))}%` }}
-                            />
+                            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                              <span>{money(course.price)}</span>
+                              <span>{course.teacherName || 'Teacher'}</span>
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-300">
-                            {Number(course.progressPercentage || 0).toFixed(0)}%
-                          </span>
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">Price</span>
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                            {money(course.price)}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex items-center justify-between">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">Enrolled</span>
-                          <span className="text-xs text-slate-700 dark:text-slate-300">
-                            {formatDate(course.enrolledAt)}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tab === 'transactions' && (
-            <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoCard title="Total Spent" value={money(stats?.totalSpent ?? 0)} icon={CurrencyDollarIcon} />
-                <InfoCard title="This Month" value={money(stats?.monthSpent ?? 0)} icon={ArrowTrendingUpIcon} />
-                <InfoCard title="Courses" value={stats?.totalCourses ?? 0} icon={AcademicCapIcon} />
-              </div>
-
-              <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md">
-                <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
-                    <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Course</th>
-                      <th className="px-4 py-3 font-medium">Type</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {data.transactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
-                          No transactions recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      data.transactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDateTime(tx.dateTime)}</td>
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{tx.courseTitle || '-'}</td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
-                              {tx.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <TransactionStatus status={tx.status} />
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
-                            {money(tx.amount || 0, tx.currency || 'USD')}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                </div>
-
-                <div className="md:hidden p-2.5 space-y-2.5">
-                  {data.transactions.length === 0 ? (
-                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
-                      No transactions recorded yet.
+                        ))
+                      )}
                     </div>
-                  ) : (
-                    data.transactions.map((tx) => (
-                      <div
-                        key={`mobile-tx-${tx.id}`}
-                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {tx.courseTitle || '-'}
-                          </p>
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                            {money(tx.amount || 0, tx.currency || 'USD')}
-                          </span>
-                        </div>
-
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {formatDateTime(tx.dateTime)}
-                        </p>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
-                            {tx.type}
-                          </span>
-                          <TransactionStatus status={tx.status} />
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                      <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Transactions</h2>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {data.transactions.length === 0 ? (
+                        <p className="px-1 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No transactions recorded yet.</p>
+                      ) : (
+                        data.transactions.map((tx) => (
+                          <div key={tx.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 line-clamp-2">{tx.courseTitle || '-'}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{formatDate(tx.dateTime)}</p>
+                              </div>
+                              <TransactionStatus status={tx.status} />
+                            </div>
+                            <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
+                                {tx.type}
+                              </span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-100">{money(tx.amount || 0, tx.currency || 'USD')}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+
+              {activeTable === 'courses' && (
+                <div className="relative hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                    <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Courses</h2>
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full text-sm table-fixed">
+                      <thead className="text-slate-500 dark:text-slate-400">
+                        <tr className="text-left">
+                          <th className="px-4 py-2.5 font-medium w-[34%]">Course</th>
+                          <th className="px-4 py-2.5 font-medium w-[18%]">Status</th>
+                          <th className="px-4 py-2.5 font-medium w-[20%]">Progress</th>
+                          <th className="px-4 py-2.5 font-medium w-[14%]">Price</th>
+                          <th className="px-4 py-2.5 font-medium w-[14%]">Enrolled</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800">
+                        {data.courses.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                              No enrollments found for this student.
+                            </td>
+                          </tr>
+                        ) : (
+                          data.courses.map((course) => (
+                            <tr key={course.enrollmentId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate">{course.title}</td>
+                              <td className="px-4 py-3"><EnrollmentStatus status={course.status} /></td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div className="h-2 rounded-full bg-blue-500" style={{ width: `${Math.min(100, Math.max(0, course.progressPercentage || 0))}%` }} />
+                                  </div>
+                                  <span className="text-xs text-gray-500 dark:text-gray-300">{Number(course.progressPercentage || 0).toFixed(0)}%</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{money(course.price)}</td>
+                              <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDate(course.enrolledAt)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTable === 'transactions' && (
+                <div className="relative hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                  <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                    <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Transactions</h2>
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full text-sm table-fixed">
+                      <thead className="text-slate-500 dark:text-slate-400">
+                        <tr className="text-left">
+                          <th className="px-4 py-2.5 font-medium w-[18%]">Date</th>
+                          <th className="px-4 py-2.5 font-medium w-[34%]">Course</th>
+                          <th className="px-4 py-2.5 font-medium w-[14%]">Type</th>
+                          <th className="px-4 py-2.5 font-medium w-[14%]">Status</th>
+                          <th className="px-4 py-2.5 font-medium w-[20%] text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800">
+                        {data.transactions.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                              No transactions recorded yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          data.transactions.map((tx) => (
+                            <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                              <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDate(tx.dateTime)}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-200 truncate">{tx.courseTitle || '-'}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">{tx.type}</span>
+                              </td>
+                              <td className="px-4 py-3"><TransactionStatus status={tx.status} /></td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">{money(tx.amount || 0, tx.currency || 'USD')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+            </section>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
+function InfoCard({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: string | number;
+  icon: ComponentType<{ className?: string }>;
+}) {
   return (
-    <div className="group relative overflow-hidden h-full min-h-[150px] bg-white/85 dark:bg-slate-900/75 backdrop-blur p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
-      <div className="flex justify-between mb-3">
-        <span className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-sky-600 dark:text-sky-300" />
+    <div className="group relative overflow-hidden h-full min-h-[124px] bg-white dark:bg-slate-900/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200 dark:from-green-700 dark:via-sky-700 dark:to-blue-700" />
+      <div className="flex justify-between mb-2">
+        <span className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
         </span>
       </div>
-      <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{title}</p>
+      <p className="text-2xl font-bold text-gray-800 dark:text-white leading-tight">{value}</p>
+      <p className="text-[13px] text-gray-500 mt-1">{title}</p>
     </div>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function ProfileField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="admin-surface flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 px-4 py-3">
-      <span className="text-slate-600 dark:text-slate-300 text-sm">{label}</span>
-      <span className="font-semibold text-gray-900 dark:text-white">{value}</span>
+    <div className="py-1 text-center">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-sm text-slate-800 dark:text-slate-200 mt-1">{value}</p>
     </div>
-  );
-}
-
-function Pill({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
-      {label}
-    </span>
   );
 }
 
 function EnrollmentStatus({ status }: { status: 'enrolled' | 'in_progress' | 'completed' | 'dropped' }) {
-  const style =
-    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
-
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
       {status.replace('_', ' ')}
     </span>
   );

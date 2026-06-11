@@ -206,13 +206,14 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      if (session.user) {
-        session.user.email = token.email as string;
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.imageUrl = (token as any).imageUrl ?? null;
+      const safeSession = session ?? { user: null };
+      if (safeSession.user) {
+        safeSession.user.email = (token?.email as string) ?? safeSession.user.email ?? null;
+        safeSession.user.id = (token?.id as string) ?? safeSession.user.id;
+        safeSession.user.role = (token?.role as string) ?? safeSession.user.role;
+        safeSession.user.imageUrl = (token && 'imageUrl' in token ? token.imageUrl : null) ?? null;
       }
-      return session;
+      return safeSession;
     },
 
     async redirect({ url, baseUrl }) {

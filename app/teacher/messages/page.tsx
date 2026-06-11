@@ -1,7 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Send, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  FileAudio,
+  FileText,
+  Image as ImageIcon,
+  Mic,
+  Paperclip,
+  Search,
+  Send,
+  Square,
+  Trash2,
+  X,
+} from 'lucide-react';
 
 type TabMode = 'students' | 'admin';
 
@@ -29,8 +40,26 @@ type AdminMessageItem = {
   id: string;
   senderRole: 'admin' | 'teacher';
   body: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
   createdAt: string;
 };
+
+function formatFileSize(size?: number | null) {
+  if (!size || Number.isNaN(size)) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentKind(type?: string | null) {
+  if (!type) return 'file';
+  if (type.startsWith('image/')) return 'image';
+  if (type.startsWith('audio/')) return 'audio';
+  return 'file';
+}
 
 export default function TeacherMessagesPage() {
   const [mode, setMode] = useState<TabMode>('students');
@@ -52,6 +81,12 @@ export default function TeacherMessagesPage() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSending, setAdminSending] = useState(false);
   const [adminErrorMsg, setAdminErrorMsg] = useState('');
+  const [adminPendingFile, setAdminPendingFile] = useState<File | null>(null);
+  const [adminRecordingBlob, setAdminRecordingBlob] = useState<Blob | null>(null);
+  const [adminRecordingUrl, setAdminRecordingUrl] = useState('');
+  const [adminRecording, setAdminRecording] = useState(false);
+  const [adminRecordingSeconds, setAdminRecordingSeconds] = useState(0);
+  const [adminRecordingError, setAdminRecordingError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<
     | { id: string; channel: 'student' | 'admin' }
     | null
@@ -61,6 +96,11 @@ export default function TeacherMessagesPage() {
   const streamRef = useRef<EventSource | null>(null);
   const studentMessagesContainerRef = useRef<HTMLDivElement | null>(null);
   const adminMessagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const adminFileInputRef = useRef<HTMLInputElement | null>(null);
+  const adminRecorderRef = useRef<MediaRecorder | null>(null);
+  const adminRecorderStreamRef = useRef<MediaStream | null>(null);
+  const adminChunksRef = useRef<Blob[]>([]);
+  const adminTimerRef = useRef<number | null>(null);
 
   const scrollToBottom = (channel: 'student' | 'admin') => {
     const container =
@@ -271,21 +311,170 @@ export default function TeacherMessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
+  useEffect(() => {
+    const timer = adminTimerRef.current;
+    const url = adminRecordingUrl;
+    const stream = adminRecorderStreamRef.current;
+    return () => {
+      if (timer) window.clearInterval(timer);
+      if (url) URL.revokeObjectURL(url);
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [adminRecordingUrl]);
+
+  const clearAdminRecording = () => {
+    if (adminTimerRef.current) {
+      window.clearInterval(adminTimerRef.current);
+      adminTimerRef.current = null;
+    }
+    if (adminRecordingUrl) {
+      URL.revokeObjectURL(adminRecordingUrl);
+    }
+    adminRecorderStreamRef.current?.getTracks().forEach((track) => track.stop());
+    adminRecorderStreamRef.current = null;
+    adminRecorderRef.current = null;
+    adminChunksRef.current = [];
+    setAdminRecording(false);
+    setAdminRecordingBlob(null);
+    setAdminRecordingUrl('');
+    setAdminRecordingSeconds(0);
+  };
+
+  const clearAdminAttachment = () => {
+    setAdminPendingFile(null);
+    if (adminFileInputRef.current) {
+      adminFileInputRef.current.value = '';
+    }
+  };
+
+  const resetAdminComposer = () => {
+    setAdminDraft('');
+    clearAdminAttachment();
+    clearAdminRecording();
+  };
+
+  const handleAdminFilePick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setAdminRecordingError('');
+    if (!file) return;
+    clearAdminRecording();
+    setAdminPendingFile(file);
+  };
+
+  const startAdminRecording = async () => {
+    if (adminRecording) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setAdminRecordingError('Audio recording is not supported in this browser.');
+      return;
+    }
+    if (!window.isSecureContext) {
+      setAdminRecordingError('Microphone access requires HTTPS or localhost.');
+      return;
+    }
+
+    try {
+      setAdminRecordingError('');
+      clearAdminAttachment();
+      clearAdminRecording();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      adminRecorderStreamRef.current = stream;
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/ogg')
+          ? 'audio/ogg'
+          : '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      adminRecorderRef.current = recorder;
+      adminChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          adminChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(adminChunksRef.current, {
+          type: recorder.mimeType || 'audio/webm',
+        });
+        const url = URL.createObjectURL(blob);
+        setAdminRecordingBlob(blob);
+        setAdminRecordingUrl(url);
+        setAdminRecording(false);
+        adminRecorderStreamRef.current?.getTracks().forEach((track) => track.stop());
+        adminRecorderStreamRef.current = null;
+      };
+
+      recorder.start();
+      setAdminRecording(true);
+      setAdminRecordingSeconds(0);
+      adminTimerRef.current = window.setInterval(() => {
+        setAdminRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to start teacher admin recording', error);
+      const err = error as { name?: string };
+      if (err?.name === 'NotAllowedError') {
+        setAdminRecordingError('Microphone permission was blocked.');
+      } else if (err?.name === 'NotFoundError') {
+        setAdminRecordingError('No microphone was found on this device.');
+      } else if (err?.name === 'NotReadableError') {
+        setAdminRecordingError('The microphone is already in use by another app.');
+      } else {
+        setAdminRecordingError('Could not access the microphone.');
+      }
+      clearAdminRecording();
+    }
+  };
+
+  const stopAdminRecording = () => {
+    if (!adminRecorderRef.current || !adminRecording) return;
+    if (adminTimerRef.current) {
+      window.clearInterval(adminTimerRef.current);
+      adminTimerRef.current = null;
+    }
+    try {
+      adminRecorderRef.current.stop();
+    } catch (error) {
+      console.error('Failed to stop teacher admin recording', error);
+    }
+  };
+
   const sendAdminMessage = async () => {
-    if (!adminDraft.trim()) return;
+    const messageBody = adminDraft.trim();
+    const hasAttachment = Boolean(adminPendingFile || adminRecordingBlob);
+    if ((!messageBody && !hasAttachment) || adminSending) return;
     try {
       setAdminSending(true);
+      const formData = new FormData();
+      formData.append('body', messageBody);
+      if (adminId) {
+        formData.append('adminId', adminId);
+      }
+
+      if (adminRecordingBlob) {
+        const extension = adminRecordingBlob.type.includes('ogg') ? 'ogg' : 'webm';
+        const voiceFile = new File(
+          [adminRecordingBlob],
+          `voice-note-${Date.now()}.${extension}`,
+          { type: adminRecordingBlob.type || 'audio/webm' }
+        );
+        formData.append('attachment', voiceFile);
+      } else if (adminPendingFile) {
+        formData.append('attachment', adminPendingFile);
+      }
+
       const res = await fetch('/api/teacher/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: adminDraft, adminId }),
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) {
         setAdminErrorMsg(data.message || 'Failed to send message');
         return;
       }
-      setAdminDraft('');
+      resetAdminComposer();
       await loadAdminMessages(false);
     } catch {
       setAdminErrorMsg('Failed to send message');
@@ -613,7 +802,52 @@ export default function TeacherMessagesPage() {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <p>{msg.body}</p>
+                  {msg.body.trim() && <p>{msg.body}</p>}
+                  {msg.attachmentUrl && (
+                    <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-slate-700 dark:bg-slate-800/70">
+                      {attachmentKind(msg.attachmentType) === 'image' ? (
+                        <a href={msg.attachmentUrl} target="_blank" rel="noreferrer">
+                          <img
+                            src={msg.attachmentUrl}
+                            alt={msg.attachmentName || 'Attachment'}
+                            className="max-h-60 w-full object-cover"
+                          />
+                        </a>
+                      ) : attachmentKind(msg.attachmentType) === 'audio' ? (
+                        <div className="p-2">
+                          <audio controls src={msg.attachmentUrl} className="w-full" />
+                          <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                            {msg.attachmentName || 'Voice note'}
+                          </p>
+                        </div>
+                      ) : (
+                        <a
+                          href={msg.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-3 p-3 text-left"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                            {msg.attachmentType?.startsWith('audio/') ? (
+                              <FileAudio className="h-5 w-5" />
+                            ) : msg.attachmentType?.startsWith('image/') ? (
+                              <ImageIcon className="h-5 w-5" />
+                            ) : (
+                              <FileText className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {msg.attachmentName || 'Attachment'}
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              {msg.attachmentSize ? formatFileSize(msg.attachmentSize) : 'File'}
+                            </p>
+                          </div>
+                        </a>
+                      )}
+                    </div>
+                  )}
                   <p className="text-[10px] opacity-70 mt-2">
                     {new Date(msg.createdAt).toLocaleString()}
                   </p>
@@ -624,6 +858,79 @@ export default function TeacherMessagesPage() {
           </div>
 
           <div className="px-4 py-3 border-t border-slate-200/70 dark:border-slate-800">
+            {(adminPendingFile || adminRecordingBlob) && (
+              <div className="mb-3 space-y-2">
+                {adminPendingFile && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/50">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-700 dark:text-slate-100">
+                        {adminPendingFile.name}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {formatFileSize(adminPendingFile.size)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={clearAdminAttachment}
+                      className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {adminRecordingBlob && (
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-3 dark:border-sky-900/50 dark:bg-sky-900/20">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-sky-700 dark:text-sky-300">
+                          Voice note ready
+                        </p>
+                        <p className="text-xs text-sky-600/80 dark:text-sky-400">
+                          {adminRecordingSeconds > 0
+                            ? `Recorded for ${adminRecordingSeconds}s`
+                            : 'Recorded voice note'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={clearAdminRecording}
+                        className="rounded-full p-1.5 text-sky-500 hover:bg-white/70 hover:text-sky-700 dark:hover:bg-slate-800"
+                        aria-label="Remove voice note"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {adminRecordingUrl && <audio controls src={adminRecordingUrl} className="w-full" />}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <button
+                onClick={() => adminFileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                Attach file
+              </button>
+              <button
+                onClick={adminRecording ? stopAdminRecording : startAdminRecording}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 font-semibold shadow-sm transition ${
+                  adminRecording
+                    ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-900/20 dark:text-rose-300'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300'
+                }`}
+              >
+                {adminRecording ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                {adminRecording ? `Stop recording ${adminRecordingSeconds}s` : 'Voice note'}
+              </button>
+              {adminRecordingError && (
+                <span className="text-rose-600 dark:text-rose-300">{adminRecordingError}</span>
+              )}
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 value={adminDraft}
@@ -636,13 +943,24 @@ export default function TeacherMessagesPage() {
               />
               <button
                 onClick={sendAdminMessage}
-                disabled={adminSending || !canSendAdmin}
+                disabled={
+                  adminSending ||
+                  !canSendAdmin ||
+                  (!adminDraft.trim() && !adminPendingFile && !adminRecordingBlob)
+                }
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition disabled:opacity-60"
               >
                 <Send className="w-4 h-4" />
                 Send
               </button>
             </div>
+            <input
+              ref={adminFileInputRef}
+              type="file"
+              accept="image/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,audio/*"
+              className="hidden"
+              onChange={handleAdminFilePick}
+            />
             {!canSendAdmin && (
               <p className="mt-2 text-xs text-red-600 dark:text-red-300">
                 Admin account not found. Please create an admin user to enable messaging.

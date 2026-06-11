@@ -40,6 +40,19 @@ type Module = {
   lessons: Lesson[];
 };
 
+const fixContent = (raw: string) =>
+  raw
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(.)(\n?)(#{1,4} )/g, '$1\n\n$3')
+    .replace(/(#{1,4} [^\n]+)\n([^\n])/g, '$1\n\n$2')
+
+    .trim();
+
 export default function CourseContentPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -533,9 +546,10 @@ export default function CourseContentPage() {
   };
 
   const generateDetailsWithAi = async () => {
-const prompt = aiOutlinePrompt.trim() || 
-  aiOutlineDraft?.map((m: any) => m.title).join(', ') || 
-  'Programming course';
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      'Programming course';
 
     if (!aiOutlineDraft || aiOutlineDraft.length === 0) {
       setError('Generate outline first (Phase 1)');
@@ -598,28 +612,51 @@ const prompt = aiOutlinePrompt.trim() ||
       setAiRegeneratingLessons(false);
     }
   };
-const regenerateSingleLesson = async (lessonId: string) => {
-  const prompt = aiOutlinePrompt.trim() ||
-    aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
-    modules.map((m) => m.title).join(', ') ||
-    'Programming course';
-  setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
-  try {
-    const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed');
-    await fetchContent();
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
-  } catch {
-    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
-    setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
-  }
-};
+  const regenerateSingleLesson = async (lessonId: string) => {
+    const prompt =
+      aiOutlinePrompt.trim() ||
+      aiOutlineDraft?.map((m: any) => m.title).join(', ') ||
+      modules.map((m) => m.title).join(', ') ||
+      'Programming course';
+    setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'generating' }));
+    try {
+      const res = await fetch(`/api/courses/${courseId}/ai-outline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'regenerate_lessons', prompt, lessonIds: [lessonId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      await fetchContent();
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'done' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 3000);
+    } catch {
+      setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'error' }));
+      setTimeout(() => setRegenLessonStatus((prev) => ({ ...prev, [lessonId]: 'idle' })), 4000);
+    }
+  };
+
+  const togglePublishModule = async (module: Module) => {
+    if (!module.lessons || module.lessons.length === 0) {
+      setError('This chapter has no lessons to publish');
+      return;
+    }
+
+    const areAllPublished = module.lessons.every((lesson) => lesson.isPublished);
+    setError(null);
+    try {
+      const res = await fetch(`/api/modules/${module.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: !areAllPublished }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update chapter publish status');
+      await fetchContent();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update chapter publish status');
+    }
+  };
 
   const toggleSelectLesson = (lessonId: string) => {
     setSelectedLessonIds((prev) =>
@@ -971,7 +1008,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
         {/* Lesson Modal */}
         {showLessonModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="admin-surface w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="admin-surface w-full max-w-5xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
                 <h2 className="text-xl font-bold">
                   {editingLessonId ? 'Edit Lesson' : 'Add New Lesson'}
@@ -988,7 +1025,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
 
               <form
                 onSubmit={handleSaveLesson}
-                className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+                className="p-6 space-y-4 max-h-[90vh] overflow-y-auto"
               >
 
                 <div>
@@ -1079,7 +1116,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </button>
                   </div>
                   <textarea
-                    rows={8}
+                    rows={14}
                     value={lessonForm.content}
                     onChange={(e) => setLessonForm((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="Write your lesson content here... Use ``` for code blocks and {{video:URL}} for videos."
@@ -1278,6 +1315,17 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </div>
                     
                     <div className="relative flex items-center gap-3 self-end">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                        }`}
+                      >
+                        {module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                          ? 'Chapter Published'
+                          : 'Chapter Draft'}
+                      </span>
                       <span className="text-sm text-slate-500 dark:text-slate-400">
                         {module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'}
                       </span>
@@ -1296,6 +1344,18 @@ const regenerateSingleLesson = async (lessonId: string) => {
                           className="admin-surface absolute right-0 top-10 z-10 w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenModuleMenuId(null);
+                              togglePublishModule(module);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                          >
+                            {module.lessons.length > 0 && module.lessons.every((lesson) => lesson.isPublished)
+                              ? 'Unpublish Chapter'
+                              : 'Publish Chapter'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -1485,7 +1545,7 @@ const regenerateSingleLesson = async (lessonId: string) => {
                     </div>
                     <LessonContentView
                       key={lesson.id}
-                      content={lesson.content || ''}
+                      content={fixContent(lesson.content ?? '')}
                       quizQuestions={lesson.quizQuestions || []}
                       enableLiveEditor={lesson.enableLiveEditor}
                       liveEditorLanguage={lesson.liveEditorLanguage || 'python'}

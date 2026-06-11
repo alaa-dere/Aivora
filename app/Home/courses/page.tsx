@@ -15,6 +15,7 @@ import {
   UserGroupIcon,
   StarIcon,
   GlobeAltIcon,
+  ArrowLeftIcon,
   ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 
@@ -74,8 +75,8 @@ export default function AllCoursesPage() {
         );
 
         setCourses(publishedCourses);
-      } catch (error: any) {
-        setErrorMsg(error.message || 'Failed to load courses');
+      } catch (error: unknown) {
+        setErrorMsg(error instanceof Error ? error.message : 'Failed to load courses');
       } finally {
         setLoadingCourses(false);
       }
@@ -229,6 +230,16 @@ export default function AllCoursesPage() {
       {/* Main Content */}
       <main className="relative z-10 pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          <div className="mb-5 sm:mb-6">
+            <Link
+              href="/Home"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg transition hover:bg-white/20"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              {isArabic ? 'رجوع للرئيسية' : 'Back to Home'}
+            </Link>
+          </div>
+
           <div className="mb-6 sm:mb-8 flex justify-center">
             <div className="w-full max-w-2xl">
               <div className="relative">
@@ -273,7 +284,7 @@ export default function AllCoursesPage() {
                 return (
                   <div
                     key={course.id}
-                    className="group rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
+                    className="group h-full rounded-2xl border border-white/15 bg-white/10 backdrop-blur-lg overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-2 hover:shadow-xl flex flex-col"
                   >
                     <div className="relative h-36 sm:h-40 overflow-hidden">
                       <img
@@ -289,7 +300,7 @@ export default function AllCoursesPage() {
                       />
                     </div>
 
-                    <div className="p-4 sm:p-4">
+                    <div className="p-4 sm:p-4 flex flex-1 flex-col">
                       <p className="text-sm text-blue-200 mb-2 font-medium">
                         {isArabic ? '??????' : 'By'} {course.teacherName}
                       </p>
@@ -336,7 +347,7 @@ export default function AllCoursesPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="mt-auto pt-2 flex items-center justify-between">
                         <span className="text-lg sm:text-xl font-black text-blue-300">
                           ${course.price}
                         </span>

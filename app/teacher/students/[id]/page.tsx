@@ -10,7 +10,6 @@ import {
   TrophyIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
-  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 type StudentDetails = {
@@ -48,15 +47,6 @@ type StudentDetails = {
     totalSessions: number;
     certificateId: string | null;
   }>;
-  aiRisk: {
-    score: number;
-    level: "low" | "medium" | "high";
-    factors: {
-      avgProgress: number;
-      avgQuizScore: number;
-      maxMissedSessions: number;
-    };
-  };
   timeline: Array<{
     eventAt: string;
     eventType: string;
@@ -185,8 +175,8 @@ export default function TeacherStudentDetailsPage() {
                 ))}
               </div>
 
-              <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75">
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Student Snapshot</h2>
                   <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -194,23 +184,6 @@ export default function TeacherStudentDetailsPage() {
                     <Row label="Certificates" value={String(data.stats.certificatesCount)} />
                     <Row label="Last Enrollment" value={formatDate(data.stats.lastEnrollmentDate)} />
                     <Row label="Joined Platform" value={formatDate(data.student.createdAt)} />
-                  </div>
-                </div>
-
-                <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 bg-white/85 dark:bg-slate-900/75">
-                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-400 to-rose-400" />
-                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
-                    <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
-                    AI Risk
-                  </h2>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{data.aiRisk.score}%</p>
-                  <p className="text-sm mt-1 text-slate-600 dark:text-slate-300 capitalize">
-                    {data.aiRisk.level} risk
-                  </p>
-                  <div className="mt-4 space-y-2 text-xs text-slate-500 dark:text-slate-400">
-                    <p>Avg progress: {data.aiRisk.factors.avgProgress.toFixed(1)}%</p>
-                    <p>Avg quiz: {data.aiRisk.factors.avgQuizScore.toFixed(1)}%</p>
-                    <p>Max missed sessions: {data.aiRisk.factors.maxMissedSessions}</p>
                   </div>
                 </div>
               </div>
@@ -288,6 +261,39 @@ export default function TeacherStudentDetailsPage() {
 
           {tab === "activity" && (
             <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 p-5">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Quiz Activity</h2>
+              <div className="space-y-2 mb-6">
+                {data.courses.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-300">No courses found.</p>
+                ) : (
+                  data.courses.map((course) => {
+                    const didQuiz = Number(course.quizAttempts || 0) > 0;
+                    return (
+                      <div
+                        key={`quiz-${course.enrollmentId}`}
+                        className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-white/70 dark:bg-slate-900/40"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{course.title}</p>
+                          <span
+                            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                              didQuiz
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            {didQuiz ? "Quiz done" : "No quiz yet"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Attempts: {course.quizAttempts} {didQuiz ? `| Avg score: ${course.avgQuizScore.toFixed(1)}%` : ""}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
               <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Recent Activity</h2>
               <div className="space-y-3">
                 {data.timeline.length === 0 ? (

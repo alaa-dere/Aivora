@@ -7,8 +7,12 @@ import path from 'node:path';
 export const runtime = 'nodejs';
 const DEFAULT_REMOTE_EXECUTE_URL = 'https://emkc.org/api/v2/piston/execute';
 const WANDBOX_EXECUTE_URL = 'https://wandbox.org/api/compile.json';
+const DEFAULT_JUDGE0_URL = 'https://ce.judge0.com/submissions/?base64_encoded=false&wait=true';
 const EXECUTION_MODE = String(process.env.C_EXECUTION_MODE || 'remote').toLowerCase(); // remote | local | auto
 const REMOTE_RETRY_COUNT = Math.max(0, Number(process.env.C_REMOTE_RETRY_COUNT || 2));
+const JUDGE0_URL = String(process.env.C_JUDGE0_URL || DEFAULT_JUDGE0_URL).trim();
+const JUDGE0_API_KEY = String(process.env.C_JUDGE0_API_KEY || '').trim();
+const JUDGE0_API_HOST = String(process.env.C_JUDGE0_API_HOST || '').trim();
 
 type ExecResult = {
   stdout: string;
@@ -172,6 +176,79 @@ async function executeWithWandbox(code: string) {
   }
 }
 
+async function executeWithJudge0(code: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 14000);
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (JUDGE0_API_KEY) {
+      headers['X-RapidAPI-Key'] = JUDGE0_API_KEY;
+      if (JUDGE0_API_HOST) headers['X-RapidAPI-Host'] = JUDGE0_API_HOST;
+    }
+
+    const response = await fetch(JUDGE0_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        // Judge0 C (GCC 9.2.0)
+        language_id: 50,
+        source_code: code,
+        stdin: '',
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Judge0 request failed (${response.status}).`);
+
+    const data = (await response.json()) as {
+      stdout?: string;
+      stderr?: string;
+      compile_output?: string;
+      message?: string;
+      status?: { id?: number; description?: string };
+    };
+
+    const compileErr = String(data.compile_output || '').trim();
+    if (compileErr) {
+      return {
+        success: false as const,
+        stage: 'compile' as const,
+        output: '',
+        error: compileErr,
+      };
+    }
+
+    const runErr = String(data.stderr || '').trim();
+    if (runErr) {
+      return {
+        success: false as const,
+        stage: 'run' as const,
+        output: String(data.stdout || ''),
+        error: runErr,
+      };
+    }
+
+    if (String(data.message || '').trim()) {
+      return {
+        success: false as const,
+        stage: 'run' as const,
+        output: String(data.stdout || ''),
+        error: String(data.message),
+      };
+    }
+
+    return {
+      success: true as const,
+      output: String(data.stdout || 'Program finished with no output.'),
+      error: '',
+      compiler: 'remote:judge0',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function executeRemotely(code: string) {
   const primaryEndpoint = String(process.env.C_REMOTE_EXECUTE_URL || DEFAULT_REMOTE_EXECUTE_URL).trim();
   const errors: string[] = [];
@@ -188,6 +265,12 @@ async function executeRemotely(code: string) {
     } catch (err) {
       errors.push(err instanceof Error ? err.message : 'Default Piston endpoint failed.');
     }
+  }
+
+  try {
+    return await executeWithJudge0(code);
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : 'Judge0 fallback failed.');
   }
 
   try {

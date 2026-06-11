@@ -16,7 +16,17 @@ type AdminLiveSession = {
   teacherName: string;
   courseTitle: string;
   totalStudents: number;
+  meetingLink?: string | null;
 };
+
+const COURSE_PALETTES = [
+  { border: 'border-sky-200 dark:border-sky-700', bg: 'bg-sky-50/90 dark:bg-sky-900/25', title: 'text-sky-800 dark:text-sky-200', meta: 'text-sky-700 dark:text-sky-300' },
+  { border: 'border-emerald-200 dark:border-emerald-700', bg: 'bg-emerald-50/90 dark:bg-emerald-900/25', title: 'text-emerald-800 dark:text-emerald-200', meta: 'text-emerald-700 dark:text-emerald-300' },
+  { border: 'border-green-200 dark:border-green-700', bg: 'bg-green-50/90 dark:bg-green-900/25', title: 'text-green-800 dark:text-green-200', meta: 'text-green-700 dark:text-green-300' },
+  { border: 'border-violet-200 dark:border-violet-700', bg: 'bg-violet-50/90 dark:bg-violet-900/25', title: 'text-violet-800 dark:text-violet-200', meta: 'text-violet-700 dark:text-violet-300' },
+  { border: 'border-rose-200 dark:border-rose-700', bg: 'bg-rose-50/90 dark:bg-rose-900/25', title: 'text-rose-800 dark:text-rose-200', meta: 'text-rose-700 dark:text-rose-300' },
+  { border: 'border-cyan-200 dark:border-cyan-700', bg: 'bg-cyan-50/90 dark:bg-cyan-900/25', title: 'text-cyan-800 dark:text-cyan-200', meta: 'text-cyan-700 dark:text-cyan-300' },
+];
 
 export default function AdminLiveSessionsPage() {
   const [liveSessions, setLiveSessions] = useState<AdminLiveSession[]>([]);
@@ -73,7 +83,7 @@ export default function AdminLiveSessionsPage() {
     const weekEndMs = weekStartMs + 7 * 24 * 60 * 60 * 1000;
     const minStart = CALENDAR_START_HOUR * 60;
     const maxMinutes = (CALENDAR_END_HOUR - CALENDAR_START_HOUR) * 60;
-    return liveSessions
+    const rawEvents = liveSessions
       .map((session) => {
         const start = new Date(session.startAt);
         const end = new Date(session.endAt);
@@ -86,25 +96,111 @@ export default function AdminLiveSessionsPage() {
         return {
           ...session,
           dayIndex: start.getDay(),
-          top: (topMinutes / 60) * HOUR_ROW_HEIGHT,
-          height: Math.max(28, (durationMinutes / 60) * HOUR_ROW_HEIGHT),
+          startMinute: topMinutes,
+          endMinute: topMinutes + durationMinutes,
+          top: (topMinutes / 60) * HOUR_ROW_HEIGHT + 1,
+          height: Math.max(30, (durationMinutes / 60) * HOUR_ROW_HEIGHT - 2),
         };
       })
       .filter(Boolean) as Array<
-      AdminLiveSession & { dayIndex: number; top: number; height: number }
+      AdminLiveSession & { dayIndex: number; startMinute: number; endMinute: number; top: number; height: number }
     >;
+
+    const laidOut: Array<
+      AdminLiveSession & {
+        dayIndex: number;
+        startMinute: number;
+        endMinute: number;
+        top: number;
+        height: number;
+        laneIndex: number;
+        laneCount: number;
+      }
+    > = [];
+
+    for (let day = 0; day < 7; day += 1) {
+      const dayEvents = rawEvents
+        .filter((event) => event.dayIndex === day)
+        .sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute);
+
+      const groups: typeof dayEvents[] = [];
+      let currentGroup: typeof dayEvents = [];
+      let groupEnd = -1;
+
+      for (const event of dayEvents) {
+        if (currentGroup.length === 0 || event.startMinute < groupEnd) {
+          currentGroup.push(event);
+          groupEnd = Math.max(groupEnd, event.endMinute);
+        } else {
+          groups.push(currentGroup);
+          currentGroup = [event];
+          groupEnd = event.endMinute;
+        }
+      }
+      if (currentGroup.length > 0) groups.push(currentGroup);
+
+      for (const group of groups) {
+        const laneEnds: number[] = [];
+        const assigned = group.map((event) => {
+          let laneIndex = laneEnds.findIndex((end) => event.startMinute >= end);
+          if (laneIndex === -1) {
+            laneIndex = laneEnds.length;
+            laneEnds.push(event.endMinute);
+          } else {
+            laneEnds[laneIndex] = event.endMinute;
+          }
+          return { ...event, laneIndex };
+        });
+
+        const laneCount = Math.max(1, laneEnds.length);
+        assigned.forEach((event) => laidOut.push({ ...event, laneCount }));
+      }
+    }
+
+    return laidOut;
   }, [liveSessions, weekStart]);
 
+  const mobileWeekSessions = useMemo(() => {
+    return weekDays.map((day) => {
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const sessions = liveSessions
+        .filter((session) => {
+          const start = new Date(session.startAt);
+          return start >= dayStart && start < dayEnd;
+        })
+        .sort(
+          (a, b) =>
+            new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+        );
+
+      return {
+        key: day.toISOString(),
+        day,
+        sessions,
+      };
+    });
+  }, [weekDays, liveSessions]);
+
+  const getCoursePalette = (courseId: string) => {
+    let hash = 0;
+    for (let i = 0; i < courseId.length; i += 1) hash = (hash * 31 + courseId.charCodeAt(i)) >>> 0;
+    return COURSE_PALETTES[hash % COURSE_PALETTES.length];
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-4 md:p-6 transition-colors duration-300">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Live Sessions Schedule</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+    <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Live Sessions Schedule</h1>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
           Central admin calendar for all instructor live sessions.
         </p>
       </div>
 
-      <div className="admin-surface rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 overflow-hidden">
+      <div className="admin-surface rounded-3xl border border-slate-200 dark:border-slate-800 bg-white overflow-hidden shadow-sm">
         {liveLoading ? (
           <div className="p-6 text-sm text-slate-500">Loading live sessions...</div>
         ) : liveError ? (
@@ -113,48 +209,120 @@ export default function AdminLiveSessionsPage() {
           <div className="p-6 text-sm text-slate-500">No scheduled live sessions.</div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 px-4 pt-3">
-              <button onClick={() => setWeekOffset(0)} className="px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-700">Today</button>
-              <button onClick={() => setWeekOffset((v) => v - 1)} className="px-2 text-lg">{'<'}</button>
-              <button onClick={() => setWeekOffset((v) => v + 1)} className="px-2 text-lg">{'>'}</button>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <div className="flex flex-col gap-3 px-4 sm:px-6 pt-5">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 shrink-0">
+                  <button className="px-3 py-1.5 text-xs rounded-lg bg-indigo-500 text-white shadow-sm">Week</button>
+                  <button className="px-3 py-1.5 text-xs rounded-lg text-slate-500">Month</button>
+                  <button className="px-3 py-1.5 text-xs rounded-lg text-slate-500">Day</button>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                  <button onClick={() => setWeekOffset(0)} className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-600 bg-white">
+                    Today
+                  </button>
+                  <button onClick={() => setWeekOffset((v) => v - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white">
+                    {'<'}
+                  </button>
+                  <button onClick={() => setWeekOffset((v) => v + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white">
+                    {'>'}
+                  </button>
+                </div>
+              </div>
+              <p className="text-sm sm:text-base font-semibold text-slate-700 dark:text-slate-200 px-1">
                 {weekStart.toLocaleDateString([], { month: 'long', year: 'numeric' })}
               </p>
             </div>
 
-            <div className="overflow-x-auto px-4 pb-2">
-              <div className="min-w-[980px]">
-                <div className="grid" style={{ gridTemplateColumns: '58px repeat(7, minmax(130px, 1fr))' }}>
-                  <div className="border-r border-slate-200 dark:border-slate-800" />
+            <div className="md:hidden px-3 pb-3 space-y-3">
+              {mobileWeekSessions.map(({ key, day, sessions }) => (
+                <div key={key} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 bg-white/90 dark:bg-slate-900/50 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      {WEEKDAY_LABELS[day.getDay()]} {day.getDate()}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">{sessions.length} session{sessions.length === 1 ? '' : 's'}</p>
+                  </div>
+                  {sessions.length === 0 ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">No sessions</p>
+                  ) : (
+                    <div className="mt-2.5 space-y-2">
+                      {sessions.map((session) => (
+                        <div
+                          key={`m-${session.id}`}
+                          className={`rounded-xl border px-3 py-2.5 ${getCoursePalette(session.courseId).border} ${getCoursePalette(session.courseId).bg}`}
+                        >
+                          <p className={`text-xs font-semibold truncate ${getCoursePalette(session.courseId).title}`}>{session.title}</p>
+                          <p className={`text-[11px] truncate ${getCoursePalette(session.courseId).meta}`}>{session.teacherName}</p>
+                          <p className={`text-[11px] mt-0.5 ${getCoursePalette(session.courseId).meta}`}>
+                            {new Date(session.startAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                          {session.meetingLink ? (
+                            <a
+                              href={session.meetingLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1.5 inline-flex items-center text-[11px] font-semibold text-sky-700 underline"
+                            >
+                              Open Zoom
+                            </a>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto px-6 pb-5">
+              <div className="min-w-[980px] rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="grid bg-slate-50" style={{ gridTemplateColumns: '58px repeat(7, minmax(130px, 1fr))' }}>
+                  <div className="border-r border-slate-200" />
                   {weekDays.map((day) => (
-                    <div key={`head-${day.toISOString()}`} className="px-2 py-2 border-r border-slate-200 dark:border-slate-800">
-                      <p className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{day.getDate()}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{WEEKDAY_LABELS[day.getDay()]}</p>
+                    <div key={`head-${day.toISOString()}`} className="px-2 py-2 border-r border-slate-200">
+                      <p className="text-2xl font-semibold text-slate-700">{day.getDate()}</p>
+                      <p className="text-xs text-slate-400">{WEEKDAY_LABELS[day.getDay()]}</p>
                     </div>
                   ))}
                 </div>
 
                 <div className="grid" style={{ gridTemplateColumns: '58px repeat(7, minmax(130px, 1fr))' }}>
-                  <div className="border-r border-slate-200 dark:border-slate-800">
+                  <div className="border-r border-slate-200 bg-white">
                     {hourLabels.map((hour) => (
-                      <div key={`hour-${hour}`} className="px-1 pt-1 text-[11px] text-slate-500 border-b border-slate-200 dark:border-slate-800" style={{ height: `${HOUR_ROW_HEIGHT}px` }}>
+                      <div key={`hour-${hour}`} className="px-1 pt-1 text-[11px] text-slate-400 border-b border-slate-100" style={{ height: `${HOUR_ROW_HEIGHT}px` }}>
                         {new Date(2026, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric', hour12: true })}
                       </div>
                     ))}
                   </div>
                   {weekDays.map((day) => (
-                    <div key={`col-${day.toISOString()}`} className="relative border-r border-slate-200 dark:border-slate-800" style={{ height: `${hourLabels.length * HOUR_ROW_HEIGHT}px` }}>
+                    <div key={`col-${day.toISOString()}`} className="relative border-r border-slate-200 bg-white" style={{ height: `${hourLabels.length * HOUR_ROW_HEIGHT}px` }}>
                       {hourLabels.map((hour) => (
-                        <div key={`line-${day.toISOString()}-${hour}`} className="border-b border-slate-200 dark:border-slate-800" style={{ height: `${HOUR_ROW_HEIGHT}px` }} />
+                        <div key={`line-${day.toISOString()}-${hour}`} className="border-b border-slate-100" style={{ height: `${HOUR_ROW_HEIGHT}px` }} />
                       ))}
                       {calendarEvents
                         .filter((event) => event.dayIndex === day.getDay())
-                        .map((event) => (
-                          <div key={event.id} className="absolute left-1 right-1 rounded border border-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-700 p-1.5" style={{ top: `${event.top}px`, height: `${event.height}px` }}>
-                            <p className="text-[11px] font-semibold text-indigo-800 dark:text-indigo-200 truncate">{event.title}</p>
-                            <p className="text-[10px] text-indigo-700 dark:text-indigo-300 truncate">{event.teacherName}</p>
-                          </div>
-                        ))}
+                        .map((event) => {
+                          const palette = getCoursePalette(event.courseId);
+                          return (
+                          <a
+                            key={event.id}
+                            href={event.meetingLink || '#'}
+                            target={event.meetingLink ? '_blank' : undefined}
+                            rel={event.meetingLink ? 'noreferrer' : undefined}
+                            className={`absolute rounded-xl border px-2 py-1.5 overflow-hidden shadow-sm ${palette.border} ${palette.bg} ${event.meetingLink ? 'cursor-pointer hover:opacity-90' : 'cursor-default'}`}
+                            style={{
+                              top: `${event.top}px`,
+                              height: `${event.height}px`,
+                              left: `calc(${(event.laneIndex / event.laneCount) * 100}% + 2px)`,
+                              width: `calc(${100 / event.laneCount}% - 4px)`,
+                            }}
+                          >
+                            <p className={`text-[10px] font-semibold leading-tight truncate ${palette.title}`}>{event.title}</p>
+                            <p className={`text-[10px] leading-tight truncate ${palette.meta}`}>{event.courseTitle}</p>
+                            <p className={`text-[10px] leading-tight truncate ${palette.meta}`}>{event.teacherName}</p>
+                            {event.meetingLink ? <p className="text-[10px] underline text-sky-700">Zoom</p> : null}
+                          </a>
+                        )})}
                     </div>
                   ))}
                 </div>
@@ -166,4 +334,3 @@ export default function AdminLiveSessionsPage() {
     </div>
   );
 }
-

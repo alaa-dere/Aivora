@@ -20,6 +20,11 @@ type ItemRow = RowDataPacket & {
   studentsCount?: number | string | null;
   averageRating?: number | string | null;
   evaluationCount?: number | string | null;
+  level?: string | null;
+  estimatedHours?: number | string | null;
+  courseIds?: string | null;
+  coursesCount?: number | string | null;
+  enrolledStudents?: number | string | null;
 };
 
 export async function GET() {
@@ -99,11 +104,34 @@ export async function GET() {
     const [paths] = hasLearningPathTable
       ? await pool.query<ItemRow[]>(
           `
-          SELECT id, title, categoryId
-          FROM learning_path
-          WHERE status = 'published'
-            AND categoryId IS NOT NULL
-          ORDER BY title ASC
+          SELECT
+            lp.id,
+            lp.title,
+            lp.categoryId,
+            lp.description,
+            lp.imageUrl,
+            lp.level,
+            lp.price,
+            lp.estimatedHours,
+            (
+              SELECT COUNT(*)
+              FROM learning_path_course lpc
+              WHERE lpc.pathId = lp.id
+            ) AS coursesCount,
+            (
+              SELECT GROUP_CONCAT(lpc.courseId ORDER BY lpc.orderNumber ASC SEPARATOR ',')
+              FROM learning_path_course lpc
+              WHERE lpc.pathId = lp.id
+            ) AS courseIds,
+            (
+              SELECT COUNT(*)
+              FROM path_enrollment pe
+              WHERE pe.pathId = lp.id
+            ) AS enrolledStudents
+          FROM learning_path lp
+          WHERE lp.status = 'published'
+            AND lp.categoryId IS NOT NULL
+          ORDER BY lp.title ASC
           `
         )
       : [[] as ItemRow[]];
@@ -130,10 +158,27 @@ export async function GET() {
         })),
       paths: paths
         .filter((path) => path.categoryId === category.id)
-        .map((path) => ({ id: path.id, title: path.title })),
+        .map((path) => ({
+          id: path.id,
+          title: path.title,
+          description: String(path.description || ''),
+          imageUrl: path.imageUrl || '/default-course.jpg',
+          level: path.level || 'beginner',
+          price: Number(path.price || 0),
+          estimatedHours: Number(path.estimatedHours || 0),
+          estimatedWeeks: Math.max(1, Math.ceil(Number(path.estimatedHours || 0) / 5)),
+          coursesCount: Number(path.coursesCount || 0),
+          enrolledStudents: Number(path.enrolledStudents || 0),
+          courseIds: path.courseIds ? path.courseIds.split(',').filter(Boolean) : [],
+          categoryName: category.name,
+        })),
     }));
 
-    return NextResponse.json({ categories: grouped });
+    const categoriesWithCourses = grouped.filter(
+      (category) => category.courses.length > 0 || category.paths.length > 0
+    );
+
+    return NextResponse.json({ categories: categoriesWithCourses });
   } catch (error: unknown) {
     console.error('Error loading home categories:', error);
     return NextResponse.json(

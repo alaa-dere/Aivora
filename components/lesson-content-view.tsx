@@ -68,9 +68,14 @@ const renderMarkdownText = (text: string) => {
       continue;
     }
 
+    if (/^#{1,6}$/.test(trimmed)) {
+      i += 1;
+      continue;
+    }
+
     if (trimmed.startsWith('#### ')) {
       nodes.push(
-        <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3">
+        <h4 key={`h4-${i}`} className="text-base font-semibold text-gray-800 dark:text-gray-100 mt-3 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(5))}
         </h4>
       );
@@ -80,7 +85,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('### ')) {
       nodes.push(
-        <h3 key={`h3-${i}`} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-3">
+        <h3 key={`h3-${i}`} className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-3 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(4))}
         </h3>
       );
@@ -90,7 +95,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('## ')) {
       nodes.push(
-        <h2 key={`h2-${i}`} className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4">
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-4 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(3))}
         </h2>
       );
@@ -100,7 +105,7 @@ const renderMarkdownText = (text: string) => {
 
     if (trimmed.startsWith('# ')) {
       nodes.push(
-        <h1 key={`h1-${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-4">
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-4 mb-2">
           {inlineMarkdownToNodes(trimmed.slice(2))}
         </h1>
       );
@@ -164,8 +169,47 @@ const renderMarkdownText = (text: string) => {
 
 const normalizeFenceText = (content: string) => {
   if (!content) return content;
-  // Handle escaped backticks that can come from copied/serialized text.
-  return content.replace(/\\`/g, '`');
+  let normalized = content;
+  // Handle escaped backticks/newlines/tabs that can come from serialized content.
+  normalized = normalized.replace(/\\`/g, '`').replace(/\\n/g, '\n').replace(/\\t/g, '  ');
+
+  // Normalize spaced heading markers like "# # # Title" into "### Title".
+  normalized = normalized.replace(/(^|\n|\s)((?:#\s+){1,5}#)(?=\s+\S)/g, (_match, prefix, hashes) => {
+    const compact = String(hashes).replace(/\s+/g, '');
+    const blockPrefix = String(prefix).includes('\n') || String(prefix).trim() === '' ? prefix : `${prefix}\n\n`;
+    return `${blockPrefix}${compact}`;
+  });
+
+  // Normalize malformed headings like "# # Title" or "# # # Subtitle".
+  normalized = normalized
+    .replace(/(^|\n)\s*#\s+#\s+#\s+#\s+/g, '$1#### ')
+    .replace(/(^|\n)\s*#\s+#\s+#\s+/g, '$1### ')
+    .replace(/(^|\n)\s*#\s+#\s+/g, '$1## ');
+
+  // If a heading appears inline after paragraph text, force it to a new block.
+  normalized = normalized
+    .replace(/([^\n])\s+#\s+#\s+#\s+#\s+/g, '$1\n\n#### ')
+    .replace(/([^\n])\s+#\s+#\s+#\s+/g, '$1\n\n### ')
+    .replace(/([^\n])\s+#\s+#\s+/g, '$1\n\n## ');
+
+  // Force a real paragraph break after common section headings when AI returns
+  // heading + body in the same line.
+  normalized = normalized
+    .replace(/(#{1,4}\s*What is[^\n#]*?)(\s+)(?=[A-Z0-9])/g, '$1\n\n')
+    .replace(/(#{1,4}\s*Why it matters[^\n#]*?)(\s+)(?=[A-Z0-9])/g, '$1\n\n');
+
+  // Keep spacing consistent around headings.
+  normalized = normalized
+    .replace(/([^\n])\n(#{1,4}\s)/g, '$1\n\n$2')
+    // Ensure list markers are on their own lines so they render as lists.
+    .replace(/([^\n])\s+(-\s+)/g, '$1\n\n$2')
+    .replace(/([^\n])\s+(\d+\.\s+)/g, '$1\n\n$2')
+    .replace(/\n\s*(-\s+)/g, '\n$1')
+    .replace(/\n\s*(\d+\.\s+)/g, '\n$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return normalized;
 };
 
 const normalizeStarterFormatting = (value: string) => {
@@ -174,6 +218,57 @@ const normalizeStarterFormatting = (value: string) => {
   // Do NOT convert generic "\\n" because it may be part of C/JS string literals
   // (e.g. printf("hello\\n")), and converting it breaks compilable code.
   return value.replace(/\\r\\n/g, '\n');
+};
+
+const fixCode = (raw: string) =>
+  String(raw || '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '  ')
+    .replace(/;(\s*)(?=[^\s])/g, ';\n')
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .trim();
+
+const formatCodeForDisplay = (raw: string) => {
+  const input = fixCode(raw);
+  if (!input) return input;
+  if (input.includes('\n')) {
+    return input
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('#')) return [line];
+        const noHash = trimmed.replace(/^#+\s*/, '');
+        const splitMatch = noHash.match(/\s+([a-zA-Z_][a-zA-Z0-9_]*\s*=.+)$/);
+        if (!splitMatch || !splitMatch[1]) return [line];
+        const code = splitMatch[1].trim();
+        const commentText = noHash.slice(0, noHash.lastIndexOf(code)).trim();
+        if (!commentText || !code) return [line];
+        return [`# ${commentText}`, code];
+      })
+      .join('\n');
+  }
+
+  // Heuristics for AI-compressed one-line snippets.
+  let out = input
+    .replace(/\s+(#)/g, '\n$1')
+    .replace(/\s+(\/\/)/g, '\n$1')
+    .replace(/;\s*/g, ';\n')
+    .replace(/\s+\b(def|function|class|if|for|while|try|except|return|const|let|var)\b/g, '\n$1');
+
+  // Python: move inline comment above statement when they are on one line.
+  const pyInline = out.match(/^([^#'"]+?)\s+(#.+)$/);
+  if (pyInline && pyInline[1]?.trim() && pyInline[2]?.trim()) {
+    out = `${pyInline[2].trim()}\n${pyInline[1].trim()}`;
+  }
+
+  return out
+    .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 const parseLessonContent = (content: string) => {
@@ -217,7 +312,7 @@ const parseLessonContent = (content: string) => {
         }
       }
 
-      segments.push({ type: 'code', value: codeValue.trim() });
+      segments.push({ type: 'code', value: formatCodeForDisplay(codeValue.trim()) });
       cursor = codeEnd + advanceBy;
       continue;
     }
@@ -234,7 +329,7 @@ const parseLessonContent = (content: string) => {
     if (normalizedToken.includes('video')) {
       segments.push({ type: 'video', value });
     } else if (normalizedToken.includes('starter')) {
-      segments.push({ type: 'starter', value: normalizeStarterFormatting(value) });
+      segments.push({ type: 'starter', value: formatCodeForDisplay(normalizeStarterFormatting(value)) });
     } else {
       segments.push({ type: 'answer', value });
     }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { getRequestUser } from '@/lib/request-auth';
+import { ensureAdminTeacherAttachmentColumns, saveMessageAttachment } from '@/lib/message-attachments';
 
 type ThreadRow = RowDataPacket & {
   id: string;
@@ -18,6 +19,10 @@ type MessageRow = RowDataPacket & {
   senderId: string;
   senderRole: 'admin' | 'teacher';
   body: string;
+  attachmentUrl: string | null;
+  attachmentName: string | null;
+  attachmentType: string | null;
+  attachmentSize: number | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -63,6 +68,18 @@ async function getOrCreateThread(adminId: string, teacherId: string) {
   return threadId;
 }
 
+function getLastMessageSql() {
+  return `
+    COALESCE(
+      NULLIF(TRIM(m.body), ''),
+      CASE
+        WHEN m.attachmentName IS NOT NULL THEN CONCAT('[Attachment] ', m.attachmentName)
+        ELSE NULL
+      END
+    )
+  `;
+}
+
 export async function GET(req: Request) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'admin') {
@@ -71,6 +88,7 @@ export async function GET(req: Request) {
 
   try {
     await ensureAdminTeacherDeleteColumns();
+    await ensureAdminTeacherAttachmentColumns();
     const supportsDeleteVisibility = await hasColumn(
       'admin_teacher_message',
       'deletedForEveryoneAt'
@@ -89,7 +107,8 @@ export async function GET(req: Request) {
           u.fullName AS teacherName,
           t.lastMessageAt,
           (
-            SELECT m.body
+            SELECT
+              ${getLastMessageSql()} AS lastMessage
             FROM admin_teacher_message m
             WHERE m.threadId = t.id
               ${supportsDeleteVisibility ? 'AND m.deletedForEveryoneAt IS NULL AND m.deletedForAdminAt IS NULL' : ''}
@@ -158,6 +177,10 @@ export async function GET(req: Request) {
         senderId,
         senderRole,
         body,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
         createdAt,
         readAt
       FROM admin_teacher_message
@@ -224,6 +247,28 @@ async function ensureAdminTeacherDeleteColumns() {
   }
 }
 
+async function parseMessagePayload(req: Request) {
+  const contentType = req.headers.get('content-type') || '';
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await req.formData();
+    const teacherId = String(formData.get('teacherId') || '').trim();
+    const body = String(formData.get('body') || '').trim();
+    const attachment = formData.get('attachment');
+    return {
+      teacherId,
+      body,
+      attachment: attachment instanceof File && attachment.size > 0 ? attachment : null,
+    };
+  }
+
+  const payload = await req.json();
+  return {
+    teacherId: typeof payload.teacherId === 'string' ? payload.teacherId.trim() : '',
+    body: typeof payload.body === 'string' ? payload.body.trim() : '',
+    attachment: null as File | null,
+  };
+}
+
 export async function POST(req: Request) {
   const user = await getRequestUser(req);
   if (!user || user.role !== 'admin') {
@@ -231,12 +276,33 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    const teacherId = typeof body.teacherId === 'string' ? body.teacherId : '';
-    const messageBody = typeof body.body === 'string' ? body.body.trim() : '';
+    await ensureAdminTeacherAttachmentColumns();
+    const payload = await parseMessagePayload(req);
+    const teacherId = payload.teacherId;
+    const messageBody = payload.body;
+    const attachmentFile = payload.attachment;
+    let attachmentUrl: string | null = null;
+    let attachmentName: string | null = null;
+    let attachmentType: string | null = null;
+    let attachmentSize: number | null = null;
 
-    if (!teacherId || !messageBody) {
-      return NextResponse.json({ message: 'Teacher and message are required' }, { status: 400 });
+    if (!teacherId) {
+      return NextResponse.json({ message: 'Teacher is required' }, { status: 400 });
+    }
+
+    if (!messageBody && !attachmentFile) {
+      return NextResponse.json(
+        { message: 'Message text or an attachment is required' },
+        { status: 400 }
+      );
+    }
+
+    if (attachmentFile) {
+      const saved = await saveMessageAttachment(attachmentFile, 'message-attachments');
+      attachmentUrl = saved.url;
+      attachmentName = saved.name;
+      attachmentType = saved.type;
+      attachmentSize = saved.size;
     }
 
     const threadId = await getOrCreateThread(user.id, teacherId);
@@ -247,11 +313,20 @@ export async function POST(req: Request) {
     await pool.query<ResultSetHeader>(
       `
       INSERT INTO admin_teacher_message
-        (id, threadId, senderId, senderRole, body, createdAt)
+        (id, threadId, senderId, senderRole, body, attachmentUrl, attachmentName, attachmentType, attachmentSize, createdAt)
       VALUES
-        (?, ?, ?, 'admin', ?, NOW())
+        (?, ?, ?, 'admin', ?, ?, ?, ?, ?, NOW())
       `,
-      [messageId, threadId, user.id, messageBody]
+      [
+        messageId,
+        threadId,
+        user.id,
+        messageBody,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
+      ]
     );
 
     await pool.query<ResultSetHeader>(
@@ -264,7 +339,15 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json(
-      { success: true, messageId, threadId },
+      {
+        success: true,
+        messageId,
+        threadId,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
+      },
       { status: 201 }
     );
   } catch (error: unknown) {

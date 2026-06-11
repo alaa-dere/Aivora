@@ -51,12 +51,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           SELECT COALESCE(AVG(a.scorePercentage), 0)
           FROM course_quiz_attempt a
           WHERE a.courseId = c.id AND a.studentId = e.studentId
-        ) AS avgQuizScore,
+        ) AS finalQuizAvg,
         (
           SELECT COUNT(*)
           FROM course_quiz_attempt a
           WHERE a.courseId = c.id AND a.studentId = e.studentId
-        ) AS quizAttempts,
+        ) AS finalQuizCount,
+        (
+          SELECT COALESCE(AVG(a.scorePercentage), 0)
+          FROM lesson_quiz_attempt a
+          WHERE a.courseId = c.id AND a.studentId = e.studentId
+        ) AS chapterQuizAvg,
+        (
+          SELECT COUNT(*)
+          FROM lesson_quiz_attempt a
+          WHERE a.courseId = c.id AND a.studentId = e.studentId
+        ) AS chapterQuizCount,
         (
           SELECT COALESCE(m.missedCount, 0)
           FROM student_live_miss m
@@ -110,20 +120,56 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `
       SELECT
         COALESCE(AVG(e.progressPercentage), 0) AS avgProgress,
-        COALESCE(AVG(qa.scorePercentage), 0) AS avgQuizScore,
+        COALESCE(
+          (
+            SELECT AVG(a.scorePercentage)
+            FROM course_quiz_attempt a
+            JOIN course c2 ON c2.id = a.courseId
+            WHERE a.studentId = ? AND c2.teacherId = ?
+          ),
+          0
+        ) AS finalQuizAvg,
+        COALESCE(
+          (
+            SELECT COUNT(*)
+            FROM course_quiz_attempt a
+            JOIN course c2 ON c2.id = a.courseId
+            WHERE a.studentId = ? AND c2.teacherId = ?
+          ),
+          0
+        ) AS finalQuizCount,
+        COALESCE(
+          (
+            SELECT AVG(a.scorePercentage)
+            FROM lesson_quiz_attempt a
+            JOIN lesson l ON l.id = a.lessonId
+            JOIN module m ON m.id = l.moduleId
+            JOIN course c3 ON c3.id = m.courseId
+            WHERE a.studentId = ? AND c3.teacherId = ?
+          ),
+          0
+        ) AS chapterQuizAvg,
+        COALESCE(
+          (
+            SELECT COUNT(*)
+            FROM lesson_quiz_attempt a
+            JOIN lesson l ON l.id = a.lessonId
+            JOIN module m ON m.id = l.moduleId
+            JOIN course c3 ON c3.id = m.courseId
+            WHERE a.studentId = ? AND c3.teacherId = ?
+          ),
+          0
+        ) AS chapterQuizCount,
         COALESCE(MAX(sm.missedCount), 0) AS maxMissedSessions
       FROM enrollment e
       JOIN course c ON c.id = e.courseId
-      LEFT JOIN course_quiz_attempt qa
-        ON qa.courseId = e.courseId
-       AND qa.studentId = e.studentId
       LEFT JOIN student_live_miss sm
         ON sm.courseId = e.courseId
        AND sm.studentId = e.studentId
       WHERE e.studentId = ?
         AND c.teacherId = ?
       `,
-      [studentId, teacherId]
+      [studentId, teacherId, studentId, teacherId, studentId, teacherId, studentId, teacherId, studentId, teacherId]
     );
 
     const [timelineRows] = await pool.query<RowDataPacket[]>(
@@ -170,7 +216,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const aiBase = aiRows[0] || {};
 
     const aiProgressPenalty = clamp((60 - Number(aiBase.avgProgress || 0)) * 0.8, 0, 40);
-    const aiQuizPenalty = clamp((70 - Number(aiBase.avgQuizScore || 0)) * 0.5, 0, 25);
+    const aiFinalQuizAvg = Number(aiBase.finalQuizAvg || 0);
+    const aiFinalQuizCount = Number(aiBase.finalQuizCount || 0);
+    const aiChapterQuizAvg = Number(aiBase.chapterQuizAvg || 0);
+    const aiChapterQuizCount = Number(aiBase.chapterQuizCount || 0);
+    const aiQuizAttempts = aiFinalQuizCount + aiChapterQuizCount;
+    const aiAvgQuizScore =
+      aiQuizAttempts > 0
+        ? (aiFinalQuizAvg * aiFinalQuizCount + aiChapterQuizAvg * aiChapterQuizCount) / aiQuizAttempts
+        : 0;
+    const aiQuizPenalty = clamp((70 - aiAvgQuizScore) * 0.5, 0, 25);
     const aiAttendancePenalty = clamp(Number(aiBase.maxMissedSessions || 0) * 6, 0, 35);
     const riskScore = Math.round(clamp(aiProgressPenalty + aiQuizPenalty + aiAttendancePenalty, 0, 100));
     const riskLevel = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
@@ -203,8 +258,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         enrolledAt: row.enrolledAt,
         completedAt: row.completedAt || null,
         price: Number(row.price || 0),
-        avgQuizScore: Number(row.avgQuizScore || 0),
-        quizAttempts: Number(row.quizAttempts || 0),
+        avgQuizScore:
+          Number(row.finalQuizCount || 0) + Number(row.chapterQuizCount || 0) > 0
+            ? (Number(row.finalQuizAvg || 0) * Number(row.finalQuizCount || 0) +
+                Number(row.chapterQuizAvg || 0) * Number(row.chapterQuizCount || 0)) /
+              (Number(row.finalQuizCount || 0) + Number(row.chapterQuizCount || 0))
+            : 0,
+        quizAttempts: Number(row.finalQuizCount || 0) + Number(row.chapterQuizCount || 0),
         missedSessions: Number(row.missedSessions || 0),
         attendedSessions: Number(row.attendedSessions || 0),
         totalSessions: Number(row.totalSessions || 0),
@@ -215,7 +275,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         level: riskLevel,
         factors: {
           avgProgress: Number(aiBase.avgProgress || 0),
-          avgQuizScore: Number(aiBase.avgQuizScore || 0),
+          avgQuizScore: aiAvgQuizScore,
           maxMissedSessions: Number(aiBase.maxMissedSessions || 0),
         },
       },

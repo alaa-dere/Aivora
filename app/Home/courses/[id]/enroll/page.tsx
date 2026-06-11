@@ -36,7 +36,7 @@ export default function CourseEnrollPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [mounted, setMounted] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
@@ -260,6 +260,19 @@ export default function CourseEnrollPage() {
     setMounted(true);
   }, []);
 
+  const role = session?.user?.role?.toLowerCase() || '';
+  const hasValidSession =
+    status === 'authenticated' &&
+    Boolean(session?.user?.id || session?.user?.email) &&
+    ['admin', 'teacher', 'student'].includes(role);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!hasValidSession) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [hasValidSession, pathname, router, status]);
+
   useEffect(() => {
     const loadCourse = async () => {
       try {
@@ -270,8 +283,8 @@ export default function CourseEnrollPage() {
           throw new Error(data.message || 'Failed to load course');
         }
         setCourse(data.course || null);
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to load course');
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to load course');
       } finally {
         setLoading(false);
       }
@@ -309,7 +322,7 @@ export default function CourseEnrollPage() {
     e.preventDefault();
     setSubmitError('');
 
-    if (status !== 'authenticated') {
+    if (!hasValidSession) {
       router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
@@ -345,8 +358,8 @@ export default function CourseEnrollPage() {
       }
 
       router.push(`/student/my-courses/${courseId}`);
-    } catch (err: any) {
-      setSubmitError(err.message || 'Failed to enroll');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to enroll');
     } finally {
       setProcessing(false);
     }
@@ -356,6 +369,14 @@ export default function CourseEnrollPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-slate-950 dark:text-white">
         {isArabic ? 'جاري تحميل صفحة التسجيل...' : 'Loading enrollment...'}
+      </div>
+    );
+  }
+
+  if (!hasValidSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-slate-950 dark:text-white">
+        {isArabic ? 'جاري تحويلك لتسجيل الدخول...' : 'Redirecting to login...'}
       </div>
     );
   }

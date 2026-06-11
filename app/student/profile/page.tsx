@@ -64,9 +64,10 @@ export default function StudentProfilePage() {
           setFullName(data.student.fullName || '');
           setEmail(data.student.email || '');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load profile';
         if (mounted) {
-          setError(err?.message || 'Failed to load profile');
+          setError(message);
         }
       } finally {
         if (mounted) {
@@ -120,7 +121,12 @@ export default function StudentProfilePage() {
 
     try {
       setSaving(true);
-      const payload: any = {
+      const payload: {
+        fullName: string;
+        email: string;
+        currentPassword?: string;
+        newPassword?: string;
+      } = {
         fullName: fullName.trim(),
         email: email.trim(),
       };
@@ -145,8 +151,8 @@ export default function StudentProfilePage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      const msg = err?.message || 'Failed to update profile';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile';
       if (msg.toLowerCase().includes('current password')) {
         setFieldErrors((prev) => ({
           ...prev,
@@ -217,8 +223,8 @@ export default function StudentProfilePage() {
       setPhotoPreview('');
       setSuccess('Profile photo updated.');
       window.dispatchEvent(new Event('student:profile-updated'));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to upload photo');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to upload photo');
     } finally {
       setPhotoUploading(false);
     }
@@ -237,7 +243,7 @@ export default function StudentProfilePage() {
 
       {loading && (
         <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200" />
           Loading your profile...
         </div>
       )}
@@ -253,9 +259,9 @@ export default function StudentProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200" />
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center overflow-hidden">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 flex items-center justify-center overflow-hidden">
                   {profile.imageUrl ? (
                     <img
                       src={profile.imageUrl}
@@ -263,7 +269,7 @@ export default function StudentProfilePage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserCircleIcon className="w-8 h-8 text-sky-600 dark:text-sky-400" />
+                    <UserCircleIcon className="w-8 h-8 text-green-700 dark:text-green-300" />
                   )}
                 </div>
                 <div>
@@ -307,7 +313,7 @@ export default function StudentProfilePage() {
                       type="button"
                       onClick={handlePhotoUpload}
                       disabled={!photoFile || photoUploading}
-                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm rounded-lg border border-emerald-200 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800 transition disabled:opacity-60 w-fit"
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] sm:gap-2 sm:px-4 sm:py-2 sm:text-sm rounded-lg border border-green-200 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800 transition disabled:opacity-60 w-fit"
                     >
                       {photoUploading ? 'Uploading...' : 'Upload Photo'}
                     </button>
@@ -333,7 +339,7 @@ export default function StudentProfilePage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 dark:text-slate-400">Role</span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:border-sky-800">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800">
                     {profile.role || 'Student'}
                   </span>
                 </div>
@@ -358,9 +364,9 @@ export default function StudentProfilePage() {
               onSubmit={handleSubmit}
               className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-6 space-y-6"
             >
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-sky-500" />
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200" />
               <div className="flex items-center gap-2">
-                <UserCircleIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                <UserCircleIcon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
                   Personal Information
                 </h2>
@@ -398,7 +404,7 @@ export default function StudentProfilePage() {
 
               <div className="border-t border-slate-200 dark:border-slate-800 pt-6 space-y-4">
                 <div className="flex items-center gap-2">
-                  <KeyIcon className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                  <KeyIcon className="w-5 h-5 text-green-700 dark:text-green-300" />
                   <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
                     Change Password
                   </h2>
@@ -481,7 +487,7 @@ export default function StudentProfilePage() {
               </div>
 
               {success && (
-                <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200 px-4 py-3 text-sm">
+                <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200 px-4 py-3 text-sm">
                   <CheckCircleIcon className="w-5 h-5" />
                   {success}
                 </div>
@@ -491,7 +497,7 @@ export default function StudentProfilePage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800 transition disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800 transition disabled:opacity-60"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -8,7 +8,9 @@ import {
   ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  DocumentArrowDownIcon,
   LockClosedIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import LivePythonEditor from '@/components/live-python-editor';
 import LiveJsEditor from '@/components/live-js-editor';
@@ -52,6 +54,22 @@ type AssistantMessage = {
   role: 'student' | 'assistant';
   text: string;
 };
+
+type SummaryCard = {
+  title: string;
+  body: string;
+};
+type LessonQuizOverview = {
+  questionCount: number;
+  canStart: boolean;
+  attempts: Array<{
+    id: string;
+    scorePercentage: number;
+    submittedAt: string;
+  }>;
+};
+
+const CHAPTER_QUIZ_QUESTION_COUNT = 5;
 
 const inlineMarkdownToNodes = (text: string): ReactNode[] => {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -212,6 +230,12 @@ export default function CoursePlayerPage() {
   ]);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantLoading, setAssistantLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([]);
+  const [summaryView, setSummaryView] = useState<'text' | 'cards'>('cards');
+  const [lessonQuizOverview, setLessonQuizOverview] = useState<LessonQuizOverview | null>(null);
+  const [lessonQuizOverviewError, setLessonQuizOverviewError] = useState<string | null>(null);
 
   const handleLiveSubmissionChange = useCallback(
     (submission: LiveEditorSubmission) => {
@@ -286,9 +310,17 @@ export default function CoursePlayerPage() {
     );
   }, [modules, selectedLessonId]);
 
+  const selectedModule = useMemo(
+    () => modules.find((m) => m.lessons.some((l) => l.id === selectedLessonId)) || null,
+    [modules, selectedLessonId]
+  );
+
   useEffect(() => {
     if (!selectedLessonId) return;
     setLessonInlineError(null);
+    setSummaryText('');
+    setSummaryCards([]);
+    setSummaryView('cards');
     try {
       localStorage.setItem(lessonStorageKey, selectedLessonId);
     } catch {
@@ -296,13 +328,61 @@ export default function CoursePlayerPage() {
     }
   }, [selectedLessonId, lessonStorageKey]);
 
+  useEffect(() => {
+    const loadLessonQuizOverview = async () => {
+      if (!selectedLessonId) {
+        setLessonQuizOverview(null);
+        setLessonQuizOverviewError(null);
+        return;
+      }
+      try {
+        const moduleId = selectedModule?.id || '';
+        if (!moduleId) {
+          setLessonQuizOverview(null);
+          setLessonQuizOverviewError(null);
+          return;
+        }
+        const res = await fetch(
+          `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
+          { cache: 'no-store', credentials: 'include' }
+        );
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          setLessonQuizOverview(null);
+          setLessonQuizOverviewError(String(payload?.message || `Failed to load chapter quiz (${res.status})`));
+          return;
+        }
+        const data = await res.json();
+        setLessonQuizOverview({
+          questionCount: Number(data.questionCount || 0),
+          canStart: Boolean(data.canStart),
+          attempts: Array.isArray(data.attempts)
+            ? data.attempts.map((item: unknown) => {
+                const typed = (item || {}) as { id?: string; scorePercentage?: number; submittedAt?: string };
+                return {
+                  id: String(typed.id || ''),
+                  scorePercentage: Number(typed.scorePercentage || 0),
+                  submittedAt: String(typed.submittedAt || ''),
+                };
+              })
+            : [],
+        });
+        setLessonQuizOverviewError(null);
+      } catch {
+        setLessonQuizOverview(null);
+        setLessonQuizOverviewError('Failed to load chapter quiz status.');
+      }
+    };
+
+    loadLessonQuizOverview();
+  }, [params.id, selectedLessonId, selectedModule?.id]);
+
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId) || null;
-  const selectedModule = useMemo(
-    () => modules.find((m) => m.lessons.some((l) => l.id === selectedLessonId)) || null,
-    [modules, selectedLessonId]
-  );
   const selectedModuleId = selectedModule?.id || '';
   const lessonsInSelectedModule = selectedModule?.lessons || [];
+  const selectedLessonIndexInModule = lessonsInSelectedModule.findIndex((lesson) => lesson.id === selectedLessonId);
+  const isLastLessonInChapter =
+    selectedLessonIndexInModule >= 0 && selectedLessonIndexInModule === lessonsInSelectedModule.length - 1;
   const selectedIndex = allLessons.findIndex((l) => l.id === selectedLessonId);
   const prevLesson = selectedIndex > 0 ? allLessons[selectedIndex - 1] : null;
   const nextLesson = selectedIndex >= 0 && selectedIndex < allLessons.length - 1 ? allLessons[selectedIndex + 1] : null;
@@ -417,6 +497,35 @@ export default function CoursePlayerPage() {
     setMarking(true);
     setLessonInlineError(null);
     try {
+      if (isLastLessonInChapter) {
+        const moduleId = selectedModule?.id || '';
+        if (!moduleId) {
+          throw new Error('Unable to detect chapter for this lesson.');
+        }
+        const latestQuizRes = await fetch(
+          `/api/student/my-courses/${params.id}/lesson-quiz?moduleId=${encodeURIComponent(moduleId)}`,
+          { cache: 'no-store', credentials: 'include' }
+        );
+        const latestQuizPayload = await latestQuizRes.json().catch(() => ({}));
+        if (!latestQuizRes.ok) {
+          if (latestQuizRes.status === 403) {
+            throw new Error('Your session could not be verified. Refresh the page and try marking the lesson again.');
+          }
+          throw new Error(String(latestQuizPayload?.message || 'Failed to validate chapter quiz status.'));
+        }
+        const chapterQuestionCount = Number(latestQuizPayload?.questionCount || 0);
+        const hasAttempt =
+          Number(latestQuizPayload?.attempts?.length || 0) > 0 ||
+          Number(lessonQuizOverview?.attempts?.length || 0) > 0;
+        if (chapterQuestionCount < CHAPTER_QUIZ_QUESTION_COUNT) {
+          throw new Error(
+            `This chapter quiz is not ready yet. Your teacher must add at least ${CHAPTER_QUIZ_QUESTION_COUNT} questions.`
+          );
+        }
+        if (!hasAttempt) {
+          throw new Error('Please complete the chapter quiz first, then mark this lesson as completed.');
+        }
+      }
       const liveSubmission = selectedLesson.enableLiveEditor
         ? liveSubmissionByLesson[selectedLesson.id] || null
         : null;
@@ -486,17 +595,109 @@ export default function CoursePlayerPage() {
           text: answer || 'I could not find a clear answer in this course content.',
         },
       ]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong while generating the answer.';
       setAssistantMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          text: err?.message || 'Something went wrong while generating the answer.',
+          text: message,
         },
       ]);
     } finally {
       setAssistantLoading(false);
     }
+  };
+
+  const buildSummaryCards = (text: string): SummaryCard[] => {
+    const cleaned = text.replace(/\r/g, '').trim();
+    if (!cleaned) return [];
+
+    const blocks = cleaned
+      .split(/\n\s*\n/g)
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    const cardsFromBlocks = blocks.map((block, idx) => {
+      const lines = block
+        .split('\n')
+        .map((line) => line.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, '').trim())
+        .filter(Boolean);
+      const first = lines[0] || `Point ${idx + 1}`;
+      const title = first.replace(/^#+\s*/, '').slice(0, 70);
+      const body = (lines.slice(1).join(' ') || first).trim();
+      return { title, body };
+    });
+
+    return cardsFromBlocks.slice(0, 8);
+  };
+
+  const summarizeChapter = async () => {
+    if (!selectedLesson?.id || summaryLoading) return;
+    setSummaryLoading(true);
+    setSummaryText('');
+    setSummaryCards([]);
+
+    try {
+      const res = await fetch(`/api/student/my-courses/${params.id}/assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lessonId: selectedLesson.id,
+          question:
+            'Summarize this chapter/lesson in clear study notes. Format with short headings, key points, and quick recap steps.',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || 'Failed to summarize chapter');
+      const answer = String(data?.answer || '').trim();
+      setSummaryText(answer);
+      setSummaryCards(buildSummaryCards(answer));
+      setSummaryView('cards');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to summarize chapter';
+      setLessonInlineError(message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const downloadSummary = () => {
+    if (!summaryText || !selectedLesson) return;
+    const cards = summaryCards.length > 0 ? summaryCards : [{ title: 'Summary', body: summaryText }];
+    const cardsHtml = cards
+      .map(
+        (card) => `
+          <div style="border:1px solid #dbeafe;border-radius:10px;padding:10px;margin:8px 0;">
+            <h3 style="margin:0 0 6px 0;color:#1d4ed8;">${card.title}</h3>
+            <p style="margin:0;line-height:1.6;">${card.body}</p>
+          </div>
+        `
+      )
+      .join('');
+    const wordHtml = `
+      <html>
+        <head><meta charset="utf-8" /></head>
+        <body style="font-family:Calibri,Arial,sans-serif;padding:18px;">
+          <h1 style="color:#1e3a8a;margin-bottom:6px;">Chapter Summary</h1>
+          <p style="margin-top:0;color:#334155;"><strong>Lesson:</strong> ${selectedLesson.title}</p>
+          <h2 style="color:#1e40af;">Summary Cards</h2>
+          ${cardsHtml}
+          <h2 style="color:#1e40af;">Full Text</h2>
+          <p style="white-space:pre-wrap;line-height:1.7;">${summaryText}</p>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([wordHtml], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeTitle = selectedLesson.title.replace(/[^\w\-]+/g, '_');
+    a.href = url;
+    a.download = `chapter-summary-${safeTitle}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -507,7 +708,7 @@ export default function CoursePlayerPage() {
         <p className="text-sm text-red-500">{error}</p>
       ) : (
         <>
-          <div className="relative z-40 mb-3 sm:mb-4">
+          <div className="relative z-10 mb-3 sm:mb-4">
             <div className="mx-auto max-w-7xl rounded-2xl border border-stone-200/80 dark:border-slate-700/80 bg-stone-50/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg px-2.5 sm:px-4 py-2 overflow-visible">
             <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 lg:gap-4 min-h-[52px] sm:min-h-[58px]">
               <div>
@@ -784,6 +985,15 @@ export default function CoursePlayerPage() {
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
                   {selectedLesson.title}
                 </h2>
+                {Number(lessonQuizOverview?.questionCount || 0) >= CHAPTER_QUIZ_QUESTION_COUNT && (
+                  <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    Chapter Quiz:
+                    {' '}
+                    {lessonQuizOverview?.attempts?.[0]
+                      ? `Latest score ${lessonQuizOverview.attempts[0].scorePercentage.toFixed(2)}%`
+                      : 'Not attempted yet'}
+                  </p>
+                )}
 
                 <LessonContentView
                   key={selectedLesson.id}
@@ -800,6 +1010,48 @@ export default function CoursePlayerPage() {
             )}
 
             <div className="mt-4 grid grid-cols-1 sm:flex sm:flex-wrap gap-2 sm:gap-3">
+              <button
+                onClick={summarizeChapter}
+                disabled={!selectedLesson || summaryLoading}
+                className="px-3 sm:px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {summaryLoading ? 'Summarizing...' : 'AI Summarize Chapter'}
+              </button>
+
+              <button
+                onClick={() =>
+                  selectedLesson &&
+                  router.push(`/student/my-courses/${params.id}/quizzes?moduleId=${encodeURIComponent(selectedModule?.id || '')}`)
+                }
+                disabled={
+                  !selectedLesson ||
+                  Number(lessonQuizOverview?.questionCount || 0) < CHAPTER_QUIZ_QUESTION_COUNT
+                }
+                className="px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Chapter Quiz
+              </button>
+
+              {summaryText && (
+                <>
+                  <button
+                    onClick={() => setSummaryView((prev) => (prev === 'cards' ? 'text' : 'cards'))}
+                    className="inline-flex items-center gap-1 px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
+                  >
+                    <Squares2X2Icon className="w-4 h-4" />
+                    {summaryView === 'cards' ? 'Show Text' : 'Show Cards'}
+                  </button>
+
+                  <button
+                    onClick={downloadSummary}
+                    className="inline-flex items-center gap-1 px-3 sm:px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs sm:text-sm font-medium hover:bg-blue-50/40 dark:hover:bg-blue-900/10"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    Download Word
+                  </button>
+                </>
+              )}
+
               <button
                 onClick={markLessonComplete}
                 disabled={!selectedLesson || selectedLesson.completed || marking}
@@ -827,6 +1079,38 @@ export default function CoursePlayerPage() {
             {lessonInlineError && (
               <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
                 {lessonInlineError}
+              </div>
+            )}
+            {!lessonInlineError && lessonQuizOverviewError && (
+              <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
+                {lessonQuizOverviewError}
+              </div>
+            )}
+
+            {summaryText && (
+              <div className="mt-4 rounded-xl border border-blue-100 dark:border-blue-800 p-4 bg-blue-50/30 dark:bg-blue-900/10">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-3">
+                  Chapter AI Summary
+                </h3>
+                {summaryView === 'cards' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(summaryCards.length > 0 ? summaryCards : [{ title: 'Summary', body: summaryText }]).map((card, idx) => (
+                      <div
+                        key={`sum-card-${idx}`}
+                        className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900/50 p-3"
+                      >
+                        <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">{card.title}</p>
+                        <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-200 leading-6 whitespace-pre-wrap">
+                          {card.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-700 dark:text-gray-200 leading-7 whitespace-pre-wrap">
+                    {summaryText}
+                  </div>
+                )}
               </div>
             )}
           </div>

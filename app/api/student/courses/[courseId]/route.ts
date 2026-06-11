@@ -31,13 +31,23 @@ export async function GET(req: Request, { params }: Params) {
         EXISTS(
           SELECT 1 FROM enrollment e 
           WHERE e.courseId = c.id AND e.studentId = ?
-        ) AS enrolled
+        ) AS enrolled,
+        EXISTS(
+          SELECT 1
+          FROM path_enrollment pe
+          JOIN learning_path_course lpc ON lpc.pathId = pe.pathId
+          JOIN learning_path lp ON lp.id = pe.pathId
+          WHERE pe.studentId = ?
+            AND lpc.courseId = c.id
+            AND pe.status IN ('enrolled', 'in_progress')
+            AND lp.status = 'published'
+        ) AS paidViaPath
       FROM course c
       JOIN user u ON u.id = c.teacherId
       WHERE c.id = ?
       LIMIT 1
       `,
-      [user.id, id]
+      [user.id, user.id, id]
     );
 
     if (rows.length === 0) {
@@ -45,6 +55,53 @@ export async function GET(req: Request, { params }: Params) {
     }
 
     const row = rows[0];
+    let pathLocked = false;
+    let lockedByCourseTitle: string | null = null;
+    let lockedPathTitle: string | null = null;
+
+    if (Boolean(row.paidViaPath) && !Boolean(row.enrolled)) {
+      const [sequenceRows] = await pool.query<RowDataPacket[]>(
+        `
+        SELECT
+          lp.title AS pathTitle,
+          prev.courseId AS previousCourseId,
+          cprev.title AS previousCourseTitle,
+          eprev.status AS previousStatus,
+          eprev.progressPercentage AS previousProgress
+        FROM path_enrollment pe
+        JOIN learning_path lp ON lp.id = pe.pathId
+        JOIN learning_path_course currentCourse
+          ON currentCourse.pathId = pe.pathId
+         AND currentCourse.courseId = ?
+        LEFT JOIN learning_path_course prev
+          ON prev.pathId = pe.pathId
+         AND prev.orderNumber = currentCourse.orderNumber - 1
+        LEFT JOIN course cprev ON cprev.id = prev.courseId
+        LEFT JOIN enrollment eprev
+          ON eprev.courseId = prev.courseId
+         AND eprev.studentId = pe.studentId
+        WHERE pe.studentId = ?
+          AND pe.status IN ('enrolled', 'in_progress')
+          AND lp.status = 'published'
+        LIMIT 1
+        `,
+        [id, user.id]
+      );
+
+      if (sequenceRows.length > 0) {
+        const prevId = String(sequenceRows[0].previousCourseId || '').trim();
+        const prevStatus = String(sequenceRows[0].previousStatus || '').toLowerCase();
+        const prevProgress = Number(sequenceRows[0].previousProgress || 0);
+        const prevCompleted = prevStatus === 'completed' || prevProgress >= 100;
+
+        if (prevId && !prevCompleted) {
+          pathLocked = true;
+          lockedByCourseTitle = String(sequenceRows[0].previousCourseTitle || 'previous course');
+          lockedPathTitle = String(sequenceRows[0].pathTitle || 'this path');
+        }
+      }
+    }
+
     const course = {
       id: row.id,
       title: row.title,
@@ -55,6 +112,10 @@ export async function GET(req: Request, { params }: Params) {
       teacherName: row.teacherName || 'Unknown',
       status: row.status,
       enrolled: Boolean(row.enrolled),
+      paidViaPath: Boolean(row.paidViaPath),
+      pathLocked,
+      lockedByCourseTitle,
+      lockedPathTitle,
     };
 
     return NextResponse.json({ course });

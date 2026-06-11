@@ -8,6 +8,7 @@ import {
   MagnifyingGlassIcon,
   UsersIcon,
   AcademicCapIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 type CourseRow = {
@@ -28,6 +29,7 @@ type StudentRow = {
   completedAt?: string | null;
   bestQuizScore?: number;
   quizAttempts?: number;
+  missedSessions?: number;
 };
 
 export default function StudentsPage() {
@@ -40,6 +42,8 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [studentView, setStudentView] = useState<"active" | "completed">("active");
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<StudentRow | null>(null);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -80,21 +84,26 @@ export default function StudentsPage() {
     loadStudents();
   }, [selectedCourseId, studentView]);
 
-  const removeCompletedStudent = async (studentId: string) => {
-    if (!selectedCourseId) return;
-    const ok = window.confirm("Delete this completed student from your list?");
-    if (!ok) return;
+  const openDeleteModal = (student: StudentRow) => {
+    setStudentToDelete(student);
+    setIsDeleteModalOpen(true);
+  };
+
+  const removeCompletedStudent = async () => {
+    if (!selectedCourseId || !studentToDelete) return;
 
     try {
-      setDeletingStudentId(studentId);
+      setDeletingStudentId(studentToDelete.id);
       const res = await fetch("/api/teacher/courses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId: selectedCourseId, studentId }),
+        body: JSON.stringify({ courseId: selectedCourseId, studentId: studentToDelete.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to remove student");
-      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
+      setIsDeleteModalOpen(false);
+      setStudentToDelete(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to remove student");
     } finally {
@@ -123,7 +132,56 @@ export default function StudentsPage() {
       )
     : 0;
   const completedCount = filteredStudents.filter((s) => s.status === "completed").length;
-  const atRiskCount = filteredStudents.filter((s) => Number(s.progress || 0) < 40).length;
+  const studentRiskAlerts = useMemo(() => {
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    return filteredStudents
+      .map((student) => {
+        const avgProgress = Number(student.progress || 0);
+        const avgQuizScore = Number(student.quizAttempts || 0) > 0 ? Number(student.bestQuizScore || 0) : 0;
+        const maxMissedSessions = Number(student.missedSessions || 0);
+        const progressPenalty = clamp((70 - avgProgress) * 0.7, 0, 35);
+        const quizPenalty = clamp((75 - avgQuizScore) * 0.55, 0, 30);
+        const attendancePenalty = clamp(maxMissedSessions * 10, 0, 35);
+        const riskScore = Math.round(clamp(progressPenalty + quizPenalty + attendancePenalty, 0, 100));
+        const riskLevel = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
+        const riskReason =
+          avgProgress < 65
+            ? `Progress is ${Math.round(avgProgress)}%`
+            : avgQuizScore < 70
+              ? `Quiz average is ${Math.round(avgQuizScore)}%`
+              : `Missed sessions: ${maxMissedSessions}`;
+
+        return {
+          studentId: student.id,
+          fullName: student.name,
+          email: student.email,
+          avgProgress,
+          avgQuizScore,
+          maxMissedSessions,
+          riskScore,
+          riskLevel,
+          riskReason,
+          courses: selectedCourse?.name || "",
+        };
+      })
+      .filter((student) => student.avgProgress < 65 || student.avgQuizScore < 70 || student.maxMissedSessions >= 3)
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 6);
+  }, [filteredStudents, selectedCourse?.name]);
+
+  const riskCounts = useMemo(
+    () =>
+      studentRiskAlerts.reduce(
+        (counts, item) => {
+          if (item.riskLevel === "high") counts.high += 1;
+          else if (item.riskLevel === "medium") counts.medium += 1;
+          else counts.low += 1;
+          return counts;
+        },
+        { high: 0, medium: 0, low: 0 }
+      ),
+    [studentRiskAlerts]
+  );
 
   return (
     <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
@@ -231,9 +289,8 @@ export default function StudentsPage() {
         )}
 
         {selectedCourse && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="admin-surface relative overflow-hidden lg:col-span-2 bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
+          <div className="space-y-4">
+            <div className="admin-surface relative overflow-hidden self-start h-fit bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -278,31 +335,100 @@ export default function StudentsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Completed</p>
                   </div>
                 </div>
-              </div>
+            </div>
 
-              <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-5">
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-500 via-orange-400 to-amber-400" />
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                  Risk Snapshot
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">At Risk</span>
-                    <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                      {atRiskCount}
-                    </span>
+            <div className="admin-surface relative overflow-hidden self-start h-fit bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-3.5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/25 dark:text-blue-300">
+                      <ExclamationTriangleIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Student Risk Alert</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Students who need support now</p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">On Track</span>
-                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                      {Math.max(0, filteredStudents.length - atRiskCount)}
-                    </span>
-                  </div>
-                  <div className="pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-gray-500 dark:text-gray-400">
-                    Students with progress below 40% are flagged as at risk.
+                  <div className="flex flex-wrap justify-end items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 px-2 py-1">High {riskCounts.high}</span>
+                    <span className="rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1">Med {riskCounts.medium}</span>
+                    <span className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 px-2 py-1">Low {riskCounts.low}</span>
                   </div>
                 </div>
-              </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
+                  {studentRiskAlerts.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 xl:col-span-2">No high-risk students detected in the current data window.</p>
+                  ) : (
+                    studentRiskAlerts.map((student) => {
+                      const tone =
+                        student.riskLevel === "high"
+                          ? "border-sky-200 bg-sky-50/90 dark:border-sky-900/60 dark:bg-sky-900/20"
+                          : student.riskLevel === "medium"
+                            ? "border-blue-200 bg-blue-50/90 dark:border-blue-900/60 dark:bg-blue-900/20"
+                            : "border-emerald-200 bg-emerald-50/90 dark:border-emerald-900/60 dark:bg-emerald-900/20";
+                      const badge =
+                        student.riskLevel === "high"
+                          ? "text-sky-700 dark:text-sky-300"
+                          : student.riskLevel === "medium"
+                            ? "text-blue-700 dark:text-blue-300"
+                            : "text-emerald-700 dark:text-emerald-300";
+
+                      const riskBar =
+                        student.riskLevel === "high"
+                          ? "from-sky-500 via-blue-500 to-indigo-500"
+                          : student.riskLevel === "medium"
+                            ? "from-blue-500 via-cyan-500 to-teal-400"
+                            : "from-emerald-500 via-teal-500 to-cyan-400";
+
+                      return (
+                        <div
+                          key={student.studentId}
+                          className={`relative overflow-hidden rounded-xl border p-2.5 sm:p-3 shadow-sm hover:shadow transition-all duration-200 ${tone}`}
+                        >
+                          <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${riskBar}`} />
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[15px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{student.fullName}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{student.email}</p>
+                            </div>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/70 dark:bg-slate-950/30 ${badge}`}>
+                              {student.riskLevel.toUpperCase()} RISK
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                            <div className="rounded-md bg-white/70 dark:bg-slate-950/25 p-1.5">
+                              <p className="text-slate-400 dark:text-slate-500">Progress</p>
+                              <p className="font-semibold">{Math.round(student.avgProgress)}%</p>
+                            </div>
+                            <div className="rounded-md bg-white/70 dark:bg-slate-950/25 p-1.5">
+                              <p className="text-slate-400 dark:text-slate-500">Quiz avg</p>
+                              <p className="font-semibold">{Math.round(student.avgQuizScore)}%</p>
+                            </div>
+                            <div className="rounded-md bg-white/70 dark:bg-slate-950/25 p-1.5">
+                              <p className="text-slate-400 dark:text-slate-500">Missed</p>
+                              <p className="font-semibold">{student.maxMissedSessions}</p>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="mb-1 flex items-center justify-between">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">Risk score</p>
+                              <p className={`text-[11px] font-semibold ${badge}`}>{student.riskScore}%</p>
+                            </div>
+                            <div className="h-1.5 w-full rounded-full bg-white/70 dark:bg-slate-950/30 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full bg-gradient-to-r ${riskBar}`}
+                                style={{ width: `${Math.max(6, Math.min(100, student.riskScore))}%` }}
+                              />
+                            </div>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{student.riskReason}</p>
+                          {student.courses ? (
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">{student.courses}</p>
+                          ) : null}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
             </div>
 
             <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4">
@@ -442,7 +568,7 @@ export default function StudentsPage() {
                             <td className="px-4 py-3 text-right">
                               {studentView === "completed" ? (
                                 <button
-                                  onClick={() => removeCompletedStudent(student.id)}
+                                  onClick={() => openDeleteModal(student)}
                                   disabled={deletingStudentId === student.id}
                                   className="text-xs px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
                                 >
@@ -520,7 +646,7 @@ export default function StudentsPage() {
                         <div className="mt-3">
                           {studentView === "completed" ? (
                             <button
-                              onClick={() => removeCompletedStudent(student.id)}
+                              onClick={() => openDeleteModal(student)}
                               disabled={deletingStudentId === student.id}
                               className="text-[11px] px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-60"
                             >
@@ -544,6 +670,36 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+
+      {isDeleteModalOpen && studentToDelete && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Confirm Delete</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
+              Delete completed student <strong>{studentToDelete.name}</strong> from this course list?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  if (deletingStudentId) return;
+                  setIsDeleteModalOpen(false);
+                  setStudentToDelete(null);
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={removeCompletedStudent}
+                disabled={deletingStudentId === studentToDelete.id}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deletingStudentId === studentToDelete.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -178,7 +178,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={studyData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                <AreaChart data={studyData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="studyGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -186,7 +186,12 @@ export default function StudentDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bfdbfe" />
-                  <XAxis dataKey="day" tick={{ fill: '#1e3a8a', fontSize: 11 }} stroke="#1e3a8a" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fill: '#1e3a8a', fontSize: 11 }}
+                    stroke="#1e3a8a"
+                    padding={{ left: 0, right: 0 }}
+                  />
                   <YAxis
                     tick={{ fill: '#1e3a8a', fontSize: 11 }}
                     stroke="#1e3a8a"
@@ -204,8 +209,13 @@ export default function StudentDashboard() {
                     dataKey="minutes"
                     stroke="#3b82f6"
                     strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     fill="url(#studyGradient)"
                     name="Study Time"
+                    connectNulls
+                    dot={{ r: 3, strokeWidth: 1.5, fill: '#3b82f6', stroke: '#ffffff' }}
+                    activeDot={{ r: 5, fill: '#2563eb', stroke: '#ffffff', strokeWidth: 2 }}
                   >
                     <LabelList dataKey="minutes" position="top" formatter={(value: number) => `${value}m`} fontSize={10} />
                   </Area>

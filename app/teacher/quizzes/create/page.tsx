@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Save, X, Plus, Trash2, AlertCircle, Sparkles } from "lucide-react";
 
 type CourseOption = { id: string; name: string };
+type ModuleOption = { id: string; title: string };
 
 type QuestionDraft = {
   questionType: "multiple_choice" | "written" | "true_false";
@@ -17,6 +18,7 @@ type QuestionDraft = {
 
 type StoredQuestion = {
   id: string;
+  moduleId?: string | null;
   questionType?: "multiple_choice" | "written" | "true_false";
   questionText: string;
   options: string[];
@@ -38,7 +40,9 @@ export default function CreateQuizPage() {
   const searchParams = useSearchParams();
 
   const [courseId, setCourseId] = useState("");
+  const [moduleId, setModuleId] = useState("");
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [modules, setModules] = useState<ModuleOption[]>([]);
   const [queuedQuestions, setQueuedQuestions] = useState<QuestionDraft[]>([]);
   const [savedQuestions, setSavedQuestions] = useState<StoredQuestion[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
@@ -52,6 +56,11 @@ export default function CreateQuizPage() {
   const [writtenPct, setWrittenPct] = useState<number>(20);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const shortenLabel = (value: string, max = 42) => {
+    const text = String(value || "").trim();
+    if (text.length <= max) return text;
+    return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+  };
 
   const [currentQuestion, setCurrentQuestion] = useState<QuestionDraft>({
     questionType: "multiple_choice",
@@ -102,6 +111,35 @@ export default function CreateQuizPage() {
   }, []);
 
   useEffect(() => {
+    const loadCourseLessons = async () => {
+      if (!courseId) {
+        setModules([]);
+        setModuleId("");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/content`, { cache: "no-store" });
+        const data = await readJsonResponse(res);
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to load course chapters");
+        }
+        const modulesFromApi: Array<{ id?: string; title?: string }> = Array.isArray(data.modules)
+          ? data.modules
+          : [];
+        const mapped: ModuleOption[] = modulesFromApi.map((moduleItem) => ({
+          id: String(moduleItem.id || ''),
+          title: String(moduleItem.title || 'Untitled chapter'),
+        }));
+        setModules(mapped.filter((item) => item.id));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load course chapters");
+      }
+    };
+
+    loadCourseLessons();
+  }, [courseId]);
+
+  useEffect(() => {
     const loadQuestionBank = async () => {
       if (!courseId) {
         setSavedQuestions([]);
@@ -110,7 +148,9 @@ export default function CreateQuizPage() {
 
       try {
         setLoadingSaved(true);
-        const res = await fetch(`/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`, {
+        const query = new URLSearchParams({ courseId });
+        if (moduleId) query.set("moduleId", moduleId);
+        const res = await fetch(`/api/teacher/question-bank?${query.toString()}`, {
           cache: "no-store",
         });
         const data = (await readJsonResponse(res)) as QuestionBankResponse;
@@ -127,7 +167,7 @@ export default function CreateQuizPage() {
     };
 
     loadQuestionBank();
-  }, [courseId]);
+  }, [courseId, moduleId]);
 
   const addQuestion = () => {
     const text = currentQuestion.text.trim();
@@ -192,7 +232,7 @@ export default function CreateQuizPage() {
       correctAnswer: null,
     });
     setError(null);
-    setSuccess(null);
+    setSuccess("Question added to local queue only. Click Save to Question Bank to persist it.");
   };
 
   const removeQueuedQuestion = (index: number) => {
@@ -218,6 +258,7 @@ export default function CreateQuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
+          moduleId: moduleId || null,
           questionType: question.questionType,
           questionText: question.text,
           options: question.options,
@@ -233,10 +274,9 @@ export default function CreateQuizPage() {
 
       setQueuedQuestions((prev) => prev.filter((_, i) => i !== index));
 
-      const refreshRes = await fetch(
-        `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
-        { cache: "no-store" }
-      );
+      const refreshQuery = new URLSearchParams({ courseId });
+      if (moduleId) refreshQuery.set("moduleId", moduleId);
+      const refreshRes = await fetch(`/api/teacher/question-bank?${refreshQuery.toString()}`, { cache: "no-store" });
       const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
       if (refreshRes.ok) {
         setSavedQuestions(refreshData.questions || []);
@@ -283,6 +323,7 @@ export default function CreateQuizPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
+          moduleId: moduleId || null,
           count: aiCount,
           language: aiLanguage,
           difficulty: aiDifficulty,
@@ -347,7 +388,8 @@ export default function CreateQuizPage() {
     }
 
     if (queuedQuestions.length === 0) {
-      setError("Add at least one question before saving");
+      setError(null);
+      setSuccess("No queued questions to save. The questions listed in Saved Question Bank are already saved.");
       return;
     }
 
@@ -359,6 +401,7 @@ export default function CreateQuizPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             courseId,
+            moduleId: moduleId || null,
             questionType: question.questionType,
             questionText: question.text,
             options: question.options,
@@ -373,10 +416,9 @@ export default function CreateQuizPage() {
         }
       }
 
-      const refreshRes = await fetch(
-        `/api/teacher/question-bank?courseId=${encodeURIComponent(courseId)}`,
-        { cache: "no-store" }
-      );
+      const refreshQuery = new URLSearchParams({ courseId });
+      if (moduleId) refreshQuery.set("moduleId", moduleId);
+      const refreshRes = await fetch(`/api/teacher/question-bank?${refreshQuery.toString()}`, { cache: "no-store" });
       const refreshData = (await readJsonResponse(refreshRes)) as QuestionBankResponse;
       if (refreshRes.ok) {
         setSavedQuestions(refreshData.questions || []);
@@ -419,24 +461,44 @@ export default function CreateQuizPage() {
               value={courseId}
               onChange={(e) => {
                 setCourseId(e.target.value);
+                setModuleId("");
                 setSuccess(null);
                 setError(null);
               }}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-gray-900 dark:text-white"
+              className="w-full max-w-full p-2.5 sm:p-3 pr-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm sm:text-base text-gray-900 dark:text-white"
               required
             >
               <option value="">Select a course</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
-                  {course.name}
+                  {shortenLabel(course.name, 52)}
                 </option>
               ))}
             </select>
 
             {courseId && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Minimum required for student quiz: 10 questions in this course bank.
-              </p>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Quiz Scope
+                </label>
+                <select
+                  value={moduleId}
+                  onChange={(e) => setModuleId(e.target.value)}
+                  className="w-full max-w-full p-2.5 sm:p-3 pr-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900/60 text-sm sm:text-base text-gray-900 dark:text-white"
+                >
+                  <option value="">Final course quiz (all chapters)</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {shortenLabel(module.title, 42)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {moduleId
+                    ? "Chapter quiz: student needs at least 5 questions in this chapter."
+                    : "Final course quiz: student needs at least 10 questions in the course bank."}
+                </p>
+              </div>
             )}
           </div>
 
@@ -451,11 +513,11 @@ export default function CreateQuizPage() {
                     AI will create questions from this course modules and lesson content.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full sm:w-auto items-center gap-2">
                   <select
                     value={aiCount}
                     onChange={(e) => setAiCount(Number(e.target.value))}
-                    className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
+                    className="w-[42%] sm:w-auto p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm"
                   >
                     <option value={3}>3 questions</option>
                     <option value={5}>5 questions</option>
@@ -466,7 +528,7 @@ export default function CreateQuizPage() {
                     type="button"
                     onClick={generateWithAi}
                     disabled={!courseId || generatingAi}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
+                    className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition"
                   >
                     <Sparkles className="w-4 h-4" />
                     {generatingAi ? "Generating..." : "Generate with AI"}
@@ -671,13 +733,13 @@ export default function CreateQuizPage() {
               </>
             )}
 
-            <button
+              <button
               type="button"
               onClick={addQuestion}
               className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm rounded-lg transition flex items-center gap-1.5 sm:gap-2"
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Queue Question
+              Queue Question (Not Saved)
             </button>
           </div>
 
@@ -686,6 +748,10 @@ export default function CreateQuizPage() {
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Ai Queued Questions</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">{queuedQuestions.length} queued</span>
             </div>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Queued questions are local only. They are not saved to DB until you click "Save to Question Bank" or
+              "Save All Queued Questions".
+            </p>
 
             {queuedQuestions.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">No queued questions yet.</p>
@@ -778,7 +844,7 @@ export default function CreateQuizPage() {
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || queuedQuestions.length === 0}
               className="flex-1 py-2 sm:py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs sm:text-sm font-medium transition flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -141,7 +141,7 @@ export default function MyCoursesPage() {
           return (
             <div
               key={c.id}
-              className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+              className="portal-surface bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 flex flex-col h-full"
             >
               <div className="relative overflow-hidden rounded-xl border border-blue-100 dark:border-blue-800 bg-blue-950 mb-4">
                 <img
@@ -178,14 +178,16 @@ export default function MyCoursesPage() {
                 </div>
               </div>
 
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-3 min-h-[72px]">
+                <div className="flex items-start gap-2">
                   <PlayCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <h3 className="font-semibold text-gray-800 dark:text-white">{c.title}</h3>
+                  <h3 className="font-semibold text-gray-800 dark:text-white leading-7 line-clamp-2">
+                    {c.title}
+                  </h3>
                 </div>
               </div>
 
-              <div className="mt-3 h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
+              <div className="mt-0 h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-600 dark:bg-blue-400" style={{ width: `${c.progress}%` }} />
               </div>
               {isCompleted && (
@@ -194,7 +196,7 @@ export default function MyCoursesPage() {
                 </p>
               )}
 
-              <div className="mt-4 flex gap-3 flex-wrap">
+              <div className="pt-4 flex gap-3 flex-wrap mt-auto">
                 <Link
                   href={`/student/my-courses/${c.id}`}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"

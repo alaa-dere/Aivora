@@ -1,15 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useParams } from 'next/navigation';
 import {
   AcademicCapIcon,
   UsersIcon,
   CurrencyDollarIcon,
   ChartBarIcon,
-  BanknotesIcon,
-  ArrowTrendingUpIcon,
   UserCircleIcon,
   EnvelopeIcon,
 } from '@heroicons/react/24/outline';
@@ -102,38 +99,20 @@ const formatDate = (value?: string | null) => {
   if (!value) return '-';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('en-US');
-};
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
 };
 
 export default function TeacherProfilePage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const teacherId = (params?.id as string) || '';
-  const tabParam = (searchParams.get('tab') || 'overview').toLowerCase();
-  const tab: 'overview' | 'courses' | 'students' | 'earnings' =
-    tabParam === 'courses' || tabParam === 'students' || tabParam === 'earnings'
-      ? (tabParam as 'courses' | 'students' | 'earnings')
-      : 'overview';
-
   const [data, setData] = useState<TeacherProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTable, setActiveTable] = useState<'courses' | 'students' | 'earnings'>('courses');
 
   useEffect(() => {
     if (!teacherId) return;
-    let isMounted = true;
+    let mounted = true;
 
     async function load() {
       try {
@@ -141,115 +120,53 @@ export default function TeacherProfilePage() {
         setError('');
         const res = await fetch(`/api/teachers?id=${teacherId}`, { cache: 'no-store' });
         const payload = await res.json();
-        if (!res.ok) {
-          throw new Error(payload?.message || 'Failed to load teacher profile');
-        }
-        if (isMounted) {
-          setData(payload);
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err?.message || 'Failed to load teacher profile');
+        if (!res.ok) throw new Error(payload?.message || 'Failed to load teacher profile');
+        if (mounted) setData(payload);
+      } catch (err: unknown) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load teacher profile');
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     }
 
     load();
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [teacherId]);
 
   const stats = data?.stats;
-  const overviewCards = useMemo(() => {
-    return [
-      {
-        title: 'Total Courses',
-        value: stats?.totalCourses ?? 0,
-        icon: AcademicCapIcon,
-      },
-      {
-        title: 'Total Students',
-        value: stats?.totalStudents ?? 0,
-        icon: UsersIcon,
-      },
-      {
-        title: 'Total Revenue',
-        value: money(stats?.totalRevenue ?? 0),
-        icon: CurrencyDollarIcon,
-      },
-      {
-        title: 'Completion Rate',
-        value: `${stats?.totalEnrollments ? Math.round((stats.completedEnrollments / stats.totalEnrollments) * 100) : 0}%`,
-        icon: ChartBarIcon,
-      },
-    ];
-  }, [stats]);
+  const completionRate = stats?.totalEnrollments
+    ? Math.round(((stats.completedEnrollments || 0) / stats.totalEnrollments) * 100)
+    : 0;
+
+  const overviewCards = useMemo(
+    () => [
+      { title: 'Total Courses', value: stats?.totalCourses ?? 0, icon: AcademicCapIcon },
+      { title: 'Total Students', value: stats?.totalStudents ?? 0, icon: UsersIcon },
+      { title: 'Total Revenue', value: money(stats?.totalRevenue ?? 0), icon: CurrencyDollarIcon },
+      { title: 'Completion Rate', value: `${completionRate}%`, icon: ChartBarIcon },
+    ],
+    [stats, completionRate]
+  );
 
   return (
-      <div className="min-h-screen bg-transparent p-4 md:p-6">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm mb-6">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="h-11 w-11 rounded-xl bg-sky-50 dark:bg-white/10 border border-sky-100 dark:border-white/20 flex items-center justify-center">
-              {data?.teacher.imageUrl ? (
-                <img
-                  src={data.teacher.imageUrl}
-                  alt={data.teacher.fullName || 'Teacher'}
-                  className="h-full w-full rounded-xl object-cover"
-                />
-              ) : (
-                <UserCircleIcon className="h-7 w-7 text-sky-700 dark:text-white" />
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Teacher Profile</h1>
-              <p className="text-sm text-slate-700 dark:text-blue-100 mt-1 font-medium">
-                {data?.teacher.fullName || '-'}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-blue-200 mt-1 inline-flex items-center gap-1.5">
-                <EnvelopeIcon className="w-4 h-4" />
-                {data?.teacher.email || '-'}
-              </p>
-              <div className="mt-2.5 sm:mt-3">
-                <div className="flex items-center gap-3 sm:gap-6 text-[13px] sm:text-sm font-semibold overflow-x-auto whitespace-nowrap pb-1 pr-2">
-                {[
-                  { key: 'overview', label: 'Overview' },
-                  { key: 'courses', label: 'Courses' },
-                  { key: 'students', label: 'Students' },
-                  { key: 'earnings', label: 'Earnings' },
-                ].map((item) => (
-                  <Link
-                    key={item.key}
-                    href={`/dashboard/teachers/${teacherId}?tab=${item.key}`}
-                    className={`shrink-0 transition-colors ${
-                      tab === item.key
-                        ? 'text-blue-700 dark:text-blue-300'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                </div>
-                <div className="mt-2 h-px w-full bg-gradient-to-r from-blue-300 via-sky-300 to-cyan-300 dark:from-blue-800 dark:via-sky-800 dark:to-cyan-800" />
-              </div>
-            </div>
-          </div>
-          <div />
-        </div>
+    <div className="min-h-screen bg-transparent p-4 md:p-6 transition-colors duration-300">
+      <div className="mb-5">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">Teacher Profile</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Overview, courses, students, and earnings in one place.
+        </p>
       </div>
 
-        {loading && (
-          <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-gray-500 dark:text-gray-300">
-            Loading teacher profile...
-          </div>
-        )}
+      {loading && (
+        <div className="admin-surface relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/75 backdrop-blur shadow-md p-10 text-center text-gray-500 dark:text-gray-300">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200 dark:from-green-700 dark:via-sky-700 dark:to-blue-700" />
+          Loading teacher profile...
+        </div>
+      )}
 
       {!loading && error && (
         <div className="bg-red-50 dark:bg-red-900/30 rounded-2xl border border-red-200 dark:border-red-800 p-6 text-center text-red-700 dark:text-red-200">
@@ -257,83 +174,225 @@ export default function TeacherProfilePage() {
         </div>
       )}
 
-        {!loading && !error && data && (
-          <div className="space-y-6">
-            {tab === 'overview' && (
-              <div className="space-y-6">
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      {!loading && !error && data && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+            <aside className="xl:col-span-3">
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 p-5 pt-7 bg-white dark:bg-slate-900/70 shadow-sm h-full min-h-[560px]">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200 dark:from-green-700 dark:via-sky-700 dark:to-blue-700" />
+                <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-5">
+                  Profile Details
+                </h2>
+
+                <div className="flex flex-col items-center text-center mb-6 mt-2">
+                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 dark:from-white/10 dark:to-white/10 border border-green-100 dark:border-white/20 flex items-center justify-center overflow-hidden">
+                    {data.teacher.imageUrl ? (
+                      <img
+                        src={data.teacher.imageUrl}
+                        alt={data.teacher.fullName || 'Teacher'}
+                        className="h-full w-full rounded-2xl object-cover"
+                      />
+                    ) : (
+                      <UserCircleIcon className="h-12 w-12 text-blue-700 dark:text-white" />
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <p className="font-bold text-slate-900 dark:text-white text-lg leading-tight">
+                      {data.teacher.fullName}
+                    </p>
+                    <p className="text-[15px] text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5 mt-1">
+                      <EnvelopeIcon className="w-4 h-4" />
+                      {data.teacher.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <ProfileField label="Joined" value={formatDate(data.teacher.createdAt)} />
+                  <ProfileField label="Last Updated" value={formatDate(data.teacher.updatedAt)} />
+                  <ProfileField
+                    label="Average Progress"
+                    value={Number.isFinite(stats?.avgProgress) ? `${Number(stats?.avgProgress || 0).toFixed(1)}%` : '0%'}
+                  />
+                  <ProfileField label="Total Enrollments" value={String(stats?.totalEnrollments ?? 0)} />
+                </div>
+              </div>
+            </aside>
+
+            <section className="xl:col-span-9 space-y-4 pt-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {overviewCards.map((card) => (
                   <InfoCard key={card.title} title={card.title} value={card.value} icon={card.icon} />
                 ))}
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Profile Details</h2>
-                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <dt className="text-gray-500">Full Name</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{data.teacher.fullName}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Email</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{data.teacher.email}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Joined</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{formatDate(data.teacher.createdAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Last Updated</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{formatDate(data.teacher.updatedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Average Progress</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">
-                        {Number.isFinite(stats?.avgProgress) ? `${Number(stats?.avgProgress || 0).toFixed(1)}%` : '0%'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Total Enrollments</dt>
-                      <dd className="font-semibold text-gray-900 dark:text-white">{stats?.totalEnrollments ?? 0}</dd>
-                    </div>
-                  </dl>
-                </div>
+              <div className="flex flex-wrap gap-2 mt-10">
+                <button
+                  type="button"
+                  onClick={() => setActiveTable('courses')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTable === 'courses'
+                      ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+                      : 'bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <AcademicCapIcon className="w-4 h-4" />
+                  Courses
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTable('students')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTable === 'students'
+                      ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+                      : 'bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <UsersIcon className="w-4 h-4" />
+                  Students
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTable('earnings')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTable === 'earnings'
+                      ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800'
+                      : 'bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <CurrencyDollarIcon className="w-4 h-4" />
+                  Earnings
+                </button>
+              </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-slate-900/60 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Financial Snapshot</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <SummaryRow label="Gross Sales" value={money(stats?.grossSales ?? 0)} />
-                    <SummaryRow label="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} />
-                    <SummaryRow label="This Month" value={money(stats?.monthRevenue ?? 0)} />
+              <div className="md:hidden space-y-4">
+                {activeTable === 'courses' && (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                      <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Courses</h2>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {data.courses.length === 0 ? (
+                        <p className="px-1 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No courses found for this teacher.</p>
+                      ) : (
+                        data.courses.map((course) => (
+                          <div key={course.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 line-clamp-2">{course.title}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{formatDate(course.createdAt)}</p>
+                              </div>
+                              <StatusPill status={course.status} />
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <div className="rounded-lg bg-white/80 dark:bg-slate-950/30 p-2">
+                                <p>Students</p>
+                                <p className="mt-1 font-semibold text-slate-800 dark:text-slate-100">{course.students}</p>
+                              </div>
+                              <div className="rounded-lg bg-white/80 dark:bg-slate-950/30 p-2">
+                                <p>Price</p>
+                                <p className="mt-1 font-semibold text-slate-800 dark:text-slate-100">{money(course.price)}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                              <span>Revenue</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-100">{money(course.revenue)}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
+                )}
 
-          {tab === 'courses' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Pill label={`Published ${stats?.publishedCourses ?? 0}`} />
-                <Pill label={`Draft ${stats?.draftCourses ?? 0}`} />
-                <Pill label={`Archived ${stats?.archivedCourses ?? 0}`} />
+                {activeTable === 'students' && (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                      <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Students</h2>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {data.students.length === 0 ? (
+                        <p className="px-1 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No active students currently taking this teacher&apos;s courses.</p>
+                      ) : (
+                        data.students.map((student) => (
+                          <div key={student.enrollmentId} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 line-clamp-2">{student.fullName}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{student.email}</p>
+                              </div>
+                              <EnrollmentStatus status={student.status} />
+                            </div>
+                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{student.courseTitle}</p>
+                            <div className="mt-3 flex items-center gap-3">
+                              <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-green-500"
+                                  style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-300">
+                                {Number(student.progressPercentage || 0).toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">{formatDate(student.enrolledAt)}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTable === 'earnings' && (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+                      <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">Earnings</h2>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {data.transactions.length === 0 ? (
+                        <p className="px-1 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No transactions recorded yet.</p>
+                      ) : (
+                        data.transactions.map((tx) => (
+                          <div key={tx.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-100 line-clamp-2">{tx.studentName || '-'}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{tx.courseTitle || '-'}</p>
+                              </div>
+                              <TransactionStatus status={tx.status} />
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                              <span>{formatDate(tx.dateTime)}</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                {money(tx.teacherShare || 0, tx.currency || 'USD')}
+                              </span>
+                            </div>
+                            <div className="mt-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
+                                {tx.type}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+              {activeTable === 'courses' && (
+                <TableShell title="Courses">
+                  <thead className="text-slate-500 dark:text-slate-400">
                     <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Course</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Price</th>
-                      <th className="px-4 py-3 font-medium">Students</th>
-                      <th className="px-4 py-3 font-medium">Revenue</th>
-                      <th className="px-4 py-3 font-medium">Created</th>
+                      <th className="px-4 py-2.5 font-medium">Course</th>
+                      <th className="px-4 py-2.5 font-medium">Status</th>
+                      <th className="px-4 py-2.5 font-medium">Price</th>
+                      <th className="px-4 py-2.5 font-medium">Students</th>
+                      <th className="px-4 py-2.5 font-medium">Revenue</th>
+                      <th className="px-4 py-2.5 font-medium">Created</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800">
                     {data.courses.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
@@ -342,186 +401,81 @@ export default function TeacherProfilePage() {
                       </tr>
                     ) : (
                       data.courses.map((course) => (
-                        <tr key={course.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-gray-900 dark:text-white">{course.title}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <StatusPill status={course.status} />
-                          </td>
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                            {money(course.price)}
-                          </td>
+                        <tr key={course.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{course.title}</td>
+                          <td className="px-4 py-3"><StatusPill status={course.status} /></td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{money(course.price)}</td>
                           <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{course.students}</td>
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                            {money(course.revenue)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
-                            {formatDate(course.createdAt)}
-                          </td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{money(course.revenue)}</td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDate(course.createdAt)}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
-                </table>
-                </div>
+                </TableShell>
+              )}
 
-                <div className="md:hidden space-y-2">
-                  {data.courses.length === 0 ? (
-                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
-                      No courses found for this teacher.
-                    </div>
-                  ) : (
-                    data.courses.map((course) => (
-                      <div
-                        key={`mobile-course-${course.id}`}
-                        className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
-                      >
-                        <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{course.title}</p>
-                        <div className="mt-2">
-                          <StatusPill status={course.status} />
-                        </div>
-                        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
-                          <div className="text-slate-500 dark:text-slate-400">Price</div>
-                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{money(course.price)}</div>
-                          <div className="text-slate-500 dark:text-slate-400">Students</div>
-                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{course.students}</div>
-                          <div className="text-slate-500 dark:text-slate-400">Revenue</div>
-                          <div className="text-right font-semibold text-slate-800 dark:text-slate-100">{money(course.revenue)}</div>
-                          <div className="text-slate-500 dark:text-slate-400">Created</div>
-                          <div className="text-right text-slate-700 dark:text-slate-300">{formatDate(course.createdAt)}</div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tab === 'students' && (
-            <div className="space-y-4">
-              <div>
-                <div className="mb-3">
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    Students Currently Taking Courses{' '}
-                    <span className="text-gray-400 font-normal">({data.students.length})</span>
-                  </p>
-                </div>
-                <div>
-                  <div className="hidden md:block overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
-                      <tr className="text-left">
-                        <th className="px-4 py-3 font-medium">Student</th>
-                        <th className="px-4 py-3 font-medium">Course</th>
-                        <th className="px-4 py-3 font-medium">Status</th>
-                        <th className="px-4 py-3 font-medium">Progress</th>
-                        <th className="px-4 py-3 font-medium">Enrolled</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {data.students.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
-                            No active students currently taking this teacher&apos;s courses.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.students.map((student) => (
-                          <tr key={student.enrollmentId} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
-                            <td className="px-4 py-3">
-                              <div className="font-semibold text-gray-900 dark:text-white">{student.fullName}</div>
-                              <div className="text-xs text-gray-500">{student.email}</div>
-                            </td>
-                            <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{student.courseTitle}</td>
-                            <td className="px-4 py-3">
-                              <EnrollmentStatus status={student.status} />
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <div className="h-2 w-20 rounded-full bg-gray-200 dark:bg-gray-700">
-                                  <div
-                                    className="h-2 rounded-full bg-blue-600"
-                                    style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-gray-500 dark:text-gray-300">
-                                  {Number(student.progressPercentage || 0).toFixed(0)}%
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-gray-500 dark:text-gray-300">
-                              {formatDate(student.enrolledAt)}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                  </div>
-
-                  <div className="md:hidden space-y-2">
-                    {data.students.length === 0 ? (
-                      <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
-                        No active students currently taking this teacher&apos;s courses.
-                      </div>
-                    ) : (
-                      data.students.map((student) => (
-                        <div
-                          key={`mobile-student-${student.enrollmentId}`}
-                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
-                        >
-                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{student.fullName}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 break-words">{student.email}</p>
-                          <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-1.5">{student.courseTitle}</p>
-                          <div className="mt-2">
-                            <EnrollmentStatus status={student.status} />
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-700">
-                              <div
-                                className="h-2 rounded-full bg-blue-600"
-                                style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-gray-500 dark:text-gray-300">
-                              {Number(student.progressPercentage || 0).toFixed(0)}%
-                            </span>
-                          </div>
-                          <div className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                            Enrolled: <span className="text-slate-700 dark:text-slate-300">{formatDate(student.enrolledAt)}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {tab === 'earnings' && (
-            <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InfoCard title="Teacher Revenue" value={money(stats?.totalRevenue ?? 0)} icon={BanknotesIcon} />
-                <InfoCard title="This Month" value={money(stats?.monthRevenue ?? 0)} icon={ArrowTrendingUpIcon} />
-              </div>
-
-              <div>
-                <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300">
+              {activeTable === 'students' && (
+                <TableShell title="Students">
+                  <thead className="text-slate-500 dark:text-slate-400">
                     <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Student</th>
-                      <th className="px-4 py-3 font-medium">Course</th>
-                      <th className="px-4 py-3 font-medium">Type</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium text-right">Teacher Share</th>
+                      <th className="px-4 py-2.5 font-medium">Student</th>
+                      <th className="px-4 py-2.5 font-medium">Course</th>
+                      <th className="px-4 py-2.5 font-medium">Status</th>
+                      <th className="px-4 py-2.5 font-medium">Progress</th>
+                      <th className="px-4 py-2.5 font-medium">Enrolled</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800">
+                    {data.students.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
+                          No active students currently taking this teacher&apos;s courses.
+                        </td>
+                      </tr>
+                    ) : (
+                      data.students.map((student) => (
+                        <tr key={student.enrollmentId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          <td className="px-4 py-3">
+                            <div className="text-slate-800 dark:text-slate-100">{student.fullName}</div>
+                            <div className="text-xs text-slate-500">{student.email}</div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{student.courseTitle}</td>
+                          <td className="px-4 py-3"><EnrollmentStatus status={student.status} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="h-2 w-20 rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div
+                                  className="h-2 rounded-full bg-green-500"
+                                  style={{ width: `${Math.min(100, Math.max(0, student.progressPercentage || 0))}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-300">
+                                {Number(student.progressPercentage || 0).toFixed(0)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDate(student.enrolledAt)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </TableShell>
+              )}
+
+              {activeTable === 'earnings' && (
+                <TableShell title="Earnings">
+                  <thead className="text-slate-500 dark:text-slate-400">
+                    <tr className="text-left">
+                      <th className="px-4 py-2.5 font-medium">Date</th>
+                      <th className="px-4 py-2.5 font-medium">Student</th>
+                      <th className="px-4 py-2.5 font-medium">Course</th>
+                      <th className="px-4 py-2.5 font-medium">Type</th>
+                      <th className="px-4 py-2.5 font-medium">Status</th>
+                      <th className="px-4 py-2.5 font-medium text-right">Teacher Share</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800">
                     {data.transactions.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-gray-500 dark:text-gray-300">
@@ -530,20 +484,16 @@ export default function TeacherProfilePage() {
                       </tr>
                     ) : (
                       data.transactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDateTime(tx.dateTime)}</td>
-                          <td className="px-4 py-3">
-                            <span className="font-semibold text-gray-900 dark:text-white">{tx.studentName || '-'}</span>
-                          </td>
+                        <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-300">{formatDate(tx.dateTime)}</td>
+                          <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{tx.studentName || '-'}</td>
                           <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{tx.courseTitle || '-'}</td>
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
                               {tx.type}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <TransactionStatus status={tx.status} />
-                          </td>
+                          <td className="px-4 py-3"><TransactionStatus status={tx.status} /></td>
                           <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
                             {money(tx.teacherShare || 0, tx.currency || 'USD')}
                           </td>
@@ -551,75 +501,57 @@ export default function TeacherProfilePage() {
                       ))
                     )}
                   </tbody>
-                </table>
-                </div>
-
-                <div className="md:hidden space-y-2">
-                  {data.transactions.length === 0 ? (
-                    <div className="px-3 py-10 text-center text-gray-500 dark:text-gray-300 text-sm">
-                      No transactions recorded yet.
-                    </div>
-                  ) : (
-                    data.transactions.map((tx) => (
-                      <div
-                        key={`mobile-earning-${tx.id}`}
-                        className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2.5"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">{tx.studentName || '-'}</p>
-                          <p className="text-[13px] font-semibold text-slate-900 dark:text-slate-100">
-                            {money(tx.teacherShare || 0, tx.currency || 'USD')}
-                          </p>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{tx.courseTitle || '-'}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{formatDateTime(tx.dateTime)}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
-                            {tx.type}
-                          </span>
-                          <TransactionStatus status={tx.status} />
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+                </TableShell>
+              )}
+            </section>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: any }) {
+function TableShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="group relative overflow-hidden h-full min-h-[132px] sm:min-h-[150px] bg-white/85 dark:bg-slate-900/75 backdrop-blur p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-200">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400 via-sky-400 to-cyan-300 dark:from-slate-700 dark:via-sky-700 dark:to-cyan-700" />
-      <div className="flex justify-between mb-2 sm:mb-3">
-        <span className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-sky-600 dark:text-sky-300" />
+    <div className="hidden md:block relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 shadow-sm">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">
+        <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">{title}</h2>
+      </div>
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full text-sm">{children}</table>
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({ title, value, icon: Icon }: { title: string; value: string | number; icon: typeof AcademicCapIcon }) {
+  return (
+    <div className="group relative overflow-hidden h-full min-h-[124px] bg-white dark:bg-slate-900/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-green-200 via-sky-300 to-blue-200 dark:from-green-700 dark:via-sky-700 dark:to-blue-700" />
+      <div className="flex justify-between mb-2">
+        <span className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-blue-700 dark:text-blue-300" />
         </span>
       </div>
-      <p className="text-[28px] sm:text-2xl leading-none font-bold text-gray-800 dark:text-white">{value}</p>
-      <p className="text-xs sm:text-sm text-gray-500 mt-1">{title}</p>
+      <p className="text-2xl font-bold text-gray-800 dark:text-white leading-tight">{value}</p>
+      <p className="text-[13px] text-gray-500 mt-1">{title}</p>
     </div>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function ProfileField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="admin-surface flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 px-4 py-3">
-      <span className="text-slate-600 dark:text-slate-300 text-sm">{label}</span>
-      <span className="font-semibold text-gray-900 dark:text-white">{value}</span>
+    <div className="py-1 text-center">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-sm text-slate-800 dark:text-slate-200 mt-1">{value}</p>
     </div>
   );
 }
 
-function Pill({ label }: { label: string }) {
+function EnrollmentStatus({ status }: { status: 'enrolled' | 'in_progress' | 'completed' | 'dropped' }) {
   return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-800">
-      {label}
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+      {status.replace('_', ' ')}
     </span>
   );
 }
@@ -628,26 +560,10 @@ function StatusPill({ status }: { status: 'draft' | 'published' | 'archived' }) 
   const style =
     status === 'published'
       ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
-      : status === 'archived'
-      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-      : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800';
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>
-      {status}
-    </span>
-  );
-}
-
-function EnrollmentStatus({ status }: { status: 'enrolled' | 'in_progress' | 'completed' | 'dropped' }) {
-  const style =
-    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>
-      {status.replace('_', ' ')}
-    </span>
-  );
+      : status === 'draft'
+        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+        : 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+  return <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>{status}</span>;
 }
 
 function TransactionStatus({ status }: { status: 'success' | 'failed' | 'pending' }) {
@@ -655,12 +571,7 @@ function TransactionStatus({ status }: { status: 'success' | 'failed' | 'pending
     status === 'success'
       ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800'
       : status === 'failed'
-      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
-      : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800';
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>
-      {status}
-    </span>
-  );
+        ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+        : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800';
+  return <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${style}`}>{status}</span>;
 }

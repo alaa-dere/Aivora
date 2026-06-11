@@ -19,7 +19,9 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -98,15 +100,17 @@ export default function AdminCategoriesPage() {
     setIsAddEditModalOpen(true);
   };
 
-  const handleDelete = async (category: Category) => {
-    const confirmed = window.confirm(
-      `Delete category "${category.name}"?\nCourses and paths under it will become uncategorized.`
-    );
-    if (!confirmed) return;
+  const handleDelete = (category: Category) => {
+    setCategoryToDelete(category);
+    setIsDeleteModalOpen(true);
+  };
 
-    setDeletingId(category.id);
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+
+    setDeletingId(categoryToDelete.id);
     try {
-      const res = await fetch(`/api/categories/${category.id}`, {
+      const res = await fetch(`/api/categories/${categoryToDelete.id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -115,9 +119,11 @@ export default function AdminCategoriesPage() {
         return;
       }
 
-      if (editingCategoryId === category.id) {
+      if (editingCategoryId === categoryToDelete.id) {
         resetForm();
       }
+      setIsDeleteModalOpen(false);
+      setCategoryToDelete(null);
       await fetchCategories();
     } catch (error) {
       console.error('Failed to delete category:', error);
@@ -131,17 +137,17 @@ export default function AdminCategoriesPage() {
     <div className="min-h-screen bg-transparent p-3 sm:p-4 md:p-6 transition-colors duration-300 space-y-4 sm:space-y-6">
       <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur p-5 shadow-sm">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-cyan-400" />
-        <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 transition"
+                className="group flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200 active:scale-95 shrink-0"
                 aria-label="Back"
                 title="Back"
               >
-                <ArrowLeftIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <ArrowLeftIcon className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-0.5" />
               </button>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
             </div>
@@ -153,7 +159,8 @@ export default function AdminCategoriesPage() {
             onClick={openAddModal}
             className="group inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-semibold text-xs sm:text-sm shadow-sm border border-emerald-200 transition-all duration-200 active:scale-95 whitespace-nowrap dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800"
           >
-            <PlusIcon className="w-5 h-5 transition-transform duration-200 group-hover:rotate-90" />
+            <span className="text-base leading-none font-bold">+</span>
+            <PlusIcon className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" />
             Add New Category
           </button>
         </div>
@@ -217,7 +224,7 @@ export default function AdminCategoriesPage() {
                         <button
                           type="button"
                           onClick={() => handleEdit(category)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
                         >
                           <PencilSquareIcon className="w-4 h-4" />
                           Edit
@@ -226,7 +233,7 @@ export default function AdminCategoriesPage() {
                           type="button"
                           onClick={() => handleDelete(category)}
                           disabled={deletingId === category.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-60 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
                         >
                           <TrashIcon className="w-4 h-4" />
                           {deletingId === category.id ? 'Deleting...' : 'Delete'}
@@ -271,7 +278,7 @@ export default function AdminCategoriesPage() {
                   <button
                     type="button"
                     onClick={() => handleEdit(category)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 text-[11px]"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-[11px]"
                   >
                     <PencilSquareIcon className="w-4 h-4" />
                     Edit
@@ -280,7 +287,7 @@ export default function AdminCategoriesPage() {
                     type="button"
                     onClick={() => handleDelete(category)}
                     disabled={deletingId === category.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-[11px] disabled:opacity-60"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-[11px] disabled:opacity-60"
                   >
                     <TrashIcon className="w-4 h-4" />
                     {deletingId === category.id ? 'Deleting...' : 'Delete'}
@@ -372,6 +379,44 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
+
+      {isDeleteModalOpen && categoryToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="admin-surface w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 py-4 bg-blue-950 dark:bg-gray-950 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold">Delete Category</h2>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="text-white hover:text-gray-200 transition">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                Delete category <span className="font-semibold">&quot;{categoryToDelete.name}&quot;</span>? Courses and paths under it will become uncategorized.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deletingId === categoryToDelete.id}
+                  className="px-6 py-2 rounded-lg bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 dark:bg-slate-900/40 dark:text-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20 transition disabled:opacity-60"
+                >
+                  {deletingId === categoryToDelete.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+

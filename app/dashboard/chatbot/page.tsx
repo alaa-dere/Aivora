@@ -92,11 +92,6 @@ export default function AdminChatbotPage() {
               }`}
             >
               {message.text}
-              {message.role === 'assistant' && message.source && (
-                <div className="mt-1 text-[11px] opacity-80">
-                  Source: {message.source === 'openai' ? 'OpenAI' : 'Rule-based'}
-                </div>
-              )}
             </div>
           ))}
           {loading && (

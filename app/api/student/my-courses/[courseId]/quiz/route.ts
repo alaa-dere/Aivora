@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { ensureCourseQuizSchema } from '@/lib/ensure-course-quiz-schema';
 import {
   createStudentNotification,
+  createAdminNotification,
   createTeacherNotification,
 } from '@/lib/notifications-write';
 
@@ -21,7 +22,14 @@ type QuestionRow = RowDataPacket & {
   correctOptionIndex: number;
 };
 
+type NormalizedQuizAnswer = {
+  questionId: string;
+  selectedOptionIndex: number | null;
+  textAnswer: string;
+};
+
 const PASSING_SCORE_PERCENTAGE = 60;
+const COURSE_QUIZ_QUESTION_COUNT = 10;
 
 async function ensureTeacherNotificationTable() {
   await pool.query(`
@@ -146,13 +154,29 @@ async function createQuizNotifications(input: {
   scorePercentage: number;
   passed: boolean;
   attemptNumber: number;
+  previousLatestScore: number | null;
+  previousBestScore: number | null;
   issuedCertificateNow: boolean;
   issuedCertificateOnRetake: boolean;
 }) {
   const baseTitle = input.passed ? 'Quiz passed' : 'Quiz failed';
+  const trendMessage =
+    input.previousLatestScore === null
+      ? 'This is the student first final-quiz attempt.'
+      : input.scorePercentage > input.previousLatestScore
+        ? `Improved by ${(input.scorePercentage - input.previousLatestScore).toFixed(2)} points from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`
+        : input.scorePercentage < input.previousLatestScore
+          ? `Dropped by ${(input.previousLatestScore - input.scorePercentage).toFixed(2)} points from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`
+          : `No change from the previous attempt (${input.previousLatestScore.toFixed(2)}%).`;
+  const bestMessage =
+    input.previousBestScore === null
+      ? ''
+      : input.scorePercentage >= input.previousBestScore
+        ? ` New best score; previous best was ${input.previousBestScore.toFixed(2)}%.`
+        : ` Previous best remains ${input.previousBestScore.toFixed(2)}%.`;
   const baseMessage = `${input.studentName} ${
     input.passed ? 'passed' : 'failed'
-  } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}).`;
+  } the quiz for ${input.courseTitle} with ${input.scorePercentage.toFixed(2)}% (attempt #${input.attemptNumber}). ${trendMessage}${bestMessage}`;
 
   await createTeacherNotification({
     teacherId: input.teacherId,
@@ -191,6 +215,98 @@ async function createQuizNotifications(input: {
   }
 }
 
+async function enrollStudentInNextPathCourses(input: {
+  studentId: string;
+  studentName: string;
+  completedCourseId: string;
+  completedCourseTitle: string;
+}) {
+  const [pathRows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT
+      pe.pathId,
+      lp.title AS pathTitle,
+      lpc.orderNumber
+    FROM path_enrollment pe
+    JOIN learning_path lp ON lp.id = pe.pathId
+    JOIN learning_path_course lpc
+      ON lpc.pathId = pe.pathId
+     AND lpc.courseId = ?
+    WHERE pe.studentId = ?
+      AND pe.status IN ('enrolled', 'in_progress')
+      AND lp.status = 'published'
+    `,
+    [input.completedCourseId, input.studentId]
+  );
+
+  for (const row of pathRows) {
+    const pathId = String(row.pathId || '').trim();
+    const pathTitle = String(row.pathTitle || 'Learning Path');
+    const currentOrder = Number(row.orderNumber || 0);
+    if (!pathId || !currentOrder) continue;
+
+    const [nextRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT lpc.courseId, c.title AS courseTitle, c.teacherId
+      FROM learning_path_course lpc
+      JOIN course c ON c.id = lpc.courseId
+      WHERE lpc.pathId = ?
+        AND lpc.orderNumber > ?
+        AND c.status = 'published'
+      ORDER BY lpc.orderNumber ASC
+      LIMIT 1
+      `,
+      [pathId, currentOrder]
+    );
+
+    if (nextRows.length === 0) {
+      await pool.query<ResultSetHeader>(
+        `
+        UPDATE path_enrollment
+        SET status = 'completed', progressPercentage = 100, completedAt = NOW()
+        WHERE pathId = ? AND studentId = ?
+        `,
+        [pathId, input.studentId]
+      );
+      continue;
+    }
+
+    const nextCourseId = String(nextRows[0].courseId || '').trim();
+    const nextCourseTitle = String(nextRows[0].courseTitle || 'Course');
+    const nextTeacherId = String(nextRows[0].teacherId || '').trim();
+    if (!nextCourseId) continue;
+
+    await pool.query<ResultSetHeader>(
+      `
+      INSERT IGNORE INTO enrollment
+        (id, studentId, courseId, enrolledAt, status, progressPercentage)
+      VALUES
+        (UUID(), ?, ?, NOW(), 'enrolled', 0)
+      `,
+      [input.studentId, nextCourseId]
+    );
+
+    await createAdminNotification({
+      type: 'course_enroll',
+      title: 'Path Progress: Next Course Enrollment',
+      message: `${input.studentName} completed "${input.completedCourseTitle}" in path "${pathTitle}" and was auto-enrolled in "${nextCourseTitle}".`,
+      studentId: input.studentId,
+      courseId: nextCourseId,
+    });
+
+    if (nextTeacherId) {
+      await createTeacherNotification({
+        teacherId: nextTeacherId,
+        studentId: input.studentId,
+        courseId: nextCourseId,
+        type: 'course_enroll',
+        title: 'New Path Student Enrollment',
+        message: `${input.studentName} was auto-enrolled in your course "${nextCourseTitle}" through path "${pathTitle}".`,
+      });
+    }
+  }
+}
+
 async function getEnrollment(studentId: string, courseId: string) {
   const [rows] = await pool.query<RowDataPacket[]>(
     `
@@ -206,7 +322,12 @@ async function getEnrollment(studentId: string, courseId: string) {
 
 async function getQuestionCount(courseId: string) {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT COUNT(*) AS total FROM course_question_bank WHERE courseId = ?`,
+    `
+    SELECT COUNT(*) AS total
+    FROM course_question_bank
+    WHERE courseId = ?
+      AND moduleId IS NULL
+    `,
     [courseId]
   );
   return Number(rows[0]?.total || 0);
@@ -246,7 +367,7 @@ export async function GET(req: Request, { params }: Params) {
       String(enrollment.status || '').toLowerCase() === 'completed' ||
       Number(enrollment.progressPercentage || 0) >= 100;
 
-    const canStart = completed && questionCount >= 10;
+    const canStart = completed && questionCount >= COURSE_QUIZ_QUESTION_COUNT;
 
     if (mode === 'start') {
       if (!completed) {
@@ -255,9 +376,11 @@ export async function GET(req: Request, { params }: Params) {
           { status: 400 }
         );
       }
-      if (questionCount < 10) {
+      if (questionCount < COURSE_QUIZ_QUESTION_COUNT) {
         return NextResponse.json(
-          { message: 'This course needs at least 10 bank questions before quiz can start.' },
+          {
+            message: `This course needs at least ${COURSE_QUIZ_QUESTION_COUNT} final-course questions before quiz can start.`,
+          },
           { status: 400 }
         );
       }
@@ -267,8 +390,9 @@ export async function GET(req: Request, { params }: Params) {
         SELECT id, questionType, questionText, optionsJson
         FROM course_question_bank
         WHERE courseId = ?
+          AND moduleId IS NULL
         ORDER BY RAND()
-        LIMIT 10
+        LIMIT ${COURSE_QUIZ_QUESTION_COUNT}
         `,
         [normalizedCourseId]
       );
@@ -398,23 +522,42 @@ export async function POST(req: Request, { params }: Params) {
 
     const [attemptCountRows] = await pool.query<RowDataPacket[]>(
       `
-      SELECT COUNT(*) AS total
+      SELECT
+        COUNT(*) AS total,
+        MAX(scorePercentage) AS bestScore
       FROM course_quiz_attempt
       WHERE courseId = ? AND studentId = ?
       `,
       [normalizedCourseId, user.id]
     );
     const attemptNumber = Number(attemptCountRows[0]?.total || 0) + 1;
+    const previousBestScore =
+      attemptNumber > 1 && attemptCountRows[0]?.bestScore !== null && attemptCountRows[0]?.bestScore !== undefined
+        ? Number(attemptCountRows[0].bestScore)
+        : null;
 
-    if (answersRaw.length !== 10) {
+    const [previousAttemptRows] = await pool.query<RowDataPacket[]>(
+      `
+      SELECT scorePercentage
+      FROM course_quiz_attempt
+      WHERE courseId = ? AND studentId = ?
+      ORDER BY submittedAt DESC
+      LIMIT 1
+      `,
+      [normalizedCourseId, user.id]
+    );
+    const previousLatestScore =
+      previousAttemptRows.length > 0 ? Number(previousAttemptRows[0].scorePercentage || 0) : null;
+
+    if (answersRaw.length !== COURSE_QUIZ_QUESTION_COUNT) {
       return NextResponse.json(
-        { message: 'A quiz submission must include exactly 10 questions.' },
+        { message: `A quiz submission must include exactly ${COURSE_QUIZ_QUESTION_COUNT} questions.` },
         { status: 400 }
       );
     }
 
     const questionIdSet = new Set<string>();
-    const normalizedAnswers = answersRaw
+    const normalizedAnswers: NormalizedQuizAnswer[] = answersRaw
       .map((item: unknown) => {
         const maybe = (item || {}) as {
           questionId?: string;
@@ -422,15 +565,15 @@ export async function POST(req: Request, { params }: Params) {
           textAnswer?: string;
         };
         return {
-        questionId: String(maybe.questionId || '').trim(),
-        selectedOptionIndex:
-          maybe.selectedOptionIndex === null || maybe.selectedOptionIndex === undefined
-            ? null
-            : Number(maybe.selectedOptionIndex),
-        textAnswer: String(maybe.textAnswer || '').trim(),
-      };
+          questionId: String(maybe.questionId || '').trim(),
+          selectedOptionIndex:
+            maybe.selectedOptionIndex === null || maybe.selectedOptionIndex === undefined
+              ? null
+              : Number(maybe.selectedOptionIndex),
+          textAnswer: String(maybe.textAnswer || '').trim(),
+        };
       })
-      .filter((item) => Boolean(item.questionId));
+      .filter((item: NormalizedQuizAnswer) => Boolean(item.questionId));
 
     for (const answer of normalizedAnswers) {
       if (questionIdSet.has(answer.questionId)) {
@@ -439,8 +582,11 @@ export async function POST(req: Request, { params }: Params) {
       questionIdSet.add(answer.questionId);
     }
 
-    if (questionIdSet.size !== 10) {
-      return NextResponse.json({ message: '10 unique question IDs are required.' }, { status: 400 });
+    if (questionIdSet.size !== COURSE_QUIZ_QUESTION_COUNT) {
+      return NextResponse.json(
+        { message: `${COURSE_QUIZ_QUESTION_COUNT} unique question IDs are required.` },
+        { status: 400 }
+      );
     }
 
     const questionIds = Array.from(questionIdSet);
@@ -450,12 +596,12 @@ export async function POST(req: Request, { params }: Params) {
       `
       SELECT id, questionType, questionText, optionsJson, correctOptionIndex
       FROM course_question_bank
-      WHERE courseId = ? AND id IN (${placeholders})
+      WHERE courseId = ? AND moduleId IS NULL AND id IN (${placeholders})
       `,
       [normalizedCourseId, ...questionIds]
     );
 
-    if (questionRows.length !== 10) {
+    if (questionRows.length !== COURSE_QUIZ_QUESTION_COUNT) {
       return NextResponse.json(
         { message: 'Some submitted questions are invalid for this course.' },
         { status: 400 }
@@ -578,9 +724,20 @@ export async function POST(req: Request, { params }: Params) {
       scorePercentage: roundedScore,
       passed: roundedScore >= PASSING_SCORE_PERCENTAGE,
       attemptNumber,
+      previousLatestScore,
+      previousBestScore,
       issuedCertificateNow,
       issuedCertificateOnRetake,
     });
+
+    if (issuedCertificateNow) {
+      await enrollStudentInNextPathCourses({
+        studentId: user.id,
+        studentName,
+        completedCourseId: course.id,
+        completedCourseTitle: course.title,
+      });
+    }
 
     return NextResponse.json({
       success: true,

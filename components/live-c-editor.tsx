@@ -9,8 +9,17 @@ type LiveEditorSubmission = {
   error?: string | null;
 };
 
+const normalizeEditorCode = (raw: string) =>
+  String(raw || "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "  ")
+    .replace(/(#[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, "$1\n\n$2")
+    .replace(/\n{3,}/g, "\n\n");
+
 function formatCCodeForEditor(input: string): string {
-  const src = String(input || "").trim();
+  const src = normalizeEditorCode(input).trim();
   if (!src) return "";
 
   // Keep #include and preprocessor directives on their own lines first.
@@ -31,6 +40,9 @@ function formatCCodeForEditor(input: string): string {
     .split("\n")
     .map((line) => line.trimEnd())
     .join("\n")
+    .replace(/(#[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\/[^\n]+)\n([^\n])/g, "$1\n\n$2")
+    .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, "$1\n\n$2")
     .trim();
 }
 
@@ -136,7 +148,7 @@ export default function LiveCEditor({
         rows={18}
         value={code}
         onChange={(e) => {
-          setCode(e.target.value);
+          setCode(formatCCodeForEditor(e.target.value));
           setHasRun(false);
         }}
         className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-sm font-mono text-gray-900 dark:text-gray-100"

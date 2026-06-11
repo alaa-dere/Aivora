@@ -19,6 +19,9 @@ type QuizQuestion = {
 type OutlineLesson = {
   title: string;
   description: string;
+  content?: string;
+  hint?: string;
+  hints?: string[];
   type: 'text' | 'code_example' | 'video_embed';
   durationMinutes: number;
   enableLiveEditor?: boolean;
@@ -178,6 +181,11 @@ function sanitizeLessonForDb(lesson: OutlineLesson): OutlineLesson {
     ...lesson,
     title: clampText(lesson.title, DB_TITLE_MAX),
     description: clampText(lesson.description || '', DB_DESC_MAX),
+    content: lesson.content ? clampText(lesson.content, 12000) : lesson.content,
+    hint: lesson.hint ? clampText(lesson.hint, 400) : lesson.hint,
+    hints: Array.isArray(lesson.hints)
+      ? lesson.hints.map((h) => clampText(String(h || ''), 300)).filter(Boolean).slice(0, 3)
+      : lesson.hints,
     starterCode: lesson.starterCode ? clampText(lesson.starterCode, 12000) : lesson.starterCode,
     expectedOutput: lesson.expectedOutput ? clampText(lesson.expectedOutput, 500) : lesson.expectedOutput,
     resources: (lesson.resources || []).map((r) => clampText(r, 500)).filter(Boolean),
@@ -530,6 +538,158 @@ function isYouTubeUrl(url: string): boolean {
   }
 }
 
+function extractYouTubeVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'youtu.be') {
+      const id = parsed.pathname.replace(/^\/+/, '').split('/')[0] || '';
+      return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+    }
+    if (host.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v') || '';
+      return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function validateYouTubeUrl(url: string): Promise<boolean> {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+      { signal: controller.signal }
+    );
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+type VideoRelevanceResult = { valid: boolean; reason?: string };
+
+function tokenizeForMatch(text: string): string[] {
+  const stopWords = new Set([
+    'the', 'and', 'for', 'with', 'from', 'this', 'that', 'into', 'using', 'use', 'your', 'you',
+    'lesson', 'learn', 'intro', 'introduction', 'guide', 'basics', 'overview', 'about',
+  ]);
+  const normalized = String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) return [];
+  const words = normalized.split(' ').filter((w) => w.length > 2 && !stopWords.has(w));
+  return Array.from(new Set(words));
+}
+
+async function validateYouTubeRelevance(
+  videoUrl: string,
+  lessonTitle: string,
+  youtubeApiKey: string
+): Promise<VideoRelevanceResult> {
+  const videoId = extractYouTubeVideoId(videoUrl);
+  if (!videoId) return { valid: false, reason: 'Invalid YouTube URL format' };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${youtubeApiKey}`,
+      { signal: controller.signal }
+    );
+    if (!res.ok) return { valid: false, reason: `YouTube API error (${res.status})` };
+
+    const data = (await res.json()) as {
+      items?: Array<{ snippet?: { title?: string; description?: string } }>;
+    };
+    const snippet = data.items?.[0]?.snippet;
+    if (!snippet) return { valid: false, reason: 'Video not found' };
+
+    const videoText = `${String(snippet.title || '')} ${String(snippet.description || '')}`;
+    const lessonTokens = tokenizeForMatch(lessonTitle);
+    if (lessonTokens.length === 0) {
+      return { valid: true };
+    }
+
+    const videoTokensText = ` ${tokenizeForMatch(videoText).join(' ')} `;
+    const matchCount = lessonTokens.filter((w) => videoTokensText.includes(` ${w} `)).length;
+    const matchRatio = matchCount / lessonTokens.length;
+    const threshold = lessonTokens.length <= 3 ? 0.6 : lessonTokens.length <= 6 ? 0.5 : 0.4;
+
+    return {
+      valid: matchRatio >= threshold,
+      reason:
+        matchRatio >= threshold
+          ? undefined
+          : `Low relevance (${Math.round(matchRatio * 100)}% keyword match, min ${Math.round(threshold * 100)}%)`,
+    };
+  } catch {
+    return { valid: false, reason: 'YouTube relevance check failed' };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function keepOnlyWorkingYouTubeVideos(modules: OutlineModule[]): Promise<OutlineModule[]> {
+  const youtubeApiKey = String(process.env.YOUTUBE_API_KEY || '').trim();
+  const urlChecks = new Map<string, Promise<boolean>>();
+  const relevanceChecks = new Map<string, Promise<VideoRelevanceResult>>();
+
+  const checkAvailability = (url: string) => {
+    const key = url.trim().toLowerCase();
+    const existing = urlChecks.get(key);
+    if (existing) return existing;
+    const pending = validateYouTubeUrl(url);
+    urlChecks.set(key, pending);
+    return pending;
+  };
+
+  const checkRelevance = (url: string, lessonContext: string) => {
+    const key = `${url.trim().toLowerCase()}|${lessonContext.trim().toLowerCase()}`;
+    const existing = relevanceChecks.get(key);
+    if (existing) return existing;
+    const pending = validateYouTubeRelevance(url, lessonContext, youtubeApiKey);
+    relevanceChecks.set(key, pending);
+    return pending;
+  };
+
+  const validatedModules = await Promise.all(
+    modules.map(async (module) => {
+      const lessons = await Promise.all(
+        module.lessons.map(async (lesson) => {
+          const videoUrl = String(lesson.videoUrl || '').trim();
+          if (!videoUrl) return lesson;
+          const isAvailable = await checkAvailability(videoUrl);
+          if (!isAvailable) return { ...lesson, videoUrl: undefined };
+
+          if (!youtubeApiKey) return lesson;
+
+          const context = `${module.title} ${lesson.title}`.trim();
+          const relevance = await checkRelevance(videoUrl, context);
+          if (!relevance.valid) {
+            console.warn(`Video rejected for "${lesson.title}": ${relevance.reason || 'Not relevant'}`);
+            return { ...lesson, videoUrl: undefined };
+          }
+          return lesson;
+        })
+      );
+      return { ...module, lessons };
+    })
+  );
+
+  return validatedModules;
+}
+
 function topicVideoUrl(topicText: string): string {
   const topic = topicText.toLowerCase();
   if (/if|else|condition|branch|logic operator|boolean/.test(topic)) {
@@ -629,7 +789,9 @@ function isUrlFormatValid(url: string): boolean {
 
 function lessonToContent(lesson: OutlineLesson): string {
   const chunks: string[] = [];
-  chunks.push(`Lesson: ${lesson.title}`);
+  const authoredContent = String(lesson.content || '').trim();
+  if (authoredContent) chunks.push(authoredContent);
+  else chunks.push(`Lesson: ${lesson.title}`);
   if (lesson.enableLiveEditor && lesson.liveEditorLanguage === 'javascript') {
     chunks.push('> Note: Live JavaScript editor runs in the browser. Avoid `require`, `process`, and server startup code here.');
   }
@@ -766,6 +928,11 @@ function normalizeOutline(parsed: unknown): OutlineModule[] | null {
         lessons.push({
         title: lessonTitle,
         description: String(lessonObj.description || '').trim(),
+        content: String(lessonObj.content || '').trim() || undefined,
+        hint: String(lessonObj.hint || '').trim() || undefined,
+        hints: Array.isArray(lessonObj.hints)
+          ? lessonObj.hints.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 3)
+          : undefined,
         type,
         durationMinutes: Number.isFinite(duration) ? duration : 10,
         enableLiveEditor: Boolean(lessonObj.enableLiveEditor),
@@ -1507,12 +1674,31 @@ async function generateOutlineOnlyFromAi(input: {
   constraints: GenerationConstraints;
 }): Promise<OutlineOnlyModule[] | null> {
  const instruction =
-  'Return JSON only: {"modules":[{"title":"","description":"","lessons":[{"title":"","objective":""}]}]}. ' +
-  `${input.constraints.minModules}-${input.constraints.maxModules} modules, 4-5 lessons each. ` +
-  'Each lesson title must be specific and action-oriented (e.g. "Handle POST requests with body-parser"). ' +
-  'Objective = one sentence: what the student will be able to DO after this lesson. ' +
-  'No duplicate lesson titles. Lessons must progress logically from basics to advanced. ' +
-  'Topic-specific only — no generic programming lessons.';
+  `Return ONLY a raw JSON object - no markdown, no backticks, no explanation.\n` +
+  `Schema: {"modules":[{"title":"","description":"","lessons":[{"title":"","objective":""}]}]}\n\n` +
+  `RULES:\n` +
+  `[1] STRUCTURE:\n` +
+  `  - Exactly ${input.constraints.minModules}-${input.constraints.maxModules} modules\n` +
+  `  - Exactly 4-5 lessons per module\n` +
+  `  - Modules must progress logically: fundamentals -> core concepts -> advanced -> real-world application\n` +
+  `[2] MODULE:\n` +
+  `  - title: short and specific (e.g. "Routing and Middleware in Express")\n` +
+  `  - description: 1-2 sentences about what this module covers and why it matters\n` +
+  `[3] LESSON:\n` +
+  `  - title: action-oriented and specific (e.g. "Handle POST Requests with body-parser")\n` +
+  `  - objective: one sentence starting with a verb describing what the student will DO\n` +
+  `  - Lessons within each module must progress from simple to complex\n` +
+  `  - No duplicate lesson titles across the entire course\n` +
+  `[4] RELEVANCE:\n` +
+  `  - Every module and lesson must be specific to the course topic\n` +
+  `  - No generic programming lessons (e.g. "Introduction to Variables", "What is a Function")\n` +
+  `  - No filler modules (e.g. "Conclusion", "Final Thoughts", "Recap")\n` +
+  `[5] DEPENDENCY ORDER (CRITICAL):\n` +
+  `  - Every lesson must ONLY assume knowledge taught in previous lessons within this course\n` +
+  `  - Never reference a concept before it is introduced (e.g. do not use "middleware" in module 1 if middleware is taught in module 3)\n` +
+  `  - Each module must be fully understandable using only what was covered before it\n` +
+  `  - Lesson order within each module: define -> demonstrate -> apply -> edge cases\n` +
+  `  - If a concept is a prerequisite, it must appear earlier in the outline, not assumed as prior knowledge\n`;
 
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -1526,7 +1712,12 @@ async function generateOutlineOnlyFromAi(input: {
         { role: 'system', content: instruction },
         {
           role: 'user',
-          content: `Create OUTLINE ONLY for: ${input.prompt}. Course title: ${input.courseTitle}`,
+          content:
+            `Create OUTLINE ONLY for: ${input.prompt}.\n` +
+            `Course title: ${input.courseTitle}\n` +
+            `Audience: complete beginners - assume zero prior knowledge.\n` +
+            `Priority: logical dependency order over topic completeness. ` +
+            `If a topic requires too many prerequisites, defer it to a later module or drop it.`,
         },
       ],
     }),
@@ -1545,19 +1736,39 @@ async function generateLessonDetailsFromAi(input: {
   lessonTitle: string;
   objective: string;
   preferredLanguage: LiveEditorLanguage;
+  moduleIndex: number;
+  totalModules: number;
+  lessonIndex: number;
+  totalLessons: number;
+  priorConcepts: string[];
 }): Promise<OutlineLesson | null> {
  const instruction =
-  `Return JSON only: {"title":"","description":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"${input.preferredLanguage}","starterCode":"","exampleCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice","questionText":"","options":[""],"correctOptionIndex":0}]}. ` +
+  `Return JSON only: {"title":"","description":"","content":"markdown string with full lesson content","hint":"","type":"text|code_example|video_embed","durationMinutes":10,"enableLiveEditor":false,"liveEditorLanguage":"${input.preferredLanguage}","starterCode":"","exampleCode":"","expectedOutput":"","videoUrl":"","resources":[""],"quizQuestions":[{"questionType":"multiple_choice","questionText":"","options":["","","",""],"correctOptionIndex":0}],"hints":["","",""]}. ` +
   'Rules: ' +
   '1. description = 60-80 words MAX. Cover: what+why+pitfall. No filler. ' +
   '2. enableLiveEditor=true only for code_example type. starterCode must match liveEditorLanguage exactly (no language mixing). For javascript only: browser-safe JS (no require/import/process/express()). For C code: return valid compilable C11 code with balanced braces, one declaration per line, each #define on its own line, and use escaped newline in strings ("\\\\n", never raw line-break inside quotes). Make it warning-free where possible (correct size_t usage and printf specifiers such as %zu). Use proper line breaks and indentation (never one-line compressed code), and include one empty line between logical steps/blocks for readability. expectedOutput must match the starterCode output format for that language. ' +
   '2.1 For lessons that include an explanation example, fill exampleCode with a short readable snippet (5-20 lines) using clear new lines and indentation. ' +
-'3. quizQuestions: exactly 1 question per lesson when enableLiveEditor=true. The question MUST be about starter-code output and MUST include lesson-specific context (for example the lesson title) so question text is unique across lessons. The correct answer (correctOptionIndex) must exactly match expectedOutput. Wrong options must be plausible but incorrect. If enableLiveEditor=false, quizQuestions=[].' + 
+  '[QUIZ & LIVE EDITOR]: If enableLiveEditor=false: quizQuestions=[], hints=[], skip this section entirely. ' +
+  '[Q1] QUESTION RULES: Exactly 1 question per lesson. Question must be about the starterCode output specifically. Include the lesson title in questionText to ensure uniqueness across lessons. Keep it short and clear (max 20 words). Never ask about concepts not yet introduced in this or previous lessons. Never repeat a question from another lesson. Vary question style (e.g. "What does this code print?", "What is the value of X?", "Which line causes Y?"). ' +
+  '[Q1.1] QUESTION-CONTEXT MATCH: The quiz question must closely match the exact example used in this lesson (starterCode/exampleCode), not a generic variant. Ask about the same variables/functions/data used in the lesson snippet so the question feels like a direct continuation of that example. ' +
+  '[Q2] OPTIONS RULES: Exactly 4 options. correctOptionIndex must point to the option that matches expectedOutput exactly (same format and whitespace). Wrong options must be plausible but incorrect (off-by-one, common type/format mistakes, wrong order, or common beginner mistakes). No trick or absurd options. ' +
+  '[Q3] LIVE EDITOR LANGUAGE: liveEditorLanguage must match the course language exactly. Never mix languages. starterCode must be valid and runnable in liveEditorLanguage. ' +
+  '[Q4] HINTS (progressive): hints must be an array of exactly 3 strings. hints[0]=general direction (after 1st failed attempt), hints[1]=more specific operation/method (after 2nd failed attempt), hints[2]=almost answer structure without exact code (after 3rd failed attempt). Each hint must be exactly 1 sentence. Never reveal the answer or show code in hints. Hints must relate directly to starterCode and expectedOutput. ' +
+  '[LIVE EDITOR SELECTION]: enableLiveEditor=true only when the lesson genuinely benefits from hands-on practice. Target 60-70% of lessons per module with live editor. MUST have live editor for specific practical tasks (e.g. handling POST requests, writing SQL JOINs), lessons requiring writing/running code, and lessons with clear testable expectedOutput. Must NOT have live editor for introductions/overviews, conceptual reading-first lessons (e.g. event loop), lessons not demonstrable in a self-contained snippet, and video_embed lessons. When enableLiveEditor=false: starterCode="", exampleCode="", expectedOutput="", quizQuestions=[], hints=[]. ' +
+  '[CODE FORMATTING]: exampleCode and starterCode must use real newlines, never \\n as a literal string. Each statement should be on its own line. Add one blank line between logical blocks. Never write code as one compressed line. Use consistent indentation (2 or 4 spaces). ' +
+  '[STARTER CODE FORMATTING]: Every comment must be on its own dedicated line and never inline after code. Never place a comment and a statement on the same line. Every statement must be on its own line. Never compress multiple statements into one line. Comments must go ABOVE the code they describe, not beside it. Example WRONG: x = 1 # set x. RIGHT: # set x then x = 1 on the next line. ' +
+  'CRITICAL: starterCode must be valid, runnable code with no syntax errors. Every opening bracket/brace/parenthesis must have a matching closing one. List comprehensions must be complete: [expr for var in iterable if condition]. Never split a statement across lines unless using proper Python line continuation. Test mentally: would this code run without SyntaxError? ' +
  '4. videoUrl: one relevant YouTube link. resources: 2-3 real working links strictly related to this lesson and course language (no unrelated links). ' +
   '5. Choose type based on lesson content. If the lesson is about a specific practical task (e.g. handling POST requests), prefer code_example. If it’s about understanding concepts, prefer text. video_embed if it’s best explained visually (e.g. event loop). ' +
   '6. durationMinutes: 10-20 mins. Longer for code_example, shorter for text. ' +
   '7. Ensure all content is highly relevant to the topic and course title. No generic programming lessons. ' +
-  '8. No duplicate lesson titles within the same module.';
+  '8. No duplicate lesson titles within the same module. ' +
+  '9. content (markdown): Write a full lesson explanation in Markdown format. Structure: "## What is [concept]" (clear definition), "## Why it matters" (real-world relevance), "## How it works" (step-by-step), "## Common mistakes" (2-3 pitfalls with fixes), and "## Summary" (3-4 bullet recap). Use **bold** for key terms and `inline code` for syntax. Do not repeat the lesson title as a heading. Length: 300-500 words. Language: same as course language (code examples aligned with liveEditorLanguage). ' +
+  '10. [HINT]: hint must be 1-2 sentences max. It should guide the student toward the solution without revealing it. Focus on WHAT to do, not HOW exactly. Never provide the answer and never include code in the hint. ' +
+  '[CONTENT FORMATTING]: Use real newlines between every section, paragraph, and list item. Never use \\n as a literal string; always use actual line breaks. Always add exactly one blank line before and after ## headings. Always add exactly one blank line before and after code blocks. Never write more than 3 sentences in one paragraph. Never dump all content as one long block of text. Use **bold** for key terms and `inline code` for any syntax or function name. ' +
+  '[CODE CONSISTENCY]: starterCode and exampleCode must be about the same concept and use the same approach. exampleCode should demonstrate the concept with a complete working example. starterCode should use the same concept in a slightly different scenario where the student completes or modifies logic. Never use a completely different scenario in starterCode vs exampleCode. The student should be able to look at exampleCode and immediately understand what to do in starterCode. ' +
+  '[EXAMPLE CODE UNIQUENESS]: Each code example in the lesson content must be unique; never repeat the same example twice. exampleCode must be different from any code snippet inside content. starterCode must be different from exampleCode (same concept, different scenario). If referencing a previous example, describe it in text instead of repeating code. ' +
+  '[CODE DEPENDENCY ORDER]: starterCode, exampleCode, and all code snippets inside content must ONLY use concepts and syntax introduced in this lesson or taught in previous lessons within this course. Never use a function, method, or pattern before it is introduced in the outline. If a concept is needed for the example but not yet taught, simplify the example instead. This applies to starterCode, exampleCode, content code blocks, and quiz question context. Example violation: using .reduce() in module 1 lesson 2 when .reduce() is taught in module 3. When in doubt, use simpler code over complete code.';
 
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -1572,8 +1783,14 @@ async function generateLessonDetailsFromAi(input: {
         {
           role: 'user',
           content:
-            `Course: ${input.courseTitle}\nTopic: ${input.topic}\nModule: ${input.moduleTitle}\n` +
-            `Lesson: ${input.lessonTitle}\nObjective: ${input.objective}\n` +
+            `Course: ${input.courseTitle}\n` +
+            `Topic: ${input.topic}\n` +
+            `Module: ${input.moduleTitle}\n` +
+            `Lesson: ${input.lessonTitle}\n` +
+            `Objective: ${input.objective}\n` +
+            `Module position: ${input.moduleIndex + 1} of ${input.totalModules}\n` +
+            `Lesson position: ${input.lessonIndex + 1} of ${input.totalLessons}\n` +
+            `Concepts taught so far: ${input.priorConcepts.join(', ')}\n` +
             'Generate full lesson details.',
         },
       ],
@@ -1582,7 +1799,17 @@ async function generateLessonDetailsFromAi(input: {
 
   if (!res.ok) return null;
   const data: unknown = await res.json();
-  const parsed = extractJsonObject(extractOpenAiText(data)) as Record<string, unknown> | null;
+  const rawText = extractOpenAiText(data);
+  const fixedText = rawText.replace(
+    /"content"\s*:\s*"((?:[^"\\]|\\[\s\S])*)"/g,
+    (match, contentValue) => {
+      const fixed = String(contentValue || '')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '  ');
+      return `"content": ${JSON.stringify(fixed)}`;
+    }
+  );
+  const parsed = extractJsonObject(fixedText) as Record<string, unknown> | null;
   if (!parsed) return null;
 
   const title = clampText(String(parsed.title || input.lessonTitle), DB_TITLE_MAX);
@@ -1624,7 +1851,149 @@ async function generateLessonDetailsFromAi(input: {
     shouldUseSimpleStarter(finalLang, safeStarterCode) ? simpleStarterForLanguage(finalLang, 0) : null;
   const shouldUseContextStarter =
     Boolean(simpleStarter) || isGenericStarter(finalLang, safeStarterCode);
-  const exampleCode = normalizeGeneratedCode(exampleCodeRaw);
+  const fixCode = (raw: string) =>
+    String(raw || '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/;(\s*)(?=[^\s])/g, ';\n')
+      .replace(/(#[^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .replace(/(\/\/[^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .replace(/(\/\*[^*]*\*\/)\n([^\n])/g, '$1\n\n$2')
+      .trim();
+  const fixStarterCodeFormatting = (code: string, lang: string): string => {
+    if (!code) return code;
+    return String(code)
+      .split('\n')
+      .flatMap((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return [line];
+
+        if (lang === 'python' || lang === 'javascript') {
+          const inlineComment =
+            lang === 'python'
+              ? /^([^#'"]+?)\s+(#.+)$/
+              : /^([^/'"]+?)\s+(\/\/.+)$/;
+          const match = trimmed.match(inlineComment);
+          if (match && match[1].trim() && match[2].trim()) {
+            const indent = line.match(/^(\s*)/)?.[1] ?? '';
+            return [`${indent}${match[2].trim()}`, `${indent}${match[1].trim()}`];
+          }
+        }
+        return [line];
+      })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const ensureNewlinesAroundSyntax = (text: string): string => {
+    return String(text || '')
+      .replace(/([^\n])\n```/g, '$1\n\n```')
+      .replace(/```\n([^\n])/g, '```\n\n$1')
+      .replace(/([^\n`])`([^`]+)`([^\n`])/g, '$1\n`$2`\n$3')
+      .replace(/([^\n*])\*\*([^*]+)\*\*([^\n*])/g, '$1\n**$2**\n$3')
+      .replace(/([^\n])\n([-*] )/g, '$1\n\n$2')
+      .replace(/([^\n])\n(\d+\. )/g, '$1\n\n$2')
+      .replace(/([^\n])\n(> )/g, '$1\n\n$2')
+      .replace(/(> [^\n]+)\n([^\n>])/g, '$1\n\n$2')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const fixPythonCode = (code: string): string => {
+    if (!code) return code;
+
+    const raw = String(code)
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '    ')
+      .replace(/;\s*(?=\S)/g, '\n');
+
+    const baseLines = raw.split('\n');
+    const normalizedLines: string[] = [];
+    let currentIndent = 0;
+    let roundBalance = 0;
+    let squareBalance = 0;
+    let curlyBalance = 0;
+
+    for (const line of baseLines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        normalizedLines.push('');
+        continue;
+      }
+
+      // Move inline comments to their own line for readability.
+      const pyInlineComment = trimmed.match(/^([^#'"]+?)\s+(#.+)$/);
+      if (pyInlineComment && pyInlineComment[1]?.trim() && pyInlineComment[2]?.trim()) {
+        normalizedLines.push(`${' '.repeat(currentIndent)}${pyInlineComment[2].trim()}`);
+      }
+
+      const codePart = pyInlineComment ? pyInlineComment[1].trim() : trimmed;
+
+      // Dedent for continuation keywords before writing current line.
+      if (/^(elif\b|else:|except\b|finally:)/.test(codePart)) {
+        currentIndent = Math.max(0, currentIndent - 4);
+      }
+
+      let candidate = codePart;
+
+      // Repair broken one-line list/set/dict comprehensions with missing spacing.
+      candidate = candidate
+        .replace(/\[\s*([^\]]+?)\s+for\s+/g, '[ $1 for ')
+        .replace(/\{\s*([^}]+?)\s+for\s+/g, '{ $1 for ')
+        .replace(/\s+if\s+([^\]]+)\]/g, ' if $1 ]');
+
+      normalizedLines.push(`${' '.repeat(currentIndent)}${candidate}`.replace(/\s+$/g, ''));
+
+      // Track brackets to close unbalanced structures later.
+      for (const ch of candidate) {
+        if (ch === '(') roundBalance += 1;
+        if (ch === ')') roundBalance -= 1;
+        if (ch === '[') squareBalance += 1;
+        if (ch === ']') squareBalance -= 1;
+        if (ch === '{') curlyBalance += 1;
+        if (ch === '}') curlyBalance -= 1;
+      }
+
+      // Increase indent after block-open lines.
+      if (/:$/.test(candidate) && /^(def\b|class\b|if\b|elif\b|else:|for\b|while\b|try:|except\b|finally:|with\b)/.test(candidate)) {
+        currentIndent += 4;
+      }
+    }
+
+    while (roundBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)})`);
+      roundBalance -= 1;
+    }
+    while (squareBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)}]`);
+      squareBalance -= 1;
+    }
+    while (curlyBalance > 0) {
+      normalizedLines.push(`${' '.repeat(currentIndent)}}`);
+      curlyBalance -= 1;
+    }
+
+    return normalizedLines
+      .join('\n')
+      .replace(/(#[^\n]+)\n([^\n#])/g, '$1\n\n$2')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+  const exampleCode = fixCode(normalizeGeneratedCode(exampleCodeRaw) || '');
+  const formattedStarter = fixStarterCodeFormatting(safeStarterCode || '', finalLang);
+  const safeStarterCodeFinal = finalLang === 'python' ? fixPythonCode(formattedStarter) : formattedStarter;
+  const exampleAsStarterFormatted = fixStarterCodeFormatting(exampleCode || '', finalLang);
+  const exampleAsStarter =
+    finalLang === 'python' ? fixPythonCode(exampleAsStarterFormatted) : exampleAsStarterFormatted;
+  const shouldAlignStarterToExample =
+    Boolean(exampleAsStarter) &&
+    (!safeStarterCodeFinal || shouldUseContextStarter || isGenericStarter(finalLang, safeStarterCodeFinal || ''));
+  const finalStarterCode = shouldAlignStarterToExample
+    ? (exampleAsStarter || safeStarterCodeFinal || contextual.code)
+    : (shouldUseContextStarter ? contextual.code : safeStarterCodeFinal);
+  const finalExpectedOutput = shouldAlignStarterToExample
+    ? (String(parsed.expectedOutput || '').trim() || contextual.out || 'done')
+    : (shouldUseContextStarter ? contextual.out : String(parsed.expectedOutput || '').trim());
   const resources = Array.isArray(parsed.resources)
     ? parsed.resources.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 4)
     : [];
@@ -1635,14 +2004,28 @@ const quizQuestions = quizRaw.map(normalizeQuizQuestion).filter(Boolean) as Quiz
 return {
   title,
   description,
+  content: ensureNewlinesAroundSyntax(
+    String(parsed.content || '')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/(.)(\n?)(#{1,4} )/g, '$1\n\n$3')
+      .replace(/(#{1,4} [^\n]+)\n([^\n])/g, '$1\n\n$2')
+      .trim()
+  ) || undefined,
+  hint: String(parsed.hint || '').trim() || undefined,
+  hints: Array.isArray(parsed.hints)
+    ? parsed.hints.map((h) => String(h || '').trim()).filter(Boolean).slice(0, 3)
+    : undefined,
   type,
   durationMinutes,
-  enableLiveEditor: Boolean(parsed.enableLiveEditor) && (type === 'code_example' || Boolean(simpleStarter ? simpleStarter.code : safeStarterCode)),
+  enableLiveEditor:
+    Boolean(parsed.enableLiveEditor) &&
+    (type === 'code_example' || Boolean(finalStarterCode || simpleStarter?.code || safeStarterCode)),
   liveEditorLanguage: finalLang,
-  starterCode: (shouldUseContextStarter ? contextual.code : safeStarterCode) || undefined,
-  exampleCode: exampleCode || undefined,
-  expectedOutput:
-    (shouldUseContextStarter ? contextual.out : String(parsed.expectedOutput || '').trim()) || undefined,
+  starterCode: finalStarterCode || undefined,
+  exampleCode: fixCode(exampleCode || '') || undefined,
+  expectedOutput: finalExpectedOutput || undefined,
   videoUrl: String(parsed.videoUrl || '').trim() || undefined,
   resources,
   quizQuestions, 
@@ -1751,6 +2134,11 @@ export async function POST(req: Request, { params }: Params) {
             lessonTitle: String(row.title || ''),
             objective: String(row.description || ''),
             preferredLanguage,
+            moduleIndex: 0,
+            totalModules: 1,
+            lessonIndex: 0,
+            totalLessons: 1,
+            priorConcepts: [],
           });
         if (!details) continue;
         let prepared = ensureDetailedExplanation(details);
@@ -1877,29 +2265,39 @@ if (apiKey && !(Array.isArray(body?.outline) && body.outline.length > 0)) {     
       }
     }
 
-    // If phase 2 and outline exists, enrich each lesson details individually for better quality.
-    // Phase 2: generate all lesson details in PARALLEL for speed
+    // If phase 2 and outline exists, enrich each lesson details sequentially
+    // to preserve concept dependency order.
 if ((phase === 2 || mode === 'details') && apiKey && Array.isArray(body?.outline)) {
-  const detailedModules: OutlineModule[] = await Promise.all(
-    modules.map(async (module) => {
-      const detailedLessons = await Promise.all(
-        module.lessons.map(async (lesson) => {
-          const detailed = await generateLessonDetailsFromAi({
-            apiKey,
-            model,
-            topic: prompt,
-              courseTitle: String(courseRows[0].title || ''),
-              moduleTitle: module.title,
-              lessonTitle: lesson.title,
-              objective: lesson.description || '',
-              preferredLanguage,
-            });
-          return detailed ?? lesson;
-        })
-      );
-      return { ...module, lessons: detailedLessons };
-    })
-  );
+  const priorConcepts: string[] = [];
+  const detailedModules: OutlineModule[] = [];
+
+  for (let moduleIndex = 0; moduleIndex < modules.length; moduleIndex += 1) {
+    const module = modules[moduleIndex];
+    const detailedLessons: OutlineLesson[] = [];
+
+    for (let lessonIndex = 0; lessonIndex < module.lessons.length; lessonIndex += 1) {
+      const lesson = module.lessons[lessonIndex];
+      const detailed = await generateLessonDetailsFromAi({
+        apiKey,
+        model,
+        topic: prompt,
+        courseTitle: String(courseRows[0].title || ''),
+        moduleTitle: module.title,
+        lessonTitle: lesson.title,
+        objective: lesson.description || '',
+        preferredLanguage,
+        moduleIndex,
+        totalModules: modules.length,
+        lessonIndex,
+        totalLessons: module.lessons.length,
+        priorConcepts: [...priorConcepts],
+      });
+      detailedLessons.push(detailed ?? lesson);
+      priorConcepts.push(lesson.title);
+    }
+
+    detailedModules.push({ ...module, lessons: detailedLessons });
+  }
 
   const usedQuizKeys = new Set<string>();
   modules = detailedModules.map((module) => ({
@@ -1925,6 +2323,7 @@ const skipEnrich = (phase === 2 || mode === 'details') && Array.isArray(body?.ou
   modules = skipEnrich ? modules : enrichModules(modules, preferredLanguage);
   modules = enforceTopicRelevance(modules, profile);
   modules = validateAndFixLinks(modules, profile);
+  modules = await keepOnlyWorkingYouTubeVideos(modules);
   modules = enforceNoDuplicates(modules);
   modules = modules.map((module) => ({
     ...module,
