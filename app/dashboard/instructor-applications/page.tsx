@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ApplicationStatus = 'pending' | 'reviewed' | 'accepted' | 'rejected';
 
@@ -208,6 +209,15 @@ export default function AdminInstructorApplicationsPage() {
             </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full table-auto text-sm">
+              <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[16%]" />
+                <col className="w-[16%]" />
+                <col className="w-[8%]" />
+                <col className="w-[10%]" />
+                <col className="w-[20%]" />
+                <col className="w-[12%]" />
+              </colgroup>
               <thead className="bg-white dark:bg-slate-900/60">
                 <tr className="text-left text-slate-600 dark:text-slate-300">
                   <th className="px-4 py-3 font-medium">Applicant</th>
@@ -302,7 +312,7 @@ Aivora Team`;
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-3 shadow-sm">
       <p className="font-semibold text-slate-900 dark:text-slate-100">{item.fullName}</p>
       <p className="text-xs text-slate-500 mt-0.5">{item.bio || 'No bio provided'}</p>
       <p className="text-sm mt-2">{item.jobTitle || 'General Application'}</p>
@@ -358,45 +368,18 @@ Aivora Team`;
         {item.reviewerName && <p>By: {item.reviewerName}</p>}
       </div>
 
-      {showEmailComposer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Email Preview Before Sending
-            </h3>
-            <input
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              className="mt-3 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
-              placeholder="Email subject"
-            />
-            <textarea
-              value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
-              rows={12}
-              className="mt-2 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
-              placeholder="Email body"
-            />
-            <div className="mt-3 flex items-center gap-2 justify-end">
-              <button
-                onClick={() => setShowEmailComposer(false)}
-                className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  await onSaveWithEmail(item.id, status, adminNotes, emailSubject, emailBody);
-                  setShowEmailComposer(false);
-                }}
-                className="px-3 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200"
-              >
-                Confirm & Send
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EmailComposerModal
+        open={showEmailComposer}
+        subject={emailSubject}
+        body={emailBody}
+        onSubjectChange={setEmailSubject}
+        onBodyChange={setEmailBody}
+        onCancel={() => setShowEmailComposer(false)}
+        onConfirm={async () => {
+          await onSaveWithEmail(item.id, status, adminNotes, emailSubject, emailBody);
+          setShowEmailComposer(false);
+        }}
+      />
     </div>
   );
 }
@@ -464,17 +447,17 @@ Aivora Team`;
 
   return (
     <>
-    <tr className="hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
+    <tr className="align-top hover:bg-white dark:hover:bg-slate-800/40 transition-colors">
       <td className="px-4 py-4">
         <p className="font-semibold text-slate-900 dark:text-slate-100">{item.fullName}</p>
-        <p className="text-xs text-slate-500">{item.bio || 'No bio provided'}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.bio || 'No bio provided'}</p>
+      </td>
+      <td className="px-4 py-4 text-slate-700 dark:text-slate-200">
+        <p className="line-clamp-2">{item.jobTitle || 'General Application'}</p>
       </td>
       <td className="px-4 py-4">
-        <p>{item.jobTitle || 'General Application'}</p>
-      </td>
-      <td className="px-4 py-4">
-        <p>{item.email}</p>
-        <p className="text-xs text-slate-500">{item.phone || 'No phone'}</p>
+        <p className="break-all text-slate-700 dark:text-slate-200">{item.email}</p>
+        <p className="mt-1 text-xs text-slate-500">{item.phone || 'No phone'}</p>
       </td>
       <td className="px-4 py-4">
         <a
@@ -490,7 +473,7 @@ Aivora Team`;
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
-          className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
+          className="w-full min-w-[120px] px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
         >
           <option value="pending">Pending</option>
           <option value="reviewed">Reviewed</option>
@@ -499,12 +482,12 @@ Aivora Team`;
         </select>
       </td>
       <td className="px-4 py-4">
-        <div className="flex items-start gap-2">
+        <div className="min-w-[260px]">
           <textarea
             value={adminNotes}
             onChange={(e) => setAdminNotes(e.target.value)}
-            rows={2}
-            className="w-56 max-w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
+            rows={4}
+            className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900/70"
             placeholder={
               status === 'accepted'
                 ? 'Meeting details to send by email'
@@ -513,72 +496,101 @@ Aivora Team`;
                   : 'Internal notes'
             }
           />
-          <button
-            onClick={handleSaveClick}
-            disabled={saving}
-            className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button
-            onClick={() => onDelete(item.id)}
-            disabled={saving}
-            className="inline-flex items-center px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
-          >
-            Delete
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={handleSaveClick}
+              disabled={saving}
+              className="inline-flex min-w-[88px] items-center justify-center px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => onDelete(item.id)}
+              disabled={saving}
+              className="inline-flex min-w-[88px] items-center justify-center px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </td>
-      <td className="px-4 py-4 text-xs text-slate-500">
+      <td className="px-4 py-4 text-xs leading-5 text-slate-500">
         <p>{new Date(item.createdAt).toLocaleString()}</p>
         {item.reviewedAt && <p>Reviewed: {new Date(item.reviewedAt).toLocaleString()}</p>}
         {item.reviewerName && <p>By: {item.reviewerName}</p>}
       </td>
 
     </tr>
-    {showEmailComposer && (
-      <tr>
-        <td colSpan={7} className="p-0">
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Email Preview Before Sending
-              </h3>
-              <input
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                className="mt-3 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
-                placeholder="Email subject"
-              />
-              <textarea
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                rows={12}
-                className="mt-2 w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70"
-                placeholder="Email body"
-              />
-              <div className="mt-3 flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => setShowEmailComposer(false)}
-                  className="px-3 py-2 rounded border border-slate-300 dark:border-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    await onSaveWithEmail(item.id, status, adminNotes, emailSubject, emailBody);
-                    setShowEmailComposer(false);
-                  }}
-                  className="px-3 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200"
-                >
-                  Confirm & Send
-                </button>
-              </div>
-            </div>
-          </div>
-        </td>
-      </tr>
-    )}
+    <EmailComposerModal
+      open={showEmailComposer}
+      subject={emailSubject}
+      body={emailBody}
+      onSubjectChange={setEmailSubject}
+      onBodyChange={setEmailBody}
+      onCancel={() => setShowEmailComposer(false)}
+      onConfirm={async () => {
+        await onSaveWithEmail(item.id, status, adminNotes, emailSubject, emailBody);
+        setShowEmailComposer(false);
+      }}
+    />
     </>
+  );
+}
+
+function EmailComposerModal({
+  open,
+  subject,
+  body,
+  onSubjectChange,
+  onBodyChange,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  subject: string;
+  body: string;
+  onSubjectChange: (value: string) => void;
+  onBodyChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Email Preview Before Sending
+        </h3>
+        <input
+          value={subject}
+          onChange={(e) => onSubjectChange(e.target.value)}
+          className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/70"
+          placeholder="Email subject"
+        />
+        <textarea
+          value={body}
+          onChange={(e) => onBodyChange(e.target.value)}
+          rows={12}
+          className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900/70"
+          placeholder="Email body"
+        />
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium dark:border-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700"
+          >
+            Confirm & Send
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

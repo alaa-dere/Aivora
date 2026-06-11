@@ -316,13 +316,13 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Student Performance + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 h-full">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
-          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
+          <h2 className="text-base sm:text-[18px] font-semibold text-slate-700 dark:text-slate-200 mb-4">
             Student Performance
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {loading ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">Loading students...</p>
             ) : error ? (
@@ -337,13 +337,13 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+        <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 h-full">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-2">
+          <h2 className="text-base sm:text-[18px] font-semibold text-slate-700 dark:text-slate-200 mb-2">
             Recent Activity
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Live platform events</p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {(recentActivities.length ? recentActivities : recentActivitiesFallback).map((activity, idx) => (
               (() => {
                 const style = getActivityAppearance(activity.type);

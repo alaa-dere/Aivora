@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { downloadCertificatePdf } from '@/lib/download-certificate-pdf';
 
 export default function AdminCertificateViewPage() {
   const params = useParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function AdminCertificateViewPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const certificateRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -105,7 +107,7 @@ export default function AdminCertificateViewPage() {
       <div className="admin-surface relative overflow-hidden bg-white/85 dark:bg-slate-900/75 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-6">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
         <div className="flex justify-center">
-          <div className="admin-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
+          <div ref={certificateRef} className="admin-surface relative inline-block w-full max-w-[920px] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900">
             <img src="/tem.png" alt="" className="block w-full h-auto select-none" />
             <div className="absolute inset-0 z-10 px-[8%] py-[6%]">
               <div className="mt-[12%]">
@@ -164,7 +166,13 @@ export default function AdminCertificateViewPage() {
 
         <div className="certificate-actions mt-4 sm:mt-6 grid grid-cols-2 sm:flex gap-2 sm:gap-3">
           <button
-            onClick={() => window.print()}
+            onClick={async () => {
+              if (!certificateRef.current || !cert) return;
+              await downloadCertificatePdf(
+                certificateRef.current,
+                `${cert.studentName}-${cert.courseTitle}-certificate`
+              );
+            }}
             className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium transition-colors"
           >
             <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5" />

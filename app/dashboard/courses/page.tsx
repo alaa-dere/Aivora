@@ -41,6 +41,7 @@ export default function AdminCoursesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [bulkCategoryId, setBulkCategoryId] = useState('');
   const [bulkStatus, setBulkStatus] = useState<CourseStatus>('published');
@@ -56,6 +57,16 @@ export default function AdminCoursesPage() {
     fetchCourses();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  const showNotice = (type: 'success' | 'error', message: string) => {
+    setNotice({ type, message });
+  };
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -139,11 +150,11 @@ export default function AdminCoursesPage() {
       if (res.ok) {
         fetchCourses();
       } else {
-        alert('Failed to delete course');
+        showNotice('error', 'Failed to delete course');
       }
     } catch (err) {
       console.error('Delete error:', err);
-      alert('An error occurred while deleting');
+      showNotice('error', 'An error occurred while deleting');
     } finally {
       setIsDeleteModalOpen(false);
       setCourseToDelete(null);
@@ -152,7 +163,7 @@ export default function AdminCoursesPage() {
 
   const handleBulkCategoryAssign = async () => {
     if (selectedCourseIds.length === 0) {
-      alert('Select at least one course first');
+      showNotice('error', 'Select at least one course first');
       return;
     }
 
@@ -168,20 +179,21 @@ export default function AdminCoursesPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data?.message || 'Failed to assign category');
+        showNotice('error', data?.message || 'Failed to assign category');
         return;
       }
 
       await fetchCourses();
       setSelectedCourseIds([]);
-      alert(
+      showNotice(
+        'success',
         bulkCategoryId
           ? 'Category assigned to selected courses.'
           : 'Selected courses are now uncategorized.'
       );
     } catch (error) {
       console.error('Bulk category assignment failed:', error);
-      alert('Failed to assign category');
+      showNotice('error', 'Failed to assign category');
     } finally {
       setBulkSaving(false);
     }
@@ -189,7 +201,7 @@ export default function AdminCoursesPage() {
 
   const handleBulkStatusAssign = async () => {
     if (selectedCourseIds.length === 0) {
-      alert('Select at least one course first');
+      showNotice('error', 'Select at least one course first');
       return;
     }
 
@@ -205,15 +217,15 @@ export default function AdminCoursesPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data?.message || 'Failed to update status');
+        showNotice('error', data?.message || 'Failed to update status');
         return;
       }
       await fetchCourses();
       setSelectedCourseIds([]);
-      alert(`Status "${bulkStatus}" applied to selected courses.`);
+      showNotice('success', `Status "${bulkStatus}" applied to selected courses.`);
     } catch (error) {
       console.error('Bulk status assignment failed:', error);
-      alert('Failed to update status');
+      showNotice('error', 'Failed to update status');
     } finally {
       setBulkSaving(false);
     }
@@ -221,6 +233,23 @@ export default function AdminCoursesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900/60 p-3 sm:p-4 md:p-6 transition-colors duration-300">
+      {notice && (
+        <div className="fixed right-4 top-4 z-[100]">
+          <div
+            className={`min-w-[260px] max-w-[360px] rounded-2xl border px-4 py-3 shadow-xl backdrop-blur ${
+              notice.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+          >
+            <p className="text-sm font-semibold">
+              {notice.type === 'success' ? 'Success' : 'Error'}
+            </p>
+            <p className="mt-1 text-sm">{notice.message}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-3 mb-6">
         <div>

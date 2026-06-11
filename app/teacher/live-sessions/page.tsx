@@ -57,20 +57,6 @@ const CALENDAR_START_HOUR = 13;
 const CALENDAR_END_HOUR = 20;
 const HOUR_ROW_HEIGHT = 72;
 
-const getInAppLiveHref = (
-  sessionId: string,
-  role: "teacher" | "student",
-  displayName?: string,
-  fallbackLink?: string | null
-) => {
-  const qs = new URLSearchParams();
-  qs.set("role", role);
-  if (displayName) qs.set("name", displayName);
-  if (fallbackLink) qs.set("fallback", fallbackLink);
-  if (fallbackLink && /zoom\.us|zoom\.com/i.test(fallbackLink)) qs.set("provider", "zoom");
-  return `/live-session/${encodeURIComponent(sessionId)}?${qs.toString()}`;
-};
-
 export default function LiveSessionsPage() {
   const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
   const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
@@ -666,14 +652,18 @@ export default function LiveSessionsPage() {
                             <p className="text-[10px] text-gray-600 dark:text-gray-300">
                               {formatTime(event.startAt)} - {formatTime(event.endAt)}
                             </p>
-                            <Link
-                              href={getInAppLiveHref(event.id, "teacher", event.teacherName || "Teacher", event.meetingLink)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100"
-                            >
-                              <PlayCircleIcon className="h-3 w-3" />
-                              Join In-App
-                            </Link>
+                            {event.meetingLink ? (
+                              <Link
+                                href={event.meetingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 hover:bg-emerald-100"
+                              >
+                                <PlayCircleIcon className="h-3 w-3" />
+                                Join Zoom
+                              </Link>
+                            ) : null}
                           </div>
                         ))}
                     </div>
@@ -768,13 +758,17 @@ export default function LiveSessionsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                  <Link
-                    href={getInAppLiveHref(session.id, "teacher", session.teacherName || "Teacher", session.meetingLink)}
-                    className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-emerald-200"
-                  >
-                    <PlayCircleIcon className="w-4 h-4" />
-                    Join In-App
-                  </Link>
+                  {session.meetingLink ? (
+                    <Link
+                      href={session.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1.5 text-xs border border-emerald-200"
+                    >
+                      <PlayCircleIcon className="w-4 h-4" />
+                      Join Zoom
+                    </Link>
+                  ) : null}
                   {isUpcoming && (
                     <button
                       onClick={() => handleSendReminder(session.id)}
